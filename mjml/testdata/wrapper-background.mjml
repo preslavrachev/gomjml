@@ -1,0 +1,14 @@
+<mjml>
+  <mj-head>
+    <mj-title>Wrapper Background Test</mj-title>
+  </mj-head>
+  <mj-body>
+    <mj-wrapper background-color="#f0f0f0" padding="30px 0">
+      <mj-section>
+        <mj-column>
+          <mj-text>Content with background wrapper</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

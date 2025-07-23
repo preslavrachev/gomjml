@@ -1,0 +1,172 @@
+package components
+
+import (
+	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/styles"
+	"github.com/preslavrachev/gomjml/parser"
+)
+
+// Component represents a renderable MJML component
+type Component interface {
+	Render() (string, error)
+	GetTagName() string
+	GetDefaultAttribute(name string) string
+}
+
+// BaseComponent provides common functionality for all components
+type BaseComponent struct {
+	Node     *parser.MJMLNode
+	Children []Component
+	Attrs    map[string]string
+}
+
+// NewBaseComponent creates a new base component
+func NewBaseComponent(node *parser.MJMLNode) *BaseComponent {
+	attrs := make(map[string]string)
+	for _, attr := range node.Attrs {
+		attrs[attr.Name.Local] = attr.Value
+	}
+
+	return &BaseComponent{
+		Node:     node,
+		Attrs:    attrs,
+		Children: make([]Component, 0),
+	}
+}
+
+// GetAttribute gets an attribute value as a pointer, following the MRML attribute resolution order:
+// 1. Element attributes
+// 2. mj-class definitions (TODO: implement)
+// 3. Global element defaults (TODO: implement)
+// 4. Component defaults (via GetDefaultAttribute)
+func (bc *BaseComponent) GetAttribute(name string) *string {
+	// 1. Check element attributes
+	if value, exists := bc.Attrs[name]; exists && value != "" {
+		return &value
+	}
+
+	// 2. Check mj-class (TODO: implement)
+	// 3. Check global defaults (TODO: implement)
+
+	// 4. Check component defaults
+	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
+		return &defaultVal
+	}
+
+	return nil
+}
+
+// GetAttributeWithDefault gets an attribute with component-specific defaults
+// This method properly calls the overridden GetDefaultAttribute method on the concrete component
+func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) string {
+	// 1. Check element attributes first
+	if value, exists := bc.Attrs[name]; exists && value != "" {
+		return value
+	}
+
+	// 2. Check component defaults via interface method (properly calls overridden method)
+	return comp.GetDefaultAttribute(name)
+}
+
+// GetAttributeAsPixel parses an attribute value as a CSS pixel value
+func (bc *BaseComponent) GetAttributeAsPixel(name string) *styles.Pixel {
+	if attr := bc.GetAttribute(name); attr != nil {
+		if pixel, err := styles.ParsePixel(*attr); err == nil {
+			return pixel
+		}
+	}
+	return nil
+}
+
+// GetAttributeAsSpacing parses an attribute value as CSS spacing (padding/margin)
+func (bc *BaseComponent) GetAttributeAsSpacing(name string) *styles.Spacing {
+	if attr := bc.GetAttribute(name); attr != nil {
+		if spacing, err := styles.ParseSpacing(*attr); err == nil {
+			return spacing
+		}
+	}
+	return nil
+}
+
+// GetAttributeAsColor parses an attribute value as a CSS color value
+func (bc *BaseComponent) GetAttributeAsColor(name string) *styles.Color {
+	if attr := bc.GetAttribute(name); attr != nil {
+		if color, err := styles.ParseColor(*attr); err == nil {
+			return color
+		}
+	}
+	return nil
+}
+
+// GetDefaultAttribute returns the default value for an attribute.
+// Override this method in specific components to provide component-specific defaults.
+func (bc *BaseComponent) GetDefaultAttribute(name string) string {
+	return ""
+}
+
+// Style Mixin Methods - Common styling patterns that components can use
+
+// ApplyBackgroundStyles applies background-related CSS styles to an HTML tag
+func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag) *html.HTMLTag {
+	bgcolor := bc.GetAttribute("background-color")
+	bgImage := bc.GetAttribute("background-image")
+	bgRepeat := bc.GetAttribute("background-repeat")
+	bgSize := bc.GetAttribute("background-size")
+	bgPosition := bc.GetAttribute("background-position")
+
+	return styles.ApplyBackgroundStyles(tag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition)
+}
+
+// ApplyBorderStyles applies border-related CSS styles to an HTML tag
+func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag) *html.HTMLTag {
+	border := bc.GetAttribute("border")
+	borderRadius := bc.GetAttribute("border-radius")
+	borderTop := bc.GetAttribute("border-top")
+	borderRight := bc.GetAttribute("border-right")
+	borderBottom := bc.GetAttribute("border-bottom")
+	borderLeft := bc.GetAttribute("border-left")
+
+	return styles.ApplyBorderStyles(tag, border, borderRadius, borderTop, borderRight, borderBottom, borderLeft)
+}
+
+// ApplyPaddingStyles applies padding CSS styles to an HTML tag
+func (bc *BaseComponent) ApplyPaddingStyles(tag *html.HTMLTag) *html.HTMLTag {
+	if spacing := bc.GetAttributeAsSpacing("padding"); spacing != nil {
+		tag.AddStyle("padding", spacing.String())
+	}
+	return tag
+}
+
+// ApplyMarginStyles applies margin CSS styles to an HTML tag
+func (bc *BaseComponent) ApplyMarginStyles(tag *html.HTMLTag) *html.HTMLTag {
+	if spacing := bc.GetAttributeAsSpacing("margin"); spacing != nil {
+		tag.AddStyle("margin", spacing.String())
+	}
+	return tag
+}
+
+// ApplyFontStyles applies font-related CSS styles to an HTML tag
+func (bc *BaseComponent) ApplyFontStyles(tag *html.HTMLTag) *html.HTMLTag {
+	fontFamily := bc.GetAttribute("font-family")
+	fontSize := bc.GetAttribute("font-size")
+	fontWeight := bc.GetAttribute("font-weight")
+	fontStyle := bc.GetAttribute("font-style")
+	color := bc.GetAttribute("color")
+	lineHeight := bc.GetAttribute("line-height")
+	textAlign := bc.GetAttribute("text-align")
+	textDecoration := bc.GetAttribute("text-decoration")
+
+	return styles.ApplyFontStyles(tag, fontFamily, fontSize, fontWeight, fontStyle, color, lineHeight, textAlign, textDecoration)
+}
+
+// ApplyDimensionStyles applies width/height CSS styles to an HTML tag
+func (bc *BaseComponent) ApplyDimensionStyles(tag *html.HTMLTag) *html.HTMLTag {
+	width := bc.GetAttribute("width")
+	height := bc.GetAttribute("height")
+	minWidth := bc.GetAttribute("min-width")
+	maxWidth := bc.GetAttribute("max-width")
+	minHeight := bc.GetAttribute("min-height")
+	maxHeight := bc.GetAttribute("max-height")
+
+	return styles.ApplyDimensionStyles(tag, width, height, minWidth, maxWidth, minHeight, maxHeight)
+}

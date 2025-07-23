@@ -1,0 +1,182 @@
+package components
+
+import (
+	"strings"
+
+	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/parser"
+)
+
+// MJButtonComponent represents mj-button
+type MJButtonComponent struct {
+	*BaseComponent
+}
+
+// NewMJButtonComponent creates a new mj-button component
+func NewMJButtonComponent(node *parser.MJMLNode) *MJButtonComponent {
+	return &MJButtonComponent{
+		BaseComponent: NewBaseComponent(node),
+	}
+}
+
+func (c *MJButtonComponent) Render() (string, error) {
+	var output strings.Builder
+
+	// Get text content
+	textContent := c.Node.Text
+	if textContent == "" {
+		textContent = "Button"
+	}
+
+	// Helper function to get attribute with default
+	getAttr := func(name string) string {
+		if attr := c.GetAttribute(name); attr != nil {
+			return *attr
+		}
+		return c.GetDefaultAttribute(name)
+	}
+
+	// Get attributes with defaults matching MRML
+	align := getAttr("align")
+	backgroundColor := getAttr("background-color")
+	border := getAttr("border")
+	borderRadius := getAttr("border-radius")
+	innerPadding := getAttr("inner-padding")
+	padding := getAttr("padding")
+	target := getAttr("target")
+	verticalAlign := getAttr("vertical-align")
+	href := getAttr("href")
+
+	// Determine if we use <a> or <p> tag
+	tagName := "p"
+	if href != "" {
+		tagName = "a"
+	}
+
+	// Create TR element
+	output.WriteString("<tr>")
+
+	// Create TD with alignment and base styles
+	tdTag := html.NewHTMLTag("td").
+		AddAttribute("align", align).
+		AddAttribute("vertical-align", verticalAlign).
+		AddStyle("font-size", "0px").
+		AddStyle("padding", padding).
+		AddStyle("word-break", "break-word")
+
+	output.WriteString(tdTag.RenderOpen())
+
+	// Button table structure
+	tableTag := html.NewHTMLTag("table").
+		AddAttribute("border", "0").
+		AddAttribute("cellpadding", "0").
+		AddAttribute("cellspacing", "0").
+		AddAttribute("role", "presentation").
+		AddStyle("border-collapse", "separate").
+		AddStyle("line-height", "100%")
+
+	output.WriteString(tableTag.RenderOpen())
+	output.WriteString("<tbody><tr>")
+
+	// Button cell with background and border styles
+	buttonTdTag := html.NewHTMLTag("td").
+		AddAttribute("align", "center").
+		AddAttribute("bgcolor", backgroundColor).
+		AddAttribute("role", "presentation").
+		AddAttribute("valign", verticalAlign).
+		AddStyle("border", border).
+		AddStyle("border-radius", borderRadius).
+		AddStyle("cursor", "auto").
+		AddStyle("mso-padding-alt", innerPadding).
+		AddStyle("background", backgroundColor)
+
+	output.WriteString(buttonTdTag.RenderOpen())
+
+	// Button content (a or p tag)
+	contentTag := html.NewHTMLTag(tagName)
+	if href != "" {
+		contentTag.AddAttribute("href", href)
+		if target != "" {
+			contentTag.AddAttribute("target", target)
+		}
+	}
+
+	// Get font styles first
+	fontFamily := c.GetAttributeWithDefault(c, "font-family")
+	fontSize := c.GetAttributeWithDefault(c, "font-size")
+	fontWeight := c.GetAttributeWithDefault(c, "font-weight")
+	color := c.GetAttributeWithDefault(c, "color")
+	lineHeight := c.GetAttributeWithDefault(c, "line-height")
+	textDecoration := c.GetAttributeWithDefault(c, "text-decoration")
+	textTransform := c.GetAttributeWithDefault(c, "text-transform")
+
+	// Apply button content styles in MRML order
+	contentTag.AddStyle("display", "inline-block").
+		AddStyle("background", backgroundColor).
+		AddStyle("color", color).
+		AddStyle("font-family", fontFamily).
+		AddStyle("font-size", fontSize).
+		AddStyle("font-weight", fontWeight).
+		AddStyle("line-height", lineHeight).
+		AddStyle("margin", "0").
+		AddStyle("text-decoration", textDecoration).
+		AddStyle("text-transform", textTransform).
+		AddStyle("padding", innerPadding).
+		AddStyle("mso-padding-alt", "0px").
+		AddStyle("border-radius", borderRadius)
+
+	output.WriteString(contentTag.RenderOpen())
+	output.WriteString(textContent)
+	output.WriteString(contentTag.RenderClose())
+
+	output.WriteString(buttonTdTag.RenderClose())
+	output.WriteString("</tr></tbody>")
+	output.WriteString(tableTag.RenderClose())
+	output.WriteString(tdTag.RenderClose())
+	output.WriteString("</tr>")
+
+	return output.String(), nil
+}
+
+func (c *MJButtonComponent) GetTagName() string {
+	return "mj-button"
+}
+
+func (c *MJButtonComponent) GetDefaultAttribute(name string) string {
+	switch name {
+	case "align":
+		return "center"
+	case "background-color":
+		return "#414141"
+	case "border":
+		return "none"
+	case "border-radius":
+		return "3px"
+	case "color":
+		return "#ffffff"
+	case "font-family":
+		return "Ubuntu, Helvetica, Arial, sans-serif"
+	case "font-size":
+		return "13px"
+	case "font-weight":
+		return "normal"
+	case "inner-padding":
+		return "10px 25px"
+	case "line-height":
+		return "120%"
+	case "padding":
+		return "10px 25px"
+	case "target":
+		return "_blank"
+	case "text-decoration":
+		return "none"
+	case "text-transform":
+		return "none"
+	case "vertical-align":
+		return "middle"
+	case "href":
+		return ""
+	default:
+		return ""
+	}
+}

@@ -1,0 +1,29 @@
+<mjml>
+  <mj-head>
+    <mj-title>Complex Layout</mj-title>
+  </mj-head>
+  <mj-body>
+    <mj-section background-color="#f0f0f0">
+      <mj-column>
+        <mj-text align="center" font-size="20px" color="#333">
+          Welcome to Our Newsletter
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section>
+      <mj-column>
+        <mj-text>
+          This is a paragraph of text in the newsletter.
+        </mj-text>
+        <mj-button href="https://example.com" background-color="#007bff">
+          Click Here
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-section>
+      <mj-column>
+        <mj-image src="https://example.com/image.jpg" alt="Example Image" width="300px" />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

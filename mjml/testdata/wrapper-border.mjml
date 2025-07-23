@@ -1,0 +1,14 @@
+<mjml>
+  <mj-head>
+    <mj-title>Wrapper Border Test</mj-title>
+  </mj-head>
+  <mj-body>
+    <mj-wrapper border="2px solid #333" border-radius="10px" padding="20px 0">
+      <mj-section>
+        <mj-column>
+          <mj-text>Content with border wrapper</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

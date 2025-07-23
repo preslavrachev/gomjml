@@ -1,0 +1,15 @@
+<mjml>
+  <mj-head>
+    <mj-title>Test Email</mj-title>
+    <mj-font name="Roboto" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700" />
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text font-family="Roboto, sans-serif">
+          Hello with custom font!
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
