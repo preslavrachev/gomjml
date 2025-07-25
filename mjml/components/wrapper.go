@@ -74,20 +74,8 @@ func (c *MJWrapperComponent) getEffectiveWidth() int {
 }
 
 func (c *MJWrapperComponent) isFullWidth() bool {
-	// Full width if explicitly set
-	if c.getAttribute("full-width") == "full-width" {
-		return true
-	}
-
-	// Full width if has background attributes (like background-color)
-	if c.getAttribute("background-color") != "" {
-		return true
-	}
-	if c.getAttribute("background-image") != "" {
-		return true
-	}
-
-	return false
+	// Full width only if explicitly set
+	return c.getAttribute("full-width") == "full-width"
 }
 
 func (c *MJWrapperComponent) renderFullWidth() (string, error) {
@@ -97,63 +85,61 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
-	cssClass := c.getAttribute("css-class")
 
-	// Full width wrapper div with background styles
-	wrapperDiv := html.NewHTMLTag("div")
-	if cssClass != "" {
-		wrapperDiv.AddAttribute("class", cssClass)
-	}
+	// Outer full-width table (MRML pattern)
+	outerTable := html.NewHTMLTag("table").
+		AddAttribute("border", "0").
+		AddAttribute("cellpadding", "0").
+		AddAttribute("cellspacing", "0").
+		AddAttribute("role", "presentation").
+		AddAttribute("align", "center")
 
-	// Apply background and border styles using helper methods
-	c.ApplyBackgroundStyles(wrapperDiv)
-	c.ApplyBorderStyles(wrapperDiv)
+	// Apply background styles to outer table and add width:100%
+	c.ApplyBackgroundStyles(outerTable)
+	outerTable.AddStyle("width", "100%")
 
-	output.WriteString(wrapperDiv.RenderOpen())
+	output.WriteString(outerTable.RenderOpen())
+	output.WriteString("<tbody><tr><td>")
 
 	// MSO conditional for inner container
 	msoTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation").
-		AddAttribute("width", "100%")
+		AddAttribute("role", "presentation")
 
 	// Add bgcolor to MSO table if background-color is set
 	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute("bgcolor", bgColor).
-			AddAttribute("align", "center").
-			AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
-			AddStyle("width", GetDefaultBodyWidth())
+		msoTable.AddAttribute("bgcolor", bgColor)
 	}
 
+	msoTable.AddAttribute("align", "center").
+		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+		AddStyle("width", GetDefaultBodyWidth())
+
 	msoTd := html.NewHTMLTag("td").
-		AddStyle("direction", direction).
+		AddStyle("line-height", "0px").
 		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("text-align", textAlign)
+		AddStyle("mso-line-height-rule", "exactly")
 
 	output.WriteString(html.RenderMSOConditional(
 		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))
 
-	// Inner container div
-	effectiveWidth := c.getEffectiveWidth()
+	// Inner constrained div (standard MRML pattern)
 	innerDiv := html.NewHTMLTag("div").
 		AddStyle("margin", "0px auto").
-		AddStyle("max-width", fmt.Sprintf("%dpx", effectiveWidth))
+		AddStyle("max-width", GetDefaultBodyWidth())
 
 	output.WriteString(innerDiv.RenderOpen())
 
-	// Inner table
+	// Inner table with content
 	innerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
 		AddAttribute("role", "presentation").
+		AddAttribute("align", "center").
 		AddStyle("width", "100%")
-
-	// Apply border styles to inner table as well
-	c.ApplyBorderStyles(innerTable)
 
 	output.WriteString(innerTable.RenderOpen())
 	output.WriteString("<tbody><tr>")
@@ -165,21 +151,23 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 		AddStyle("padding", padding).
 		AddStyle("text-align", textAlign)
 
-	// Apply border styles to the inner TD which should contain the actual border
-	c.ApplyBorderStyles(innerTd)
-
 	output.WriteString(innerTd.RenderOpen())
 
-	// Render children - pass the effective width (600px - border width)
-	effectiveWidth = c.getEffectiveWidth()
+	// MSO conditional for wrapper content
+	output.WriteString(html.RenderMSOConditional(
+		fmt.Sprintf("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\"%dpx\">", GetDefaultBodyWidthPixels())))
+
+	// Render children with standard body width
 	for _, child := range c.Children {
-		child.SetContainerWidth(effectiveWidth)
+		child.SetContainerWidth(GetDefaultBodyWidthPixels())
 		childHTML, err := child.Render()
 		if err != nil {
 			return "", err
 		}
 		output.WriteString(childHTML)
 	}
+
+	output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
 
 	output.WriteString(innerTd.RenderClose())
 	output.WriteString("</tr></tbody>")
@@ -188,7 +176,10 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 
 	// Close MSO conditional
 	output.WriteString(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))
-	output.WriteString(wrapperDiv.RenderClose())
+
+	// Close outer table
+	output.WriteString("</td></tr></tbody>")
+	output.WriteString(outerTable.RenderClose())
 
 	return output.String(), nil
 }
@@ -207,8 +198,14 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation").
-		AddAttribute("align", "center").
+		AddAttribute("role", "presentation")
+
+	// Add bgcolor to MSO table if background-color is set
+	if bgColor := c.getAttribute("background-color"); bgColor != "" {
+		msoTable.AddAttribute("bgcolor", bgColor)
+	}
+
+	msoTable.AddAttribute("align", "center").
 		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
 		AddStyle("width", GetDefaultBodyWidth())
 
@@ -220,9 +217,13 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	output.WriteString(html.RenderMSOConditional(
 		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))
 
-	// Main wrapper div (match MRML property order: margin, border-radius, max-width)
-	wrapperDiv := html.NewHTMLTag("div").
-		AddStyle("margin", "0px auto")
+	// Main wrapper div (match MRML property order: background first, then margin, border-radius, max-width)
+	wrapperDiv := html.NewHTMLTag("div")
+
+	// Apply background styles first to match MRML order
+	c.ApplyBackgroundStyles(wrapperDiv)
+
+	wrapperDiv.AddStyle("margin", "0px auto")
 
 	// Add border-radius before max-width to match MRML order
 	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
@@ -233,14 +234,18 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 
 	output.WriteString(wrapperDiv.RenderOpen())
 
-	// Inner table (match MRML order: width, border-radius)
+	// Inner table (match MRML order: background first, then width, border-radius)
 	innerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
 		AddAttribute("role", "presentation").
-		AddAttribute("align", "center").
-		AddStyle("width", "100%")
+		AddAttribute("align", "center")
+
+	// Apply background styles first to match MRML order
+	c.ApplyBackgroundStyles(innerTable)
+
+	innerTable.AddStyle("width", "100%")
 
 	// Add border-radius after width to match MRML order
 	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
