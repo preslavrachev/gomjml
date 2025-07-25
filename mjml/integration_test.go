@@ -24,6 +24,25 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"group-footer-test", "testdata/group-footer-test.mjml"},
 		{"section-padding-top-zero", "testdata/section-padding-top-zero.mjml"},
 		{"Austin layout from the MJML.io site", "testdata/austin-layout-from-mjml-io.mjml"},
+		// Austin layout component tests
+		{"austin-header-section", "testdata/austin-header-section.mjml"},
+		{"austin-hero-images", "testdata/austin-hero-images.mjml"},
+		{"austin-wrapper-basic", "testdata/austin-wrapper-basic.mjml"},
+		{"austin-text-with-links", "testdata/austin-text-with-links.mjml"},
+		{"austin-buttons", "testdata/austin-buttons.mjml"},
+		{"austin-two-column-images", "testdata/austin-two-column-images.mjml"},
+		{"austin-divider", "testdata/austin-divider.mjml"},
+		{"austin-two-column-text", "testdata/austin-two-column-text.mjml"},
+		{"austin-full-width-wrapper", "testdata/austin-full-width-wrapper.mjml"},
+		{"austin-social-media", "testdata/austin-social-media.mjml"},
+		{"austin-footer-text", "testdata/austin-footer-text.mjml"},
+		{"austin-group-component", "testdata/austin-group-component.mjml"},
+		{"austin-global-attributes", "testdata/austin-global-attributes.mjml"},
+		{"austin-map-image", "testdata/austin-map-image.mjml"},
+		// MRML reference tests
+		{"mrml-divider-basic", "testdata/mrml-divider-basic.mjml"},
+		{"mrml-text-basic", "testdata/mrml-text-basic.mjml"},
+		{"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
 	}
 
 	for _, tc := range testCases {

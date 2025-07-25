@@ -1,0 +1,32 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Full Width Wrapper</mj-title>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-wrapper full-width="full-width">
+      <mj-section>
+        <mj-column width="100%" padding="0">
+          <mj-text
+            color="#445566"
+            font-size="11px"
+            font-weight="bold"
+            align="center"
+          >
+            View this email in your browser
+          </mj-text>
+          <mj-text
+            color="#445566"
+            font-size="11px"
+            align="center"
+            line-height="16px"
+          >
+            You are receiving this email advertisement because you registered
+            with Croft's Accountants. (123 Main Street, Austin, TX 78701) and
+            agreed to receive emails from us regarding new features, events and
+            special offers.
+          </mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

@@ -1,0 +1,20 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Footer Text</mj-title>
+    <mj-style inline="inline"> .footer-link { color: #888888 } </mj-style>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section>
+      <mj-column width="100%">
+        <mj-text
+          color="#445566"
+          font-size="11px"
+          align="center"
+          line-height="16px"
+        >
+          &copy; Croft's Accountants Inc., All Rights Reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

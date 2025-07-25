@@ -1,0 +1,15 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Map Image</mj-title>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section background-color="#ffffff" padding-left="15px" padding-right="15px">
+      <mj-column width="100%">
+        <mj-image
+          src="https://res.cloudinary.com/dheck1ubc/image/upload/v1544153579/Email/Images/AnnouncementOffset/map.jpg"
+          alt=""
+        />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

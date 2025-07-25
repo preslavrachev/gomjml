@@ -1,0 +1,23 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Two Column Images</mj-title>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section background-color="#ffffff" padding-left="15px" padding-right="15px" padding-top="0">
+      <mj-column width="50%">
+        <mj-image
+          align="center"
+          src="https://res.cloudinary.com/dheck1ubc/image/upload/v1544153577/Email/Images/AnnouncementOffset/Image_1.png"
+          alt=""
+        />
+      </mj-column>
+      <mj-column width="50%">
+        <mj-image
+          align="center"
+          src="https://res.cloudinary.com/dheck1ubc/image/upload/v1544153578/Email/Images/AnnouncementOffset/Image_2.png"
+          alt=""
+        />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

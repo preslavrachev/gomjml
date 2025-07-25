@@ -1,0 +1,48 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Header Section</mj-title>
+    <mj-attributes>
+      <mj-all font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-all>
+      <mj-text font-weight="400" font-size="16px" color="#000000" line-height="24px" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-text>
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section full-width="full-width" background-color="#040B4F" padding-bottom="0">
+      <mj-column width="100%">
+        <mj-image
+          src="https://res.cloudinary.com/dheck1ubc/image/upload/v1544153577/Email/Images/AnnouncementOffset/crofts-white.png"
+          alt=""
+          align="center"
+          width="150px"
+        />
+        <mj-text
+          color="#ffffff"
+          font-weight="bold"
+          align="center"
+          text-transform="uppercase"
+          font-size="16px"
+          letter-spacing="1px"
+          padding-top="30px"
+        >
+          Austin, TX
+          <br />
+          <span style="color: #979797; font-weight: normal">-</span>
+        </mj-text>
+        <mj-text
+          color="#17CBC4"
+          align="center"
+          font-size="13px"
+          padding-top="0"
+          font-weight="bold"
+          text-transform="uppercase"
+          letter-spacing="1px"
+          line-height="20px"
+        >
+          Austin Convention Center
+          <br />
+          123 Main Street, 78701
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

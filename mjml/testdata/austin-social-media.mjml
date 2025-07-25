@@ -1,0 +1,43 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Social Media</mj-title>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section>
+      <mj-column width="100%" padding="0">
+        <mj-social
+          font-size="15px"
+          icon-size="30px"
+          mode="horizontal"
+          padding="0"
+          align="center"
+        >
+          <mj-social-element
+            name="facebook"
+            href="https://mjml.io/"
+            background-color="#A1A0A0"
+          >
+          </mj-social-element>
+          <mj-social-element
+            name="google"
+            href="https://mjml.io/"
+            background-color="#A1A0A0"
+          >
+          </mj-social-element>
+          <mj-social-element
+            name="twitter"
+            href="https://mjml.io/"
+            background-color="#A1A0A0"
+          >
+          </mj-social-element>
+          <mj-social-element
+            name="linkedin"
+            href="https://mjml.io/"
+            background-color="#A1A0A0"
+          >
+          </mj-social-element>
+        </mj-social>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
