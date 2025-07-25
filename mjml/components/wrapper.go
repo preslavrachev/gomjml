@@ -170,8 +170,10 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 
 	output.WriteString(innerTd.RenderOpen())
 
-	// Render children
+	// Render children - pass the effective width (600px - border width)
+	effectiveWidth = c.getEffectiveWidth()
 	for _, child := range c.Children {
+		child.SetContainerWidth(effectiveWidth)
 		childHTML, err := child.Render()
 		if err != nil {
 			return "", err
@@ -264,12 +266,13 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	output.WriteString(mainTd.RenderOpen())
 
 	// For basic wrapper, we need a specific MSO conditional pattern
-	// that matches MRML's output more closely - use effective width
+	// that matches MRML's output more closely - use original body width for wrapper MSO
 	output.WriteString(html.RenderMSOConditional(
-		fmt.Sprintf("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\"%dpx\">", effectiveWidth)))
+		fmt.Sprintf("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\"%dpx\">", GetDefaultBodyWidthPixels())))
 
-	// Render children
+	// Render children - pass the effective width (600px - border width)
 	for _, child := range c.Children {
+		child.SetContainerWidth(effectiveWidth)
 		childHTML, err := child.Render()
 		if err != nil {
 			return "", err

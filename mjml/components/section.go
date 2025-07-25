@@ -40,8 +40,8 @@ func (c *MJSectionComponent) Render() (string, error) {
 	// MSO conditional comment - table wrapper for Outlook
 	msoTable := html.NewTableTag().
 		AddAttribute("align", "center").
-		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
-		AddStyle("width", GetDefaultBodyWidth())
+		AddAttribute("width", fmt.Sprintf("%d", c.GetEffectiveWidth())).
+		AddStyle("width", c.GetEffectiveWidthString())
 
 	if backgroundColor != "" {
 		msoTable.AddAttribute("bgcolor", backgroundColor)
@@ -63,7 +63,7 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	// Then add layout styles
 	sectionDiv.AddStyle("margin", "0px auto").
-		AddStyle("max-width", GetDefaultBodyWidth())
+		AddStyle("max-width", c.GetEffectiveWidthString())
 
 	output.WriteString(sectionDiv.RenderOpen())
 
@@ -91,6 +91,9 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	// Render child columns (section provides MSO TR, columns provide MSO TDs)
 	for _, child := range c.Children {
+		// Pass the effective width to the child
+		child.SetContainerWidth(c.GetEffectiveWidth())
+
 		// Generate MSO conditional TD for each column (following MRML's render_wrapped_children pattern)
 		if columnComp, ok := child.(*MJColumnComponent); ok {
 			msoStyles := columnComp.GetMSOTDStyles()

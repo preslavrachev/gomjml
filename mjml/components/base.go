@@ -1,6 +1,8 @@
 package components
 
 import (
+	"fmt"
+
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
@@ -11,13 +13,16 @@ type Component interface {
 	Render() (string, error)
 	GetTagName() string
 	GetDefaultAttribute(name string) string
+	SetContainerWidth(widthPx int)
+	GetContainerWidth() int
 }
 
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
-	Node     *parser.MJMLNode
-	Children []Component
-	Attrs    map[string]string
+	Node           *parser.MJMLNode
+	Children       []Component
+	Attrs          map[string]string
+	ContainerWidth int // Container width in pixels (0 means use default)
 }
 
 // NewBaseComponent creates a new base component
@@ -28,9 +33,10 @@ func NewBaseComponent(node *parser.MJMLNode) *BaseComponent {
 	}
 
 	return &BaseComponent{
-		Node:     node,
-		Attrs:    attrs,
-		Children: make([]Component, 0),
+		Node:           node,
+		Attrs:          attrs,
+		Children:       make([]Component, 0),
+		ContainerWidth: 0, // 0 means use default body width
 	}
 }
 
@@ -102,6 +108,32 @@ func (bc *BaseComponent) GetAttributeAsColor(name string) *styles.Color {
 // Override this method in specific components to provide component-specific defaults.
 func (bc *BaseComponent) GetDefaultAttribute(name string) string {
 	return ""
+}
+
+// SetContainerWidth sets the container width in pixels for this component
+func (bc *BaseComponent) SetContainerWidth(widthPx int) {
+	bc.ContainerWidth = widthPx
+}
+
+// GetContainerWidth returns the container width in pixels (0 means use default body width)
+func (bc *BaseComponent) GetContainerWidth() int {
+	return bc.ContainerWidth
+}
+
+// GetEffectiveWidth returns the container width if set, otherwise default body width
+func (bc *BaseComponent) GetEffectiveWidth() int {
+	if bc.ContainerWidth > 0 {
+		return bc.ContainerWidth
+	}
+	return GetDefaultBodyWidthPixels()
+}
+
+// GetEffectiveWidthString returns the effective width as a string with px units
+func (bc *BaseComponent) GetEffectiveWidthString() string {
+	if bc.ContainerWidth > 0 {
+		return fmt.Sprintf("%dpx", bc.ContainerWidth)
+	}
+	return GetDefaultBodyWidth()
 }
 
 // Style Mixin Methods - Common styling patterns that components can use
