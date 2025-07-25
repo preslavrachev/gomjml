@@ -86,12 +86,27 @@ func (c *MJSectionComponent) Render() (string, error) {
 	tdTag := html.NewHTMLTag("td").
 		AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("text-align", textAlign)
+		AddStyle("padding", padding)
+
+	// Add specific padding overrides if they exist (following MRML pattern)
+	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
+		tdTag.AddStyle("padding-top", *paddingTopAttr)
+	}
+	if paddingBottomAttr := c.GetAttribute("padding-bottom"); paddingBottomAttr != nil {
+		tdTag.AddStyle("padding-bottom", *paddingBottomAttr)
+	}
+	if paddingLeftAttr := c.GetAttribute("padding-left"); paddingLeftAttr != nil {
+		tdTag.AddStyle("padding-left", *paddingLeftAttr)
+	}
+	if paddingRightAttr := c.GetAttribute("padding-right"); paddingRightAttr != nil {
+		tdTag.AddStyle("padding-right", *paddingRightAttr)
+	}
+
+	tdTag.AddStyle("text-align", textAlign)
 
 	output.WriteString(tdTag.RenderOpen())
 
-	// Render child columns (section provides MSO TR, columns provide MSO TDs)
+	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
 	for _, child := range c.Children {
 		// Pass the effective width to the child
 		child.SetContainerWidth(c.GetEffectiveWidth())
@@ -115,6 +130,9 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 			output.WriteString(html.RenderMSOConditional(
 				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
+		} else if groupComp, ok := child.(*MJGroupComponent); ok {
+			// Groups handle their own MSO structure, just set container width
+			groupComp.SetContainerWidth(c.GetEffectiveWidth())
 		}
 
 		childHTML, err := child.Render()

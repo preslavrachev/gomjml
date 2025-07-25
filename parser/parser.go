@@ -21,7 +21,7 @@ type MJMLNode struct {
 func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 	// Pre-process HTML entities that XML parser doesn't handle
 	processedContent := preprocessHTMLEntities(mjmlContent)
-	
+
 	decoder := xml.NewDecoder(strings.NewReader(processedContent))
 	root, err := parseNode(decoder, xml.StartElement{})
 	if err != nil {
@@ -32,10 +32,10 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 
 // preprocessHTMLEntities replaces common HTML entities with Unicode characters
 func preprocessHTMLEntities(content string) string {
-	// Replace the most common HTML entities with Unicode characters  
+	// Replace the most common HTML entities with Unicode characters
 	result := content
 	result = strings.ReplaceAll(result, "&copy;", "©")
-	result = strings.ReplaceAll(result, "&reg;", "®") 
+	result = strings.ReplaceAll(result, "&reg;", "®")
 	result = strings.ReplaceAll(result, "&trade;", "™")
 	result = strings.ReplaceAll(result, "&amp;", "&")
 	result = strings.ReplaceAll(result, "&lt;", "<")
@@ -46,7 +46,7 @@ func preprocessHTMLEntities(content string) string {
 	result = strings.ReplaceAll(result, "&ndash;", "–")
 	result = strings.ReplaceAll(result, "&mdash;", "—")
 	result = strings.ReplaceAll(result, "&hellip;", "…")
-	
+
 	return result
 }
 

@@ -1,7 +1,6 @@
 package components
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -59,7 +58,6 @@ func (c *MJSocialComponent) Render() (string, error) {
 	var output strings.Builder
 
 	padding := c.getAttribute("padding")
-	align := c.getAttribute("align")
 
 	// Outer table cell
 	td := html.NewHTMLTag("td").
@@ -69,23 +67,15 @@ func (c *MJSocialComponent) Render() (string, error) {
 
 	output.WriteString(td.RenderOpen())
 
-	// Inner table for social elements
-	table := html.NewHTMLTag("table").
-		AddAttribute("border", "0").
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation").
-		AddStyle("float", "none").
-		AddStyle("display", "inline-table")
-
-	output.WriteString(fmt.Sprintf(`<div align="%s">`, align))
-	output.WriteString(table.RenderOpen())
-	output.WriteString("<tr>")
+	// MSO conditional opening
+	output.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"center\"><tr><![endif]-->")
 
 	// Render social elements
 	for _, child := range c.Children {
 		if socialElement, ok := child.(*MJSocialElementComponent); ok {
 			socialElement.SetContainerWidth(c.GetContainerWidth())
+			// Pass parent attributes to child if not explicitly set
+			socialElement.InheritFromParent(c)
 			childHTML, err := socialElement.Render()
 			if err != nil {
 				return "", err
@@ -94,9 +84,8 @@ func (c *MJSocialComponent) Render() (string, error) {
 		}
 	}
 
-	output.WriteString("</tr>")
-	output.WriteString(table.RenderClose())
-	output.WriteString("</div>")
+	// MSO conditional closing
+	output.WriteString("<!--[if mso | IE]></tr></table><![endif]-->")
 	output.WriteString(td.RenderClose())
 
 	return output.String(), nil
@@ -109,6 +98,7 @@ func (c *MJSocialComponent) GetTagName() string {
 // MJSocialElementComponent represents mj-social-element
 type MJSocialElementComponent struct {
 	*BaseComponent
+	parentSocial *MJSocialComponent // Reference to parent for attribute inheritance
 }
 
 // NewMJSocialElementComponent creates a new mj-social-element component
@@ -123,7 +113,7 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case "align":
 		return "center"
 	case "alt":
-		if name := c.getAttribute("name"); name != "" {
+		if name := c.Node.GetAttribute("name"); name != "" {
 			return name
 		}
 		return ""
@@ -150,16 +140,20 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case "padding":
 		return "4px"
 	case "src":
-		// Default social icons - simplified
-		switch c.getAttribute("name") {
+		// Default social icons from MJML standard locations
+		// Get name directly from node to avoid circular dependency
+		nameAttr := c.Node.GetAttribute("name")
+		switch nameAttr {
 		case "facebook":
-			return "https://www.mailjet.com/images/social/facebook.png"
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/facebook.png"
 		case "twitter":
-			return "https://www.mailjet.com/images/social/twitter.png"
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter.png"
 		case "linkedin":
-			return "https://www.mailjet.com/images/social/linkedin.png"
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png"
+		case "google":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/google-plus.png"
 		case "instagram":
-			return "https://www.mailjet.com/images/social/instagram.png"
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/instagram.png"
 		default:
 			return ""
 		}
@@ -175,45 +169,127 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 }
 
 func (c *MJSocialElementComponent) getAttribute(name string) string {
-	return c.GetAttributeWithDefault(c, name)
+	// First check if element has the attribute explicitly set
+	if value := c.Node.GetAttribute(name); value != "" {
+		return value
+	}
+
+	// Check if parent has the attribute for inheritable attributes
+	inheritableAttrs := map[string]bool{
+		"icon-size": true, "font-size": true, "padding": true, "border-radius": true,
+	}
+
+	if c.parentSocial != nil && inheritableAttrs[name] {
+		if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
+			return parentValue
+		}
+	}
+
+	// Fall back to default attributes
+	return c.GetDefaultAttribute(name)
+}
+
+// InheritFromParent sets the parent reference for attribute inheritance
+func (c *MJSocialElementComponent) InheritFromParent(parent *MJSocialComponent) {
+	c.parentSocial = parent
 }
 
 func (c *MJSocialElementComponent) Render() (string, error) {
+	var output strings.Builder
+
 	padding := c.getAttribute("padding")
 	iconSize := c.getAttribute("icon-size")
 	src := c.getAttribute("src")
 	href := c.getAttribute("href")
 	alt := c.getAttribute("alt")
 	target := c.getAttribute("target")
+	backgroundColor := c.getAttribute("background-color")
+	borderRadius := c.getAttribute("border-radius")
 
-	// Table cell
-	td := html.NewHTMLTag("td").
+	// Skip rendering if no src provided
+	if src == "" {
+		return "", nil
+	}
+
+	// MSO conditional for individual social element
+	output.WriteString("<!--[if mso | IE]><td><![endif]-->")
+
+	// Outer table (inline-table display)
+	outerTable := html.NewHTMLTag("table").
+		AddAttribute("border", "0").
+		AddAttribute("cellpadding", "0").
+		AddAttribute("cellspacing", "0").
+		AddAttribute("role", "presentation").
+		AddAttribute("align", "center").
+		AddStyle("float", "none").
+		AddStyle("display", "inline-table")
+
+	output.WriteString(outerTable.RenderOpen())
+	output.WriteString("<tbody><tr>")
+
+	// Padding cell
+	paddingTd := html.NewHTMLTag("td").
 		AddStyle("padding", padding).
 		AddStyle("vertical-align", "middle")
 
-	content := ""
-	if src != "" {
-		img := html.NewHTMLTag("img").
-			AddAttribute("height", iconSize).
-			AddAttribute("src", src).
-			AddAttribute("style", fmt.Sprintf("border-radius:%s;display:block;", c.getAttribute("border-radius"))).
-			AddAttribute("width", iconSize)
+	output.WriteString(paddingTd.RenderOpen())
 
-		if alt != "" {
-			img.AddAttribute("alt", alt)
-		}
+	// Inner table with background color
+	innerTable := html.NewHTMLTag("table").
+		AddAttribute("border", "0").
+		AddAttribute("cellpadding", "0").
+		AddAttribute("cellspacing", "0").
+		AddAttribute("role", "presentation").
+		AddStyle("background", backgroundColor).
+		AddStyle("border-radius", borderRadius).
+		AddStyle("width", iconSize)
 
-		if href != "" {
-			link := html.NewHTMLTag("a").
-				AddAttribute("href", href).
-				AddAttribute("target", target)
-			content = link.RenderOpen() + img.RenderSelfClosing() + link.RenderClose()
-		} else {
-			content = img.RenderSelfClosing()
-		}
+	output.WriteString(innerTable.RenderOpen())
+	output.WriteString("<tbody><tr>")
+
+	// Icon cell
+	iconTd := html.NewHTMLTag("td").
+		AddStyle("font-size", "0").
+		AddStyle("height", iconSize).
+		AddStyle("vertical-align", "middle").
+		AddStyle("width", iconSize)
+
+	output.WriteString(iconTd.RenderOpen())
+
+	// Image with optional link
+	img := html.NewHTMLTag("img").
+		AddAttribute("height", iconSize).
+		AddAttribute("src", src).
+		AddAttribute("width", iconSize).
+		AddStyle("border-radius", borderRadius).
+		AddStyle("display", "block")
+
+	if alt != "" {
+		img.AddAttribute("alt", alt)
 	}
 
-	return td.RenderOpen() + content + td.RenderClose(), nil
+	if href != "" {
+		link := html.NewHTMLTag("a").
+			AddAttribute("href", href).
+			AddAttribute("target", target)
+		output.WriteString(link.RenderOpen())
+		output.WriteString(img.RenderSelfClosing())
+		output.WriteString(link.RenderClose())
+	} else {
+		output.WriteString(img.RenderSelfClosing())
+	}
+
+	output.WriteString(iconTd.RenderClose())
+	output.WriteString("</tr></tbody>")
+	output.WriteString(innerTable.RenderClose())
+	output.WriteString(paddingTd.RenderClose())
+	output.WriteString("</tr></tbody>")
+	output.WriteString(outerTable.RenderClose())
+
+	// Close MSO conditional
+	output.WriteString("<!--[if mso | IE]></td><![endif]-->")
+
+	return output.String(), nil
 }
 
 func (c *MJSocialElementComponent) GetTagName() string {

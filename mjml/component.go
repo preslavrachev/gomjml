@@ -98,11 +98,35 @@ func createMJMLComponent(node *parser.MJMLNode) (*MJMLComponent, error) {
 					if colComponent, err := CreateComponent(colNode); err == nil {
 						comp.Children = append(comp.Children, colComponent)
 
-						// Process column children
-						if column, ok := colComponent.(*components.MJColumnComponent); ok {
-							for _, contentNode := range column.Node.Children {
+						// Handle different column types
+						switch col := colComponent.(type) {
+						case *components.MJColumnComponent:
+							// Process column children
+							for _, contentNode := range col.Node.Children {
 								if contentComponent, err := CreateComponent(contentNode); err == nil {
-									column.Children = append(column.Children, contentComponent)
+									col.Children = append(col.Children, contentComponent)
+
+									// Process nested children (e.g., social elements within social component)
+									processComponentChildren(contentComponent, contentNode)
+								}
+							}
+						case *components.MJGroupComponent:
+							// Process group children (columns within the group)
+							for _, groupChildNode := range col.Node.Children {
+								if groupChildComponent, err := CreateComponent(groupChildNode); err == nil {
+									col.Children = append(col.Children, groupChildComponent)
+
+									// Process column children within the group
+									if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
+										for _, contentNode := range groupColumn.Node.Children {
+											if contentComponent, err := CreateComponent(contentNode); err == nil {
+												groupColumn.Children = append(groupColumn.Children, contentComponent)
+
+												// Process nested children (e.g., social elements within social component)
+												processComponentChildren(contentComponent, contentNode)
+											}
+										}
+									}
 								}
 							}
 						}
@@ -119,11 +143,35 @@ func createMJMLComponent(node *parser.MJMLNode) (*MJMLComponent, error) {
 								if colComponent, err := CreateComponent(colNode); err == nil {
 									section.Children = append(section.Children, colComponent)
 
-									// Process column children
-									if column, ok := colComponent.(*components.MJColumnComponent); ok {
-										for _, contentNode := range column.Node.Children {
+									// Handle different column types
+									switch col := colComponent.(type) {
+									case *components.MJColumnComponent:
+										// Process column children
+										for _, contentNode := range col.Node.Children {
 											if contentComponent, err := CreateComponent(contentNode); err == nil {
-												column.Children = append(column.Children, contentComponent)
+												col.Children = append(col.Children, contentComponent)
+
+												// Process nested children (e.g., social elements within social component)
+												processComponentChildren(contentComponent, contentNode)
+											}
+										}
+									case *components.MJGroupComponent:
+										// Process group children (columns within the group)
+										for _, groupChildNode := range col.Node.Children {
+											if groupChildComponent, err := CreateComponent(groupChildNode); err == nil {
+												col.Children = append(col.Children, groupChildComponent)
+
+												// Process column children within the group
+												if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
+													for _, contentNode := range groupColumn.Node.Children {
+														if contentComponent, err := CreateComponent(contentNode); err == nil {
+															groupColumn.Children = append(groupColumn.Children, contentComponent)
+
+															// Process nested children (e.g., social elements within social component)
+															processComponentChildren(contentComponent, contentNode)
+														}
+													}
+												}
 											}
 										}
 									}
@@ -137,4 +185,19 @@ func createMJMLComponent(node *parser.MJMLNode) (*MJMLComponent, error) {
 	}
 
 	return comp, nil
+}
+
+// processComponentChildren recursively processes children of content components
+func processComponentChildren(component Component, node *parser.MJMLNode) {
+	// Only process components that can have children
+	switch comp := component.(type) {
+	case *components.MJSocialComponent:
+		// Process social element children
+		for _, childNode := range node.Children {
+			if childComponent, err := CreateComponent(childNode); err == nil {
+				comp.Children = append(comp.Children, childComponent)
+			}
+		}
+		// Add more component types here as needed
+	}
 }

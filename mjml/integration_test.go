@@ -21,6 +21,8 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"wrapper-background", "testdata/wrapper-background.mjml"},
 		{"wrapper-fullwidth", "testdata/wrapper-fullwidth.mjml"},
 		{"wrapper-border", "testdata/wrapper-border.mjml"},
+		{"group-footer-test", "testdata/group-footer-test.mjml"},
+		{"section-padding-top-zero", "testdata/section-padding-top-zero.mjml"},
 		{"Austin layout from the MJML.io site", "testdata/austin-layout-from-mjml-io.mjml"},
 	}
 
