@@ -44,6 +44,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mrml-divider-basic", "testdata/mrml-divider-basic.mjml"},
 		{"mrml-text-basic", "testdata/mrml-text-basic.mjml"},
 		{"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
+		{"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
 	}
 
 	for _, tc := range testCases {
@@ -262,13 +263,17 @@ func createSimpleDiff(expected, actual string) string {
 	actualMarker := ""
 
 	if markerPos < len(expectedSnippet) {
-		expectedMarker = expectedSnippet[:markerPos] + bold + red + string(expectedSnippet[markerPos]) + reset + expectedSnippet[markerPos+1:]
+		expectedMarker = expectedSnippet[:markerPos] + bold + red + string(
+			expectedSnippet[markerPos],
+		) + reset + expectedSnippet[markerPos+1:]
 	} else {
 		expectedMarker = expectedSnippet + bold + red + "EOF" + reset
 	}
 
 	if markerPos < len(actualSnippet) {
-		actualMarker = actualSnippet[:markerPos] + bold + green + string(actualSnippet[markerPos]) + reset + actualSnippet[markerPos+1:]
+		actualMarker = actualSnippet[:markerPos] + bold + green + string(
+			actualSnippet[markerPos],
+		) + reset + actualSnippet[markerPos+1:]
 	} else {
 		actualMarker = actualSnippet + bold + green + "EOF" + reset
 	}
