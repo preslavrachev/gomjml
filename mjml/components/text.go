@@ -45,7 +45,7 @@ func (c *MJTextComponent) Render() (string, error) {
 		AddAttribute("align", align).
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
-	
+
 	// Add specific padding overrides if they exist (following MRML/section pattern)
 	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
 		tdTag.AddStyle("padding-top", *paddingTopAttr)
@@ -59,7 +59,7 @@ func (c *MJTextComponent) Render() (string, error) {
 	if paddingRightAttr := c.GetAttribute("padding-right"); paddingRightAttr != nil {
 		tdTag.AddStyle("padding-right", *paddingRightAttr)
 	}
-	
+
 	tdTag.AddStyle("word-break", "break-word")
 
 	output.WriteString(tdTag.RenderOpen())
@@ -84,6 +84,9 @@ func (c *MJTextComponent) Render() (string, error) {
 	if fontSize != "" {
 		divTag.AddStyle("font-size", fontSize)
 	}
+	if fontWeight != "" {
+		divTag.AddStyle("font-weight", fontWeight)
+	}
 	if lineHeight != "" {
 		divTag.AddStyle("line-height", lineHeight)
 	}
@@ -92,9 +95,6 @@ func (c *MJTextComponent) Render() (string, error) {
 	}
 	if color != "" {
 		divTag.AddStyle("color", color)
-	}
-	if fontWeight != "" {
-		divTag.AddStyle("font-weight", fontWeight)
 	}
 	if fontStyle != "" {
 		divTag.AddStyle("font-style", fontStyle)
@@ -141,20 +141,20 @@ func (c *MJTextComponent) getRawInnerHTML() string {
 	// If we have children (HTML elements), we need to reconstruct the original HTML
 	if len(c.Node.Children) > 0 {
 		var html strings.Builder
-		
+
 		// Add any text content before children
 		if c.Node.Text != "" {
 			html.WriteString(c.Node.Text)
 		}
-		
+
 		// Add children as HTML elements
 		for _, child := range c.Node.Children {
 			html.WriteString(c.reconstructHTMLElement(child))
 		}
-		
+
 		return html.String()
 	}
-	
+
 	// If no children, just return the text content
 	return c.Node.Text
 }
@@ -162,11 +162,11 @@ func (c *MJTextComponent) getRawInnerHTML() string {
 // reconstructHTMLElement reconstructs an HTML element from a parsed node
 func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode) string {
 	var html strings.Builder
-	
+
 	// Opening tag
 	html.WriteString("<")
 	html.WriteString(node.XMLName.Local)
-	
+
 	// Attributes
 	for _, attr := range node.Attrs {
 		html.WriteString(" ")
@@ -175,22 +175,22 @@ func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode) string {
 		html.WriteString(attr.Value)
 		html.WriteString(`"`)
 	}
-	
+
 	html.WriteString(">")
-	
+
 	// Content (text + children)
 	if node.Text != "" {
 		html.WriteString(node.Text)
 	}
-	
+
 	for _, child := range node.Children {
 		html.WriteString(c.reconstructHTMLElement(child))
 	}
-	
+
 	// Closing tag
 	html.WriteString("</")
 	html.WriteString(node.XMLName.Local)
 	html.WriteString(">")
-	
+
 	return html.String()
 }

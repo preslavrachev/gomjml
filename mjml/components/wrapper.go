@@ -117,6 +117,11 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
 		AddStyle("width", GetDefaultBodyWidth())
 
+	// Add css-class support for MSO table (MRML adds -outlook suffix)
+	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+		msoTable.AddAttribute("class", cssClass+"-outlook")
+	}
+
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
 		AddStyle("font-size", "0px").
@@ -129,6 +134,11 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 	innerDiv := html.NewHTMLTag("div").
 		AddStyle("margin", "0px auto").
 		AddStyle("max-width", GetDefaultBodyWidth())
+
+	// Add css-class support for inner div
+	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+		innerDiv.AddAttribute("class", cssClass)
+	}
 
 	output.WriteString(innerDiv.RenderOpen())
 
@@ -148,8 +158,17 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 	innerTd := html.NewHTMLTag("td").
 		AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("text-align", textAlign)
+		AddStyle("padding", padding)
+
+	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
+	if paddingBottom := c.getAttribute("padding-bottom"); paddingBottom != "" {
+		innerTd.AddStyle("padding-bottom", paddingBottom)
+	}
+	if paddingTop := c.getAttribute("padding-top"); paddingTop != "" {
+		innerTd.AddStyle("padding-top", paddingTop)
+	}
+
+	innerTd.AddStyle("text-align", textAlign)
 
 	output.WriteString(innerTd.RenderOpen())
 
@@ -209,6 +228,11 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
 		AddStyle("width", GetDefaultBodyWidth())
 
+	// Add css-class support for MSO table (MRML adds -outlook suffix)
+	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+		msoTable.AddAttribute("class", cssClass+"-outlook")
+	}
+
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
 		AddStyle("font-size", "0px").
@@ -224,6 +248,11 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	c.ApplyBackgroundStyles(wrapperDiv)
 
 	wrapperDiv.AddStyle("margin", "0px auto")
+
+	// Add css-class support for wrapper div
+	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+		wrapperDiv.AddAttribute("class", cssClass)
+	}
 
 	// Add border-radius before max-width to match MRML order
 	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
@@ -265,8 +294,17 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 
 	mainTd.AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("text-align", textAlign)
+		AddStyle("padding", padding)
+
+	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
+	if paddingBottom := c.getAttribute("padding-bottom"); paddingBottom != "" {
+		mainTd.AddStyle("padding-bottom", paddingBottom)
+	}
+	if paddingTop := c.getAttribute("padding-top"); paddingTop != "" {
+		mainTd.AddStyle("padding-top", paddingTop)
+	}
+
+	mainTd.AddStyle("text-align", textAlign)
 
 	output.WriteString(mainTd.RenderOpen())
 

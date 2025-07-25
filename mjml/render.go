@@ -1,6 +1,7 @@
 package mjml
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
@@ -59,6 +60,61 @@ type MJMLComponent struct {
 // RequestMobileCSS allows components to request mobile CSS to be added
 func (c *MJMLComponent) RequestMobileCSS() {
 	c.mobileCSSAdded = true
+}
+
+// prepareBodySiblings recursively sets up sibling relationships without rendering HTML
+func (c *MJMLComponent) prepareBodySiblings(comp Component) {
+	// Check specific component types that need to set up their children's sibling relationships
+	switch v := comp.(type) {
+	case *components.MJBodyComponent:
+		// Body components set up their section children
+		siblings := len(v.Children)
+		rawSiblings := 0
+		for _, child := range v.Children {
+			if child.GetTagName() == "mj-raw" {
+				rawSiblings++
+			}
+		}
+		for _, child := range v.Children {
+			child.SetContainerWidth(v.GetEffectiveWidth())
+			child.SetSiblings(siblings)
+			child.SetRawSiblings(rawSiblings)
+			c.prepareBodySiblings(child)
+		}
+	case *components.MJSectionComponent:
+		// Section components set up their column children
+		siblings := len(v.Children)
+		rawSiblings := 0
+		for _, child := range v.Children {
+			if child.GetTagName() == "mj-raw" {
+				rawSiblings++
+			}
+		}
+		for _, child := range v.Children {
+			child.SetContainerWidth(v.GetEffectiveWidth())
+			child.SetSiblings(siblings)
+			child.SetRawSiblings(rawSiblings)
+			c.prepareBodySiblings(child)
+		}
+	case *components.MJColumnComponent:
+		// Column components set up their content children
+		for _, child := range v.Children {
+			child.SetContainerWidth(v.GetEffectiveWidth())
+			c.prepareBodySiblings(child)
+		}
+	case *components.MJWrapperComponent:
+		// Wrapper components set up their children
+		for _, child := range v.Children {
+			child.SetContainerWidth(v.GetEffectiveWidth())
+			c.prepareBodySiblings(child)
+		}
+	case *components.MJGroupComponent:
+		// Group components set up their children
+		for _, child := range v.Children {
+			child.SetContainerWidth(v.GetEffectiveWidth())
+			c.prepareBodySiblings(child)
+		}
+	}
 }
 
 // collectColumnClasses recursively collects all column classes used in the document
@@ -141,35 +197,24 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	return css.String()
 }
 
-// generateCustomStyles collects and renders mj-style content (MRML mj_style_iter)
+// generateCustomStyles generates the final mj-style content tag (MRML lines 240-244)
 func (c *MJMLComponent) generateCustomStyles() string {
-	var css strings.Builder
-	var hasContent bool
-	
-	// Collect styles from mj-style components in head
+	var content strings.Builder
+
+	// Collect all mj-style content (MRML mj_style_iter equivalent)
 	if c.Head != nil {
 		for _, child := range c.Head.Children {
 			if styleComp, ok := child.(*components.MJStyleComponent); ok {
-				// Get the text content from the style component
-				content := strings.TrimSpace(styleComp.Node.Text)
-				if content != "" {
-					if !hasContent {
-						css.WriteString(`<style type="text/css">`)
-						hasContent = true
-					}
-					css.WriteString(content)
+				text := strings.TrimSpace(styleComp.Node.Text)
+				if text != "" {
+					content.WriteString(text)
 				}
 			}
 		}
-		if hasContent {
-			css.WriteString(`</style>`)
-		}
 	}
-	
-	// Always add empty style tag (MRML always includes this)
-	css.WriteString(`<style type="text/css"></style>`)
-	
-	return css.String()
+
+	// Always generate the style tag (MRML always includes this, even if empty)
+	return fmt.Sprintf(`<style type="text/css">%s</style>`, content.String())
 }
 
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS
@@ -245,7 +290,12 @@ func (c *MJMLComponent) checkComponentForMobileCSS(comp Component) bool {
 func (c *MJMLComponent) Render() (string, error) {
 	var html strings.Builder
 
-	// Collect column classes before rendering to generate dynamic responsive CSS
+	// First, prepare the body to establish sibling relationships without full rendering
+	if c.Body != nil {
+		c.prepareBodySiblings(c.Body)
+	}
+
+	// Now collect column classes after sibling relationships are established
 	c.collectColumnClasses()
 
 	// DOCTYPE and HTML opening

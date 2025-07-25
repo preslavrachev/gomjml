@@ -48,7 +48,7 @@ func (c *MJDividerComponent) Render() (string, error) {
 	borderStyle := c.getAttribute("border-style")
 	borderWidth := c.getAttribute("border-width")
 	align := c.getAttribute("align")
-	
+
 	// Calculate margin based on alignment (matching MRML logic)
 	var margin string
 	switch align {
@@ -65,7 +65,7 @@ func (c *MJDividerComponent) Render() (string, error) {
 		AddStyle("border-top", borderStyle+" "+borderWidth+" "+borderColor).
 		AddStyle("font-size", "1px").
 		AddStyle("margin", margin)
-	
+
 	// Add width (MRML includes default width of 100%)
 	width := c.getAttribute("width")
 	p = p.AddStyle("width", width)
