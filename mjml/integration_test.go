@@ -1,6 +1,7 @@
 package mjml
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
@@ -70,7 +71,9 @@ func TestMJMLAgainstMRML(t *testing.T) {
 			actualNorm := normalizeHTML(actual)
 
 			if expectedNorm != actualNorm {
-				t.Errorf("Output mismatch for %s\n\nExpected:\n%s\n\nActual:\n%s", tc.name, expected, actual)
+				// Simple one-liner diff with colors
+				diff := createSimpleDiff(expected, actual)
+				t.Errorf("\n%s", diff)
 
 				// Enhanced debugging: analyze style differences
 				t.Logf("Style differences for %s:", tc.name)
@@ -191,6 +194,89 @@ func TestComponentCreation(t *testing.T) {
 	if !strings.Contains(html, "Test") {
 		t.Error("Output should contain test text")
 	}
+}
+
+// createSimpleDiff creates a character-level diff that shows exactly where they differ
+func createSimpleDiff(expected, actual string) string {
+	// ANSI color codes
+	red := "\033[31m"
+	green := "\033[32m"
+	reset := "\033[0m"
+	bold := "\033[1m"
+	
+	// Normalize strings for comparison
+	expectedClean := strings.TrimSpace(expected)
+	actualClean := strings.TrimSpace(actual)
+	
+	// Find first character difference
+	minLen := len(expectedClean)
+	if len(actualClean) < minLen {
+		minLen = len(actualClean)
+	}
+	
+	diffPos := -1
+	for i := 0; i < minLen; i++ {
+		if expectedClean[i] != actualClean[i] {
+			diffPos = i
+			break
+		}
+	}
+	
+	// If no character differences in common length, difference is at the end
+	if diffPos == -1 && len(expectedClean) != len(actualClean) {
+		diffPos = minLen
+	}
+	
+	if diffPos == -1 {
+		return "No differences found"
+	}
+	
+	// Show context around the difference (50 chars before, 100 chars after)
+	contextBefore := 50
+	contextAfter := 100
+	
+	start := diffPos - contextBefore
+	if start < 0 {
+		start = 0
+	}
+	
+	// Get expected snippet
+	expectedEnd := diffPos + contextAfter
+	if expectedEnd > len(expectedClean) {
+		expectedEnd = len(expectedClean)
+	}
+	expectedSnippet := expectedClean[start:expectedEnd]
+	
+	// Get actual snippet  
+	actualEnd := diffPos + contextAfter
+	if actualEnd > len(actualClean) {
+		actualEnd = len(actualClean)
+	}
+	actualSnippet := actualClean[start:actualEnd]
+	
+	// Mark the difference position within the snippet
+	markerPos := diffPos - start
+	
+	// Create visual markers
+	expectedMarker := ""
+	actualMarker := ""
+	
+	if markerPos < len(expectedSnippet) {
+		expectedMarker = expectedSnippet[:markerPos] + bold + red + string(expectedSnippet[markerPos]) + reset + expectedSnippet[markerPos+1:]
+	} else {
+		expectedMarker = expectedSnippet + bold + red + "EOF" + reset
+	}
+	
+	if markerPos < len(actualSnippet) {
+		actualMarker = actualSnippet[:markerPos] + bold + green + string(actualSnippet[markerPos]) + reset + actualSnippet[markerPos+1:]
+	} else {
+		actualMarker = actualSnippet + bold + green + "EOF" + reset
+	}
+	
+	return fmt.Sprintf("DIFF at position %d:\n- MRML (expected): %s%s%s\n+ gomjml (actual): %s%s%s", 
+		diffPos,
+		red, expectedMarker, reset,
+		green, actualMarker, reset)
 }
 
 // compareStyles analyzes and compares CSS styles between expected and actual output
