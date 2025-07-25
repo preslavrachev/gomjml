@@ -38,14 +38,16 @@ func (c *MJSectionComponent) Render() (string, error) {
 	textAlign := getAttr("text-align")
 
 	// MSO conditional comment - table wrapper for Outlook
-	msoTable := html.NewTableTag().
-		AddAttribute("align", "center").
-		AddAttribute("width", fmt.Sprintf("%d", c.GetEffectiveWidth())).
-		AddStyle("width", c.GetEffectiveWidthString())
+	msoTable := html.NewTableTag()
 
+	// Add attributes in MRML order: bgcolor, align, width
 	if backgroundColor != "" {
 		msoTable.AddAttribute("bgcolor", backgroundColor)
 	}
+
+	msoTable.AddAttribute("align", "center").
+		AddAttribute("width", fmt.Sprintf("%d", c.GetEffectiveWidth())).
+		AddStyle("width", c.GetEffectiveWidthString())
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
@@ -96,16 +98,20 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 		// Generate MSO conditional TD for each column (following MRML's render_wrapped_children pattern)
 		if columnComp, ok := child.(*MJColumnComponent); ok {
-			msoStyles := columnComp.GetMSOTDStyles()
-
 			msoTable := html.NewTableTag()
 
 			msoTr := html.NewHTMLTag("tr")
 
 			msoTd := html.NewHTMLTag("td")
-			for property, value := range msoStyles {
-				msoTd.AddStyle(property, value)
+			// Add styles in MRML insertion order: vertical-align first, then width
+			getAttr := func(name string) string {
+				if attr := columnComp.GetAttribute(name); attr != nil {
+					return *attr
+				}
+				return columnComp.GetDefaultAttribute(name)
 			}
+			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
+			msoTd.AddStyle("width", columnComp.GetEffectiveWidthString())
 
 			output.WriteString(html.RenderMSOConditional(
 				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
