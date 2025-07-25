@@ -68,7 +68,7 @@ func (c *MJWrapperComponent) getBorderWidth() int {
 
 // getEffectiveWidth calculates width minus border width
 func (c *MJWrapperComponent) getEffectiveWidth() int {
-	baseWidth := 600
+	baseWidth := GetDefaultBodyWidthPixels()
 	borderWidth := c.getBorderWidth()
 	return baseWidth - borderWidth
 }
@@ -123,8 +123,8 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 	if bgColor := c.getAttribute("background-color"); bgColor != "" {
 		msoTable.AddAttribute("bgcolor", bgColor).
 			AddAttribute("align", "center").
-			AddAttribute("width", "600").
-			AddStyle("width", "600px")
+			AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+			AddStyle("width", GetDefaultBodyWidth())
 	}
 
 	msoTd := html.NewHTMLTag("td").
@@ -200,15 +200,15 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	direction := c.getAttribute("direction")
 	effectiveWidth := c.getEffectiveWidth()
 
-	// MSO conditional table wrapper (should use full width 600px, not effective width)
+	// MSO conditional table wrapper (should use full default body width, not effective width)
 	msoTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center").
-		AddAttribute("width", "600").
-		AddStyle("width", "600px")
+		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+		AddStyle("width", GetDefaultBodyWidth())
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
@@ -218,19 +218,20 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	output.WriteString(html.RenderMSOConditional(
 		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))
 
-	// Main wrapper div (should have border-radius but max-width should be 600px, not effective width)
+	// Main wrapper div (match MRML property order: margin, border-radius, max-width)
 	wrapperDiv := html.NewHTMLTag("div").
-		AddStyle("margin", "0px auto").
-		AddStyle("max-width", "600px")
+		AddStyle("margin", "0px auto")
 
-	// Apply only border-radius to wrapper div, not full border
+	// Add border-radius before max-width to match MRML order
 	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
 		wrapperDiv.AddStyle("border-radius", borderRadius)
 	}
 
+	wrapperDiv.AddStyle("max-width", GetDefaultBodyWidth())
+
 	output.WriteString(wrapperDiv.RenderOpen())
 
-	// Inner table (should have border-radius)
+	// Inner table (match MRML order: width, border-radius)
 	innerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
@@ -239,7 +240,7 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 		AddAttribute("align", "center").
 		AddStyle("width", "100%")
 
-	// Apply border-radius to inner table
+	// Add border-radius after width to match MRML order
 	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
 		innerTable.AddStyle("border-radius", borderRadius)
 	}
@@ -247,17 +248,18 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	output.WriteString(innerTable.RenderOpen())
 	output.WriteString("<tbody><tr>")
 
-	// Main TD with wrapper styles (should have border)
-	mainTd := html.NewHTMLTag("td").
-		AddStyle("direction", direction).
-		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("text-align", textAlign)
+	// Main TD with wrapper styles (match MRML order: border first, then other properties)
+	mainTd := html.NewHTMLTag("td")
 
-	// Apply border to main TD
+	// Add border first to match MRML order
 	if border := c.getAttribute("border"); border != "" {
 		mainTd.AddStyle("border", border)
 	}
+
+	mainTd.AddStyle("direction", direction).
+		AddStyle("font-size", "0px").
+		AddStyle("padding", padding).
+		AddStyle("text-align", textAlign)
 
 	output.WriteString(mainTd.RenderOpen())
 

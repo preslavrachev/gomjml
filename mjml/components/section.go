@@ -1,6 +1,7 @@
 package components
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -39,8 +40,8 @@ func (c *MJSectionComponent) Render() (string, error) {
 	// MSO conditional comment - table wrapper for Outlook
 	msoTable := html.NewTableTag().
 		AddAttribute("align", "center").
-		AddAttribute("width", "600").
-		AddStyle("width", "600px")
+		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+		AddStyle("width", GetDefaultBodyWidth())
 
 	if backgroundColor != "" {
 		msoTable.AddAttribute("bgcolor", backgroundColor)
@@ -62,7 +63,7 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	// Then add layout styles
 	sectionDiv.AddStyle("margin", "0px auto").
-		AddStyle("max-width", "600px")
+		AddStyle("max-width", GetDefaultBodyWidth())
 
 	output.WriteString(sectionDiv.RenderOpen())
 

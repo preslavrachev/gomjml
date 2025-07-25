@@ -107,9 +107,9 @@ func (c *MJColumnComponent) GetMSOTDStyles() map[string]string {
 
 	verticalAlign := getAttr("vertical-align")
 
-	// Calculate pixel width for MSO conditional - for now use 600px for single column
+	// Calculate pixel width for MSO conditional - for now use default body width for single column
 	// TODO: Implement proper width calculation based on container width and column percentage
-	msoPixelWidth := "600px"
+	msoPixelWidth := GetDefaultBodyWidth()
 
 	return map[string]string{
 		"vertical-align": verticalAlign,
