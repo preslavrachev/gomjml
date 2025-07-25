@@ -21,6 +21,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"wrapper-background", "testdata/wrapper-background.mjml"},
 		{"wrapper-fullwidth", "testdata/wrapper-fullwidth.mjml"},
 		{"wrapper-border", "testdata/wrapper-border.mjml"},
+		{"Austin layout from the MJML.io site", "testdata/austin-layout-from-mjml-io.mjml"},
 	}
 
 	for _, tc := range testCases {
@@ -55,8 +56,8 @@ func TestMJMLAgainstMRML(t *testing.T) {
 				compareStyles(t, expected, actual)
 
 				// For debugging: write both outputs to temp files
-				os.WriteFile("/tmp/expected_"+tc.name+".html", []byte(expected), 0644)
-				os.WriteFile("/tmp/actual_"+tc.name+".html", []byte(actual), 0644)
+				os.WriteFile("/tmp/expected_"+tc.name+".html", []byte(expected), 0o644)
+				os.WriteFile("/tmp/actual_"+tc.name+".html", []byte(actual), 0o644)
 			}
 		})
 	}

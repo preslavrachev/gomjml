@@ -19,12 +19,35 @@ type MJMLNode struct {
 
 // ParseMJML parses an MJML string into an AST
 func ParseMJML(mjmlContent string) (*MJMLNode, error) {
-	decoder := xml.NewDecoder(strings.NewReader(mjmlContent))
+	// Pre-process HTML entities that XML parser doesn't handle
+	processedContent := preprocessHTMLEntities(mjmlContent)
+	
+	decoder := xml.NewDecoder(strings.NewReader(processedContent))
 	root, err := parseNode(decoder, xml.StartElement{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MJML: %w", err)
 	}
 	return root, nil
+}
+
+// preprocessHTMLEntities replaces common HTML entities with Unicode characters
+func preprocessHTMLEntities(content string) string {
+	// Replace the most common HTML entities with Unicode characters  
+	result := content
+	result = strings.ReplaceAll(result, "&copy;", "©")
+	result = strings.ReplaceAll(result, "&reg;", "®") 
+	result = strings.ReplaceAll(result, "&trade;", "™")
+	result = strings.ReplaceAll(result, "&amp;", "&")
+	result = strings.ReplaceAll(result, "&lt;", "<")
+	result = strings.ReplaceAll(result, "&gt;", ">")
+	result = strings.ReplaceAll(result, "&quot;", `"`)
+	result = strings.ReplaceAll(result, "&apos;", "'")
+	result = strings.ReplaceAll(result, "&nbsp;", " ")
+	result = strings.ReplaceAll(result, "&ndash;", "–")
+	result = strings.ReplaceAll(result, "&mdash;", "—")
+	result = strings.ReplaceAll(result, "&hellip;", "…")
+	
+	return result
 }
 
 // parseNode recursively parses XML nodes

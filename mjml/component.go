@@ -39,6 +39,22 @@ func CreateComponent(node *parser.MJMLNode) (Component, error) {
 		return components.NewMJFontComponent(node), nil
 	case "mj-wrapper":
 		return components.NewMJWrapperComponent(node), nil
+	case "mj-divider":
+		return components.NewMJDividerComponent(node), nil
+	case "mj-social":
+		return components.NewMJSocialComponent(node), nil
+	case "mj-social-element":
+		return components.NewMJSocialElementComponent(node), nil
+	case "mj-group":
+		return components.NewMJGroupComponent(node), nil
+	case "mj-preview":
+		return components.NewMJPreviewComponent(node), nil
+	case "mj-style":
+		return components.NewMJStyleComponent(node), nil
+	case "mj-attributes":
+		return components.NewMJAttributesComponent(node), nil
+	case "mj-all":
+		return components.NewMJAllComponent(node), nil
 	default:
 		return nil, fmt.Errorf("unknown component: %s", tagName)
 	}
