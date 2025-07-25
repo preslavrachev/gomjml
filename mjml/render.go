@@ -49,8 +49,60 @@ func NewFromAST(ast *MJMLNode) (Component, error) {
 // MJMLComponent represents the root MJML component
 type MJMLComponent struct {
 	*components.BaseComponent
-	Head *components.MJHeadComponent
-	Body *components.MJBodyComponent
+	Head           *components.MJHeadComponent
+	Body           *components.MJBodyComponent
+	mobileCSSAdded bool // Track if mobile CSS has been added
+}
+
+// RequestMobileCSS allows components to request mobile CSS to be added
+func (c *MJMLComponent) RequestMobileCSS() {
+	c.mobileCSSAdded = true
+}
+
+// hasMobileCSSComponents recursively checks if any component needs mobile CSS
+func (c *MJMLComponent) hasMobileCSSComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkComponentForMobileCSS(c.Body)
+}
+
+// checkComponentForMobileCSS recursively checks a component and its children
+func (c *MJMLComponent) checkComponentForMobileCSS(comp Component) bool {
+	// Check if this component needs mobile CSS (currently only mj-image)
+	if comp.GetTagName() == "mj-image" {
+		return true
+	}
+
+	// Check specific component types that have children
+	switch v := comp.(type) {
+	case *components.MJBodyComponent:
+		for _, child := range v.Children {
+			if c.checkComponentForMobileCSS(child) {
+				return true
+			}
+		}
+	case *components.MJSectionComponent:
+		for _, child := range v.Children {
+			if c.checkComponentForMobileCSS(child) {
+				return true
+			}
+		}
+	case *components.MJColumnComponent:
+		for _, child := range v.Children {
+			if c.checkComponentForMobileCSS(child) {
+				return true
+			}
+		}
+	case *components.MJWrapperComponent:
+		for _, child := range v.Children {
+			if c.checkComponentForMobileCSS(child) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // Render implements the Component interface for MJMLComponent
@@ -131,6 +183,16 @@ func (c *MJMLComponent) Render() (string, error) {
 	html.WriteString(
 		`<style media="screen and (min-width:480px)">.moz-text-html .mj-column-per-100 { width:100% !important; max-width:100%; } </style>`,
 	)
+
+	// Mobile CSS - add only if components need it (following MRML pattern)
+	if c.hasMobileCSSComponents() {
+		html.WriteString(`<style type="text/css">@media only screen and (max-width:479px) {
+                table.mj-full-width-mobile { width: 100% !important; }
+                td.mj-full-width-mobile { width: auto !important; }
+            }
+            </style>`)
+	}
+
 	html.WriteString(`<style type="text/css"></style>`)
 
 	html.WriteString(`</head>`)
