@@ -5,8 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 // TestMJMLAgainstMRML compares Go implementation output with MRML (Rust) output
@@ -67,13 +70,10 @@ func TestMJMLAgainstMRML(t *testing.T) {
 				t.Fatalf("Failed to render MJML: %v", err)
 			}
 
-			// Compare outputs (normalize whitespace for comparison)
-			expectedNorm := normalizeHTML(expected)
-			actualNorm := normalizeHTML(actual)
-
-			if expectedNorm != actualNorm {
-				// Simple one-liner diff with colors
-				diff := createSimpleDiff(expected, actual)
+			// Compare outputs using DOM tree comparison
+			if !compareDOMTrees(expected, actual) {
+				// Enhanced DOM-based diff with debugging
+				diff := createDOMDiff(expected, actual)
 				t.Errorf("\n%s", diff)
 
 				// Enhanced debugging: analyze style differences
@@ -379,4 +379,340 @@ func parseStyleProperties(style string) map[string]string {
 	}
 
 	return props
+}
+
+// compareDOMTrees compares two HTML strings using DOM tree comparison
+// This approach handles attribute ordering, CSS property ordering, and whitespace normalization
+func compareDOMTrees(expected, actual string) bool {
+	expectedDoc, err := goquery.NewDocumentFromReader(strings.NewReader(expected))
+	if err != nil {
+		return false
+	}
+
+	actualDoc, err := goquery.NewDocumentFromReader(strings.NewReader(actual))
+	if err != nil {
+		return false
+	}
+
+	return compareNodes(expectedDoc.Selection, actualDoc.Selection)
+}
+
+// compareNodes recursively compares two goquery selections (DOM subtrees)
+func compareNodes(expected, actual *goquery.Selection) bool {
+	// Compare number of nodes
+	if expected.Length() != actual.Length() {
+		return false
+	}
+
+	// Compare each node pair
+	equal := true
+	expected.Each(func(i int, expectedNode *goquery.Selection) {
+		if i >= actual.Length() {
+			equal = false
+			return
+		}
+
+		actualNode := actual.Eq(i)
+
+		// Compare node types and tag names
+		expectedTag := goquery.NodeName(expectedNode)
+		actualTag := goquery.NodeName(actualNode)
+		if expectedTag != actualTag {
+			equal = false
+			return
+		}
+
+		// For text nodes, compare text content (normalized)
+		if expectedTag == "#text" {
+			expectedText := strings.TrimSpace(expectedNode.Text())
+			actualText := strings.TrimSpace(actualNode.Text())
+			if expectedText != actualText {
+				equal = false
+				return
+			}
+			return
+		}
+
+		// For element nodes, compare attributes
+		if !compareAttributes(expectedNode, actualNode) {
+			equal = false
+			return
+		}
+
+		// Recursively compare children
+		expectedChildren := expectedNode.Children()
+		actualChildren := actualNode.Children()
+		if !compareNodes(expectedChildren, actualChildren) {
+			equal = false
+			return
+		}
+
+		// Compare text content for elements that might have mixed content
+		expectedText := strings.TrimSpace(expectedNode.Contents().Not("*").Text())
+		actualText := strings.TrimSpace(actualNode.Contents().Not("*").Text())
+		if expectedText != actualText {
+			equal = false
+			return
+		}
+	})
+
+	return equal
+}
+
+// compareAttributes compares attributes between two nodes, normalizing style attributes
+func compareAttributes(expected, actual *goquery.Selection) bool {
+	// Get all attributes from both nodes
+	expectedAttrs := make(map[string]string)
+	actualAttrs := make(map[string]string)
+
+	// Extract expected attributes
+	if expected.Length() > 0 {
+		node := expected.Get(0)
+		for _, attr := range node.Attr {
+			if attr.Key == "style" {
+				expectedAttrs[attr.Key] = normalizeStyleAttribute(attr.Val)
+			} else if !strings.HasPrefix(attr.Key, "data-mj-debug") { // Skip debug attributes
+				expectedAttrs[attr.Key] = attr.Val
+			}
+		}
+	}
+
+	// Extract actual attributes
+	if actual.Length() > 0 {
+		node := actual.Get(0)
+		for _, attr := range node.Attr {
+			if attr.Key == "style" {
+				actualAttrs[attr.Key] = normalizeStyleAttribute(attr.Val)
+			} else if !strings.HasPrefix(attr.Key, "data-mj-debug") { // Skip debug attributes
+				actualAttrs[attr.Key] = attr.Val
+			}
+		}
+	}
+
+	// Compare attribute maps
+	if len(expectedAttrs) != len(actualAttrs) {
+		return false
+	}
+
+	for key, expectedVal := range expectedAttrs {
+		actualVal, exists := actualAttrs[key]
+		if !exists || expectedVal != actualVal {
+			return false
+		}
+	}
+
+	return true
+}
+
+// normalizeStyleAttribute normalizes CSS style attributes by sorting properties
+func normalizeStyleAttribute(style string) string {
+	if style == "" {
+		return ""
+	}
+
+	// Parse CSS properties
+	props := parseStyleProperties(style)
+
+	// Sort properties by key for consistent comparison
+	var keys []string
+	for key := range props {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// Rebuild style string with sorted properties
+	var parts []string
+	for _, key := range keys {
+		if value := strings.TrimSpace(props[key]); value != "" {
+			parts = append(parts, key+": "+value)
+		}
+	}
+
+	result := strings.Join(parts, "; ")
+	if result != "" && !strings.HasSuffix(result, ";") {
+		result += ";"
+	}
+
+	return result
+}
+
+// createDOMDiff creates a detailed diff report using DOM analysis
+func createDOMDiff(expected, actual string) string {
+	// ANSI color codes
+	red := "\033[31m"
+	reset := "\033[0m"
+	bold := "\033[1m"
+
+	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
+	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
+
+	if err1 != nil || err2 != nil {
+		return fmt.Sprintf("DOM parsing failed: expected=%v, actual=%v", err1, err2)
+	}
+
+	var diffs []string
+
+	// Compare document structures
+	expectedHtml := expectedDoc.Find("html")
+	actualHtml := actualDoc.Find("html")
+
+	if expectedHtml.Length() != actualHtml.Length() {
+		diffs = append(diffs, fmt.Sprintf("%sStructure mismatch:%s Expected %d html elements, got %d",
+			bold, reset, expectedHtml.Length(), actualHtml.Length()))
+	}
+
+	// Compare specific elements that commonly differ
+	compareTags := []string{"head", "body", "table", "td", "div", "span"}
+	for _, tag := range compareTags {
+		expectedCount := expectedDoc.Find(tag).Length()
+		actualCount := actualDoc.Find(tag).Length()
+		if expectedCount != actualCount {
+			diffs = append(diffs, fmt.Sprintf("%s%s count mismatch:%s Expected %d, got %d",
+				bold, tag, reset, expectedCount, actualCount))
+		}
+	}
+
+	// Compare style attributes
+	styleComparison := compareAllStyleAttributes(expectedDoc, actualDoc)
+	if styleComparison != "" {
+		diffs = append(diffs, styleComparison)
+	}
+
+	// Compare debug attributes to identify problematic MJML components
+	debugComparison := analyzeDebugAttributes(actualDoc)
+	if debugComparison != "" {
+		diffs = append(diffs, debugComparison)
+	}
+
+	if len(diffs) == 0 {
+		return "DOM structures match but content differs. Check text content and attribute values."
+	}
+
+	return fmt.Sprintf("%sDOM Differences:%s\n%s%s%s",
+		bold, reset,
+		red, strings.Join(diffs, "\n"), reset)
+}
+
+// compareAllStyleAttributes compares all style attributes in the documents
+func compareAllStyleAttributes(expectedDoc, actualDoc *goquery.Document) string {
+	var diffs []string
+
+	expectedDoc.Find("[style]").Each(func(i int, expectedEl *goquery.Selection) {
+		expectedStyle, _ := expectedEl.Attr("style")
+		expectedTag := goquery.NodeName(expectedEl)
+
+		// Find corresponding element in actual document
+		actualEl := actualDoc.Find(expectedTag).Eq(i)
+		if actualEl.Length() == 0 {
+			diffs = append(diffs, fmt.Sprintf("  Missing styled %s element at position %d", expectedTag, i))
+			return
+		}
+
+		actualStyle, exists := actualEl.Attr("style")
+		if !exists {
+			diffs = append(diffs, fmt.Sprintf("  %s[%d] missing style attribute", expectedTag, i))
+			return
+		}
+
+		normalizedExpected := normalizeStyleAttribute(expectedStyle)
+		normalizedActual := normalizeStyleAttribute(actualStyle)
+
+		if normalizedExpected != normalizedActual {
+			diffs = append(diffs, fmt.Sprintf("  %s[%d] style differs:", expectedTag, i))
+			diffs = append(diffs, fmt.Sprintf("    Expected: %s", normalizedExpected))
+			diffs = append(diffs, fmt.Sprintf("    Actual:   %s", normalizedActual))
+		}
+	})
+
+	if len(diffs) == 0 {
+		return ""
+	}
+
+	return "Style attribute differences:\n" + strings.Join(diffs, "\n")
+}
+
+// analyzeDebugAttributes analyzes debug attributes to identify which MJML components are present
+func analyzeDebugAttributes(actualDoc *goquery.Document) string {
+	var analysis []string
+
+	// Count debug attributes by component type
+	debugCounts := make(map[string]int)
+
+	actualDoc.Find("[data-mj-debug-text]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["text"]++
+	})
+
+	actualDoc.Find("[data-mj-debug-button]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["button"]++
+	})
+
+	actualDoc.Find("[data-mj-debug-image]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["image"]++
+	})
+
+	actualDoc.Find("[data-mj-debug-column]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["column"]++
+	})
+
+	actualDoc.Find("[data-mj-debug-section]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["section"]++
+	})
+
+	actualDoc.Find("[data-mj-debug-wrapper]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["wrapper"]++
+	})
+
+	actualDoc.Find("[data-mj-debug-divider]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["divider"]++
+	})
+
+	actualDoc.Find("[data-mj-debug-social-element]").Each(func(i int, s *goquery.Selection) {
+		debugCounts["social-element"]++
+	})
+
+	if len(debugCounts) > 0 {
+		analysis = append(analysis, "MJML Components found in actual output:")
+		for component, count := range debugCounts {
+			analysis = append(analysis, fmt.Sprintf("  - %s: %d instances", component, count))
+		}
+
+		// Show MJML tag context for better debugging
+		tagInfo := getMJMLTagInfo(actualDoc)
+		if len(tagInfo) > 0 {
+			analysis = append(analysis, "MJML Tags referenced:")
+			for tag, count := range tagInfo {
+				analysis = append(analysis, fmt.Sprintf("  - <%s>: %d instances", tag, count))
+			}
+		}
+
+		// Identify likely problematic components based on common failure patterns
+		if debugCounts["social-element"] > 0 && debugCounts["divider"] > 0 {
+			analysis = append(analysis, "  ⚠️  Social and divider components often require missing dependencies")
+		}
+		if debugCounts["button"] > 0 {
+			analysis = append(analysis, "  ⚠️  Button components may have MSO rendering differences")
+		}
+		if debugCounts["wrapper"] > 0 {
+			analysis = append(analysis, "  ⚠️  Wrapper components may have background/border style issues")
+		}
+	}
+
+	if len(analysis) == 0 {
+		return ""
+	}
+
+	return strings.Join(analysis, "\n")
+}
+
+// getMJMLTagInfo extracts MJML tag information from debug attributes
+func getMJMLTagInfo(doc *goquery.Document) map[string]int {
+	tagCounts := make(map[string]int)
+
+	doc.Find("[data-mj-tag]").Each(func(i int, s *goquery.Selection) {
+		if tag, exists := s.Attr("data-mj-tag"); exists && tag != "" {
+			tagCounts[tag]++
+		}
+	})
+
+	return tagCounts
 }

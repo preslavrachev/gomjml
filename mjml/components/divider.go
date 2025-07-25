@@ -61,7 +61,9 @@ func (c *MJDividerComponent) Render() (string, error) {
 	}
 
 	// Create paragraph with border styles matching MRML exact order
-	p := html.NewHTMLTag("p").
+	p := html.NewHTMLTag("p")
+	c.AddDebugAttribute(p, "divider")
+	p.
 		AddStyle("border-top", borderStyle+" "+borderWidth+" "+borderColor).
 		AddStyle("font-size", "1px").
 		AddStyle("margin", margin)

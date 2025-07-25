@@ -67,7 +67,9 @@ func (c *MJButtonComponent) Render() (string, error) {
 	output.WriteString(tdTag.RenderOpen())
 
 	// Button table structure
-	tableTag := html.NewHTMLTag("table").
+	tableTag := html.NewHTMLTag("table")
+	c.AddDebugAttribute(tableTag, "button")
+	tableTag.
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").

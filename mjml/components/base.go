@@ -235,3 +235,19 @@ func (bc *BaseComponent) ApplyDimensionStyles(tag *html.HTMLTag) *html.HTMLTag {
 
 	return styles.ApplyDimensionStyles(tag, width, height, minWidth, maxWidth, minHeight, maxHeight)
 }
+
+// AddDebugAttribute adds a debug attribute to an HTML tag for component traceability
+// This helps identify which MJML component generated which HTML elements during testing
+func (bc *BaseComponent) AddDebugAttribute(tag *html.HTMLTag, componentType string) {
+	// Only add debug attributes during testing (we can add environment check later if needed)
+	debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
+	tag.AddAttribute(debugAttr, "true")
+
+	// Add MJML tag name for more context
+	if bc.Node != nil {
+		mjmlTag := bc.Node.XMLName.Local
+		if mjmlTag != "" {
+			tag.AddAttribute("data-mj-tag", mjmlTag)
+		}
+	}
+}

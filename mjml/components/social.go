@@ -215,7 +215,9 @@ func (c *MJSocialElementComponent) Render() (string, error) {
 	output.WriteString("<!--[if mso | IE]><td><![endif]-->")
 
 	// Outer table (inline-table display)
-	outerTable := html.NewHTMLTag("table").
+	outerTable := html.NewHTMLTag("table")
+	c.AddDebugAttribute(outerTable, "social-element")
+	outerTable.
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").

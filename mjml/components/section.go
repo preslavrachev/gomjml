@@ -59,6 +59,7 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	// Main section div with styles
 	sectionDiv := html.NewHTMLTag("div")
+	c.AddDebugAttribute(sectionDiv, "section")
 
 	// Apply background styles first to match MRML order
 	c.ApplyBackgroundStyles(sectionDiv)

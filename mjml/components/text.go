@@ -66,6 +66,7 @@ func (c *MJTextComponent) Render() (string, error) {
 
 	// Create inner div with font styling
 	divTag := html.NewHTMLTag("div")
+	c.AddDebugAttribute(divTag, "text")
 
 	// Apply font styles using the proper interface method
 	fontFamily := c.GetAttributeWithDefault(c, "font-family")

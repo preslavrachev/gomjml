@@ -243,6 +243,7 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 
 	// Main wrapper div (match MRML property order: background first, then margin, border-radius, max-width)
 	wrapperDiv := html.NewHTMLTag("div")
+	c.AddDebugAttribute(wrapperDiv, "wrapper")
 
 	// Apply background styles first to match MRML order
 	c.ApplyBackgroundStyles(wrapperDiv)

@@ -104,6 +104,7 @@ func (c *MJImageComponent) Render() (string, error) {
 
 	// Image element with styles
 	imgTag := html.NewHTMLTag("img")
+	c.AddDebugAttribute(imgTag, "image")
 
 	// Set image attributes
 	if alt != "" {
