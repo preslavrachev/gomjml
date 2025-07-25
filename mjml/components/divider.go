@@ -19,6 +19,8 @@ func NewMJDividerComponent(node *parser.MJMLNode) *MJDividerComponent {
 
 func (c *MJDividerComponent) GetDefaultAttribute(name string) string {
 	switch name {
+	case "align":
+		return "center"
 	case "border-color":
 		return "#000000"
 	case "border-style":
@@ -45,14 +47,28 @@ func (c *MJDividerComponent) Render() (string, error) {
 	borderColor := c.getAttribute("border-color")
 	borderStyle := c.getAttribute("border-style")
 	borderWidth := c.getAttribute("border-width")
-	width := c.getAttribute("width")
+	align := c.getAttribute("align")
+	
+	// Calculate margin based on alignment (matching MRML logic)
+	var margin string
+	switch align {
+	case "left":
+		margin = "0px"
+	case "right":
+		margin = "0px 0px 0px auto"
+	default:
+		margin = "0px auto"
+	}
 
-	// Create paragraph with border styles (match MRML order: style width color)
+	// Create paragraph with border styles matching MRML exact order
 	p := html.NewHTMLTag("p").
 		AddStyle("border-top", borderStyle+" "+borderWidth+" "+borderColor).
 		AddStyle("font-size", "1px").
-		AddStyle("margin", "0px auto").
-		AddStyle("width", width)
+		AddStyle("margin", margin)
+	
+	// Add width (MRML includes default width of 100%)
+	width := c.getAttribute("width")
+	p = p.AddStyle("width", width)
 
 	// Table cell with padding and center alignment
 	td := html.NewHTMLTag("td").

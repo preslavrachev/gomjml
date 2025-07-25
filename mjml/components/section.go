@@ -88,18 +88,18 @@ func (c *MJSectionComponent) Render() (string, error) {
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
-	// Add specific padding overrides if they exist (following MRML pattern)
-	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
-		tdTag.AddStyle("padding-top", *paddingTopAttr)
-	}
-	if paddingBottomAttr := c.GetAttribute("padding-bottom"); paddingBottomAttr != nil {
-		tdTag.AddStyle("padding-bottom", *paddingBottomAttr)
-	}
+	// Add specific padding overrides in MRML order: left, right, top, bottom
 	if paddingLeftAttr := c.GetAttribute("padding-left"); paddingLeftAttr != nil {
 		tdTag.AddStyle("padding-left", *paddingLeftAttr)
 	}
 	if paddingRightAttr := c.GetAttribute("padding-right"); paddingRightAttr != nil {
 		tdTag.AddStyle("padding-right", *paddingRightAttr)
+	}
+	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
+		tdTag.AddStyle("padding-top", *paddingTopAttr)
+	}
+	if paddingBottomAttr := c.GetAttribute("padding-bottom"); paddingBottomAttr != nil {
+		tdTag.AddStyle("padding-bottom", *paddingBottomAttr)
 	}
 
 	tdTag.AddStyle("text-align", textAlign)

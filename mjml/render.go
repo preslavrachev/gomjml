@@ -141,12 +141,66 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	return css.String()
 }
 
+// generateCustomStyles collects and renders mj-style content (MRML mj_style_iter)
+func (c *MJMLComponent) generateCustomStyles() string {
+	var css strings.Builder
+	var hasContent bool
+	
+	// Collect styles from mj-style components in head
+	if c.Head != nil {
+		for _, child := range c.Head.Children {
+			if styleComp, ok := child.(*components.MJStyleComponent); ok {
+				// Get the text content from the style component
+				content := strings.TrimSpace(styleComp.Node.Text)
+				if content != "" {
+					if !hasContent {
+						css.WriteString(`<style type="text/css">`)
+						hasContent = true
+					}
+					css.WriteString(content)
+				}
+			}
+		}
+		if hasContent {
+			css.WriteString(`</style>`)
+		}
+	}
+	
+	// Always add empty style tag (MRML always includes this)
+	css.WriteString(`<style type="text/css"></style>`)
+	
+	return css.String()
+}
+
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS
 func (c *MJMLComponent) hasMobileCSSComponents() bool {
 	if c.Body == nil {
 		return false
 	}
 	return c.checkComponentForMobileCSS(c.Body)
+}
+
+// hasTextComponents checks if the document contains any text-based components that need fonts
+func (c *MJMLComponent) hasTextComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.hasTextComponentsRecursive(c.Body)
+}
+
+// hasTextComponentsRecursive recursively checks for text components
+func (c *MJMLComponent) hasTextComponentsRecursive(component Component) bool {
+	switch comp := component.(type) {
+	case *components.MJTextComponent, *components.MJButtonComponent:
+		return true
+	case interface{ GetChildren() []Component }:
+		for _, child := range comp.GetChildren() {
+			if c.hasTextComponentsRecursive(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // checkComponentForMobileCSS recursively checks a component and its children
@@ -273,12 +327,19 @@ func (c *MJMLComponent) Render() (string, error) {
             </style>`)
 	}
 
-	html.WriteString(`<style type="text/css"></style>`)
+	// Custom styles from mj-style components (MRML lines 240-244)
+	html.WriteString(c.generateCustomStyles())
 
 	html.WriteString(`</head>`)
 
-	// Body
-	html.WriteString(`<body style="word-spacing:normal;">`)
+	// Body with background-color support (matching MRML's get_body_tag)
+	bodyStyle := "word-spacing:normal;"
+	if c.Body != nil {
+		if bgColor := c.Body.GetAttribute("background-color"); bgColor != nil && *bgColor != "" {
+			bodyStyle += "background-color:" + *bgColor + ";"
+		}
+	}
+	html.WriteString(`<body style="` + bodyStyle + `">`)
 	if c.Body != nil {
 		bodyHTML, err := c.Body.Render()
 		if err != nil {

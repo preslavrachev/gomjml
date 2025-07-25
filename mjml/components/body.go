@@ -31,7 +31,14 @@ func NewMJBodyComponent(node *parser.MJMLNode) *MJBodyComponent {
 func (c *MJBodyComponent) Render() (string, error) {
 	var html strings.Builder
 
-	html.WriteString(`<div>`)
+	// Apply background-color to div if specified (matching MRML's set_body_style)
+	backgroundColor := c.GetAttribute("background-color")
+	
+	if backgroundColor != nil && *backgroundColor != "" {
+		html.WriteString(`<div style="background-color:` + *backgroundColor + `;">`)
+	} else {
+		html.WriteString(`<div>`)
+	}
 
 	for _, child := range c.Children {
 		childHTML, err := child.Render()
