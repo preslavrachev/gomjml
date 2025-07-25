@@ -206,6 +206,79 @@ func isHexColor(s string) bool {
 	return true
 }
 
+// Size represents CSS size values (width, height) that can be in pixels or percentages.
+// This matches the MRML Size enum structure for compatibility.
+type Size struct {
+	value   float64
+	isPixel bool // true for pixels, false for percentages
+}
+
+// NewPixelSize creates a new pixel-based Size
+func NewPixelSize(value float64) Size {
+	return Size{value: value, isPixel: true}
+}
+
+// NewPercentSize creates a new percentage-based Size
+func NewPercentSize(value float64) Size {
+	return Size{value: value, isPixel: false}
+}
+
+// Value returns the numeric value of the size
+func (s Size) Value() float64 {
+	return s.value
+}
+
+// IsPixel returns true if this is a pixel-based size
+func (s Size) IsPixel() bool {
+	return s.isPixel
+}
+
+// IsPercent returns true if this is a percentage-based size
+func (s Size) IsPercent() bool {
+	return !s.isPixel
+}
+
+// String returns the CSS representation of the size
+func (s Size) String() string {
+	if s.isPixel {
+		return fmt.Sprintf("%.0fpx", s.value)
+	}
+	return fmt.Sprintf("%.0f%%", s.value)
+}
+
+// ParseSize parses a string value into a Size struct.
+// It supports both pixel and percentage formats.
+//
+// Supported formats:
+//   - "20px" -> Size{value: 20, isPixel: true}
+//   - "20" -> Size{value: 20, isPixel: true} (assumes pixels)
+//   - "50%" -> Size{value: 50, isPixel: false}
+//
+// Returns an error for invalid formats.
+func ParseSize(value string) (Size, error) {
+	if value == "" {
+		return Size{}, fmt.Errorf("empty size value")
+	}
+
+	// Check for percentage
+	if strings.HasSuffix(value, "%") {
+		numStr := strings.TrimSuffix(value, "%")
+		val, err := strconv.ParseFloat(numStr, 64)
+		if err != nil {
+			return Size{}, fmt.Errorf("invalid percentage value: %s", value)
+		}
+		return NewPercentSize(val), nil
+	}
+
+	// Check for pixels (with or without px suffix)
+	numStr := strings.TrimSuffix(value, "px")
+	val, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return Size{}, fmt.Errorf("invalid pixel value: %s", value)
+	}
+	return NewPixelSize(val), nil
+}
+
 // parseNonEmpty is a utility function that returns a pointer to a string if it's non-empty,
 // or nil if the string is empty. This is used throughout the styles package for conditional
 // CSS property application.

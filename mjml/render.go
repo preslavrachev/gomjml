@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -51,12 +52,93 @@ type MJMLComponent struct {
 	*components.BaseComponent
 	Head           *components.MJHeadComponent
 	Body           *components.MJBodyComponent
-	mobileCSSAdded bool // Track if mobile CSS has been added
+	mobileCSSAdded bool                   // Track if mobile CSS has been added
+	columnClasses  map[string]styles.Size // Track column classes used in the document
 }
 
 // RequestMobileCSS allows components to request mobile CSS to be added
 func (c *MJMLComponent) RequestMobileCSS() {
 	c.mobileCSSAdded = true
+}
+
+// collectColumnClasses recursively collects all column classes used in the document
+func (c *MJMLComponent) collectColumnClasses() {
+	if c.columnClasses == nil {
+		c.columnClasses = make(map[string]styles.Size)
+	}
+	if c.Body != nil {
+		c.collectColumnClassesFromComponent(c.Body)
+	}
+}
+
+// collectColumnClassesFromComponent recursively collects column classes from a component
+func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
+	// Check if this is a column component
+	if columnComp, ok := comp.(*components.MJColumnComponent); ok {
+		className, size := columnComp.GetColumnClass()
+		c.columnClasses[className] = size
+	}
+
+	// Check specific component types that have children
+	switch v := comp.(type) {
+	case *components.MJBodyComponent:
+		for _, child := range v.Children {
+			c.collectColumnClassesFromComponent(child)
+		}
+	case *components.MJSectionComponent:
+		for _, child := range v.Children {
+			c.collectColumnClassesFromComponent(child)
+		}
+	case *components.MJColumnComponent:
+		for _, child := range v.Children {
+			c.collectColumnClassesFromComponent(child)
+		}
+	case *components.MJWrapperComponent:
+		for _, child := range v.Children {
+			c.collectColumnClassesFromComponent(child)
+		}
+	case *components.MJGroupComponent:
+		for _, child := range v.Children {
+			c.collectColumnClassesFromComponent(child)
+		}
+	}
+}
+
+// generateResponsiveCSS generates responsive CSS for collected column classes
+func (c *MJMLComponent) generateResponsiveCSS() string {
+	var css strings.Builder
+
+	// Standard responsive media query
+	css.WriteString(`<style type="text/css">@media only screen and (min-width:480px) { `)
+	for className, size := range c.columnClasses {
+		if size.IsPercent() {
+			css.WriteString(`.`)
+			css.WriteString(className)
+			css.WriteString(` { width:`)
+			css.WriteString(size.String())
+			css.WriteString(` !important; max-width:`)
+			css.WriteString(size.String())
+			css.WriteString(`; } `)
+		}
+	}
+	css.WriteString(` }</style>`)
+
+	// Mozilla-specific responsive media query
+	css.WriteString(`<style media="screen and (min-width:480px)">.moz-text-html `)
+	for className, size := range c.columnClasses {
+		if size.IsPercent() {
+			css.WriteString(`.`)
+			css.WriteString(className)
+			css.WriteString(` { width:`)
+			css.WriteString(size.String())
+			css.WriteString(` !important; max-width:`)
+			css.WriteString(size.String())
+			css.WriteString(`; } `)
+		}
+	}
+	css.WriteString(`</style>`)
+
+	return css.String()
 }
 
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS
@@ -108,6 +190,9 @@ func (c *MJMLComponent) checkComponentForMobileCSS(comp Component) bool {
 // Render implements the Component interface for MJMLComponent
 func (c *MJMLComponent) Render() (string, error) {
 	var html strings.Builder
+
+	// Collect column classes before rendering to generate dynamic responsive CSS
+	c.collectColumnClasses()
 
 	// DOCTYPE and HTML opening
 	html.WriteString(
@@ -176,13 +261,8 @@ func (c *MJMLComponent) Render() (string, error) {
 		html.WriteString(`<style type="text/css">@import url(https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700);</style><!--<![endif]-->`)
 	}
 
-	// Responsive CSS
-	html.WriteString(
-		`<style type="text/css">@media only screen and (min-width:480px) { .mj-column-per-100 { width:100% !important; max-width:100%; }  }</style>`,
-	)
-	html.WriteString(
-		`<style media="screen and (min-width:480px)">.moz-text-html .mj-column-per-100 { width:100% !important; max-width:100%; } </style>`,
-	)
+	// Dynamic responsive CSS based on collected column classes
+	html.WriteString(c.generateResponsiveCSS())
 
 	// Mobile CSS - add only if components need it (following MRML pattern)
 	if c.hasMobileCSSComponents() {

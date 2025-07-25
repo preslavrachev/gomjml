@@ -47,20 +47,25 @@ func (c *MJDividerComponent) Render() (string, error) {
 	borderWidth := c.getAttribute("border-width")
 	width := c.getAttribute("width")
 
-	// Create paragraph with border styles
+	// Create paragraph with border styles (match MRML order: style width color)
 	p := html.NewHTMLTag("p").
-		AddStyle("border-top", borderWidth+" "+borderStyle+" "+borderColor).
+		AddStyle("border-top", borderStyle+" "+borderWidth+" "+borderColor).
 		AddStyle("font-size", "1px").
 		AddStyle("margin", "0px auto").
 		AddStyle("width", width)
 
-	// Outer table cell with padding
+	// Table cell with padding and center alignment
 	td := html.NewHTMLTag("td").
+		AddAttribute("align", "center").
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
 
-	return td.RenderOpen() + p.RenderSelfClosing() + td.RenderClose(), nil
+	// MSO conditional comment for Outlook compatibility
+	msoTable := `<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="550px" style="border-top:` + borderStyle + ` ` + borderWidth + ` ` + borderColor + `;font-size:1px;margin:0px auto;width:550px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`
+
+	// Render complete table row - paragraph must be empty, not self-closing to match MRML
+	return "<tr>" + td.RenderOpen() + p.RenderOpen() + p.RenderClose() + msoTable + td.RenderClose() + "</tr>", nil
 }
 
 func (c *MJDividerComponent) GetTagName() string {

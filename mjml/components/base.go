@@ -15,6 +15,10 @@ type Component interface {
 	GetDefaultAttribute(name string) string
 	SetContainerWidth(widthPx int)
 	GetContainerWidth() int
+	SetSiblings(siblings int)
+	SetRawSiblings(rawSiblings int)
+	GetSiblings() int
+	GetRawSiblings() int
 }
 
 // BaseComponent provides common functionality for all components
@@ -23,6 +27,8 @@ type BaseComponent struct {
 	Children       []Component
 	Attrs          map[string]string
 	ContainerWidth int // Container width in pixels (0 means use default)
+	Siblings       int // Total siblings count
+	RawSiblings    int // Raw siblings count (for width calculations)
 }
 
 // NewBaseComponent creates a new base component
@@ -37,6 +43,8 @@ func NewBaseComponent(node *parser.MJMLNode) *BaseComponent {
 		Attrs:          attrs,
 		Children:       make([]Component, 0),
 		ContainerWidth: 0, // 0 means use default body width
+		Siblings:       1,
+		RawSiblings:    0,
 	}
 }
 
@@ -118,6 +126,31 @@ func (bc *BaseComponent) SetContainerWidth(widthPx int) {
 // GetContainerWidth returns the container width in pixels (0 means use default body width)
 func (bc *BaseComponent) GetContainerWidth() int {
 	return bc.ContainerWidth
+}
+
+// SetSiblings sets the total number of siblings for this component
+func (bc *BaseComponent) SetSiblings(siblings int) {
+	bc.Siblings = siblings
+}
+
+// SetRawSiblings sets the number of raw siblings for this component
+func (bc *BaseComponent) SetRawSiblings(rawSiblings int) {
+	bc.RawSiblings = rawSiblings
+}
+
+// GetSiblings returns the total number of siblings
+func (bc *BaseComponent) GetSiblings() int {
+	return bc.Siblings
+}
+
+// GetRawSiblings returns the number of raw siblings
+func (bc *BaseComponent) GetRawSiblings() int {
+	return bc.RawSiblings
+}
+
+// GetNonRawSiblings returns the number of non-raw siblings (used for width calculations)
+func (bc *BaseComponent) GetNonRawSiblings() int {
+	return bc.Siblings - bc.RawSiblings
 }
 
 // GetEffectiveWidth returns the container width if set, otherwise default body width

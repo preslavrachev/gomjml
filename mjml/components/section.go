@@ -106,10 +106,23 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	output.WriteString(tdTag.RenderOpen())
 
+	// Calculate sibling counts for width calculations (following MRML logic)
+	siblings := len(c.Children)
+	rawSiblings := 0
+	for _, child := range c.Children {
+		// Count raw siblings (components that don't participate in width calculations)
+		// For now, all our components are non-raw, but this matches MRML structure
+		if child.GetTagName() == "mj-raw" {
+			rawSiblings++
+		}
+	}
+
 	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
 	for _, child := range c.Children {
-		// Pass the effective width to the child
+		// Pass the effective width and sibling counts to the child
 		child.SetContainerWidth(c.GetEffectiveWidth())
+		child.SetSiblings(siblings)
+		child.SetRawSiblings(rawSiblings)
 
 		// Generate MSO conditional TD for each column (following MRML's render_wrapped_children pattern)
 		if columnComp, ok := child.(*MJColumnComponent); ok {
@@ -126,7 +139,7 @@ func (c *MJSectionComponent) Render() (string, error) {
 				return columnComp.GetDefaultAttribute(name)
 			}
 			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
-			msoTd.AddStyle("width", columnComp.GetEffectiveWidthString())
+			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
 
 			output.WriteString(html.RenderMSOConditional(
 				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
