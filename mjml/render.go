@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -22,6 +23,17 @@ func Render(mjmlContent string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// Initialize global attributes
+	globalAttrs := globals.NewGlobalAttributes()
+
+	// Process global attributes from head if it exists
+	if headNode := ast.FindFirstChild("mj-head"); headNode != nil {
+		globalAttrs.ProcessAttributesFromHead(headNode)
+	}
+
+	// Set the global attributes instance
+	globals.SetGlobalAttributes(globalAttrs)
 
 	// Create component tree
 	component, err := CreateComponent(ast)
@@ -60,6 +72,23 @@ type MJMLComponent struct {
 // RequestMobileCSS allows components to request mobile CSS to be added
 func (c *MJMLComponent) RequestMobileCSS() {
 	c.mobileCSSAdded = true
+}
+
+// hasCustomGlobalFonts checks if global attributes specify custom fonts
+func (c *MJMLComponent) hasCustomGlobalFonts() bool {
+	// Check if global attributes have specified font-family
+	globalFontFamily := globals.GetGlobalAttribute("mj-all", "font-family")
+	if globalFontFamily != "" && globalFontFamily != "Ubuntu, Helvetica, Arial, sans-serif" {
+		return true
+	}
+
+	// Check if any text components have global font-family defined
+	textFontFamily := globals.GetGlobalAttribute("mj-text", "font-family")
+	if textFontFamily != "" && textFontFamily != "Ubuntu, Helvetica, Arial, sans-serif" {
+		return true
+	}
+
+	return false
 }
 
 // prepareBodySiblings recursively sets up sibling relationships without rendering HTML
@@ -235,11 +264,40 @@ func (c *MJMLComponent) hasTextComponents() bool {
 
 // hasTextComponentsRecursive recursively checks for text components
 func (c *MJMLComponent) hasTextComponentsRecursive(component Component) bool {
-	switch comp := component.(type) {
+	// Check if this component is a text component
+	switch component.(type) {
 	case *components.MJTextComponent, *components.MJButtonComponent:
 		return true
-	case interface{ GetChildren() []Component }:
-		for _, child := range comp.GetChildren() {
+	}
+
+	// Check specific component types that have children
+	switch v := component.(type) {
+	case *components.MJBodyComponent:
+		for _, child := range v.Children {
+			if c.hasTextComponentsRecursive(child) {
+				return true
+			}
+		}
+	case *components.MJSectionComponent:
+		for _, child := range v.Children {
+			if c.hasTextComponentsRecursive(child) {
+				return true
+			}
+		}
+	case *components.MJColumnComponent:
+		for _, child := range v.Children {
+			if c.hasTextComponentsRecursive(child) {
+				return true
+			}
+		}
+	case *components.MJWrapperComponent:
+		for _, child := range v.Children {
+			if c.hasTextComponentsRecursive(child) {
+				return true
+			}
+		}
+	case *components.MJGroupComponent:
+		for _, child := range v.Children {
 			if c.hasTextComponentsRecursive(child) {
 				return true
 			}
@@ -354,19 +412,24 @@ func (c *MJMLComponent) Render() (string, error) {
 		"<!--[if lte mso 11]>\n<style type=\"text/css\">\n.mj-outlook-group-fix { width:100% !important; }\n</style>\n<![endif]-->\n",
 	)
 
-	// Font imports - use custom fonts if provided, otherwise default
-	if len(customFonts) > 0 {
-		for _, fontHref := range customFonts {
-			html.WriteString(`<!--[if !mso]><!--><link href="` + fontHref + `" rel="stylesheet" type="text/css">`)
-			html.WriteString(`<style type="text/css">@import url(` + fontHref + `);</style><!--<![endif]-->`)
+	// Font imports - check if we need Ubuntu fallback or custom fonts
+	if c.hasTextComponents() {
+		if len(customFonts) > 0 {
+			for _, fontHref := range customFonts {
+				html.WriteString(`<!--[if !mso]><!--><link href="` + fontHref + `" rel="stylesheet" type="text/css">`)
+				html.WriteString(`<style type="text/css">@import url(` + fontHref + `);</style><!--<![endif]-->`)
+			}
+		} else if !c.hasCustomGlobalFonts() {
+			// Only import Ubuntu if no global fonts are specified
+			html.WriteString(`<!--[if !mso]><!--><link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700" rel="stylesheet" type="text/css">`)
+			html.WriteString(`<style type="text/css">@import url(https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700);</style><!--<![endif]-->`)
 		}
-	} else {
-		html.WriteString(`<!--[if !mso]><!--><link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700" rel="stylesheet" type="text/css">`)
-		html.WriteString(`<style type="text/css">@import url(https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700);</style><!--<![endif]-->`)
 	}
 
-	// Dynamic responsive CSS based on collected column classes
-	html.WriteString(c.generateResponsiveCSS())
+	// Dynamic responsive CSS based on collected column classes - only if we have columns
+	if len(c.columnClasses) > 0 {
+		html.WriteString(c.generateResponsiveCSS())
+	}
 
 	// Mobile CSS - add only if components need it (following MRML pattern)
 	if c.hasMobileCSSComponents() {
@@ -383,13 +446,24 @@ func (c *MJMLComponent) Render() (string, error) {
 	html.WriteString(`</head>`)
 
 	// Body with background-color support (matching MRML's get_body_tag)
-	bodyStyle := "word-spacing:normal;"
+	var bodyStyles []string
+
+	// Only add word-spacing if we have text components that need font normalization
+	if c.hasTextComponents() {
+		bodyStyles = append(bodyStyles, "word-spacing:normal")
+	}
+
 	if c.Body != nil {
 		if bgColor := c.Body.GetAttribute("background-color"); bgColor != nil && *bgColor != "" {
-			bodyStyle += "background-color:" + *bgColor + ";"
+			bodyStyles = append(bodyStyles, "background-color:"+*bgColor)
 		}
 	}
-	html.WriteString(`<body style="` + bodyStyle + `">`)
+
+	if len(bodyStyles) > 0 {
+		html.WriteString(`<body style="` + strings.Join(bodyStyles, ";") + `;">`)
+	} else {
+		html.WriteString(`<body>`)
+	}
 	if c.Body != nil {
 		bodyHTML, err := c.Body.Render()
 		if err != nil {

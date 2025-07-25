@@ -106,10 +106,8 @@ func (c *MJImageComponent) Render() (string, error) {
 	imgTag := html.NewHTMLTag("img")
 	c.AddDebugAttribute(imgTag, "image")
 
-	// Set image attributes
-	if alt != "" {
-		imgTag.AddAttribute("alt", alt)
-	}
+	// Set image attributes - always include alt for accessibility
+	imgTag.AddAttribute("alt", alt)
 	if height != "" {
 		imgTag.AddAttribute("height", height)
 	}

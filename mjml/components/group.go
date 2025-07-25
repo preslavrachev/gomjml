@@ -55,11 +55,11 @@ func (c *MJGroupComponent) Render() (string, error) {
 	}
 
 	// Root div wrapper (following MRML set_style_root_div)
+	// Note: Class order should be "mj-column-per-100 mj-outlook-group-fix" to match MRML
 	rootDiv := html.NewHTMLTag("div").
-		AddAttribute("class", cssClass).
-		AddAttribute("class", "mj-outlook-group-fix").
-		AddStyle("font-size", "0").   // Note: "0" not "0px" to match MRML
-		AddStyle("line-height", "0"). // Missing in our implementation!
+		AddAttribute("class", fmt.Sprintf("%s mj-outlook-group-fix", cssClass)).
+		AddStyle("font-size", "0"). // Note: "0" not "0px" to match MRML
+		AddStyle("line-height", "0").
 		AddStyle("text-align", "left").
 		AddStyle("display", "inline-block").
 		AddStyle("width", "100%").
@@ -88,12 +88,28 @@ func (c *MJGroupComponent) Render() (string, error) {
 			output.WriteString(html.RenderMSOConditional(
 				fmt.Sprintf("<td style=\"vertical-align:%s;width:%s;\">", verticalAlign, columnComp.GetEffectiveWidthString())))
 
-			// Render column content directly (no extra div wrapper)
+			// Render column content with additional table wrapper for group context
 			childHTML, err := child.Render()
 			if err != nil {
 				return "", err
 			}
+
+			// Wrap column in additional table with padding support
+			// This matches MRML's group column structure
+			output.WriteString(`<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%"><tbody><tr>`)
+
+			// TD with padding support - extract padding from column attributes
+			tdStyle := fmt.Sprintf("vertical-align:%s", verticalAlign)
+			if paddingRightAttr := columnComp.GetAttribute("padding-right"); paddingRightAttr != nil {
+				tdStyle += fmt.Sprintf(";padding-right:%s", *paddingRightAttr)
+			}
+			if paddingAttr := columnComp.GetAttribute("padding"); paddingAttr != nil {
+				tdStyle += fmt.Sprintf(";padding:%s", *paddingAttr)
+			}
+
+			output.WriteString(fmt.Sprintf(`<td style="%s;">`, tdStyle))
 			output.WriteString(childHTML)
+			output.WriteString(`</td></tr></tbody></table>`)
 
 			// Close MSO conditional TD
 			output.WriteString(html.RenderMSOConditional("</td>"))

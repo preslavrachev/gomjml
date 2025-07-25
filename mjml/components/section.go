@@ -36,6 +36,20 @@ func (c *MJSectionComponent) Render() (string, error) {
 	padding := getAttr("padding")
 	direction := getAttr("direction")
 	textAlign := getAttr("text-align")
+	fullWidth := getAttr("full-width")
+
+	// For full-width sections with background, add outer table wrapper (like MRML does)
+	if backgroundColor != "" && fullWidth != "" {
+		outerTable := html.NewTableTag().
+			AddAttribute("align", "center")
+
+		// Apply background styles in MRML order: background, background-color, width
+		c.ApplyBackgroundStyles(outerTable)
+		outerTable.AddStyle("width", "100%")
+
+		output.WriteString(outerTable.RenderOpen())
+		output.WriteString("<tbody><tr><td>")
+	}
 
 	// MSO conditional comment - table wrapper for Outlook
 	msoTable := html.NewTableTag()
@@ -61,10 +75,12 @@ func (c *MJSectionComponent) Render() (string, error) {
 	sectionDiv := html.NewHTMLTag("div")
 	c.AddDebugAttribute(sectionDiv, "section")
 
-	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(sectionDiv)
+	// For non-full-width background sections, apply background to the div (like MRML)
+	if backgroundColor != "" && fullWidth == "" {
+		c.ApplyBackgroundStyles(sectionDiv)
+	}
 
-	// Then add layout styles
+	// Add layout styles
 	sectionDiv.AddStyle("margin", "0px auto").
 		AddStyle("max-width", c.GetEffectiveWidthString())
 
@@ -74,8 +90,12 @@ func (c *MJSectionComponent) Render() (string, error) {
 	innerTable := html.NewTableTag().
 		AddAttribute("align", "center")
 
-	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(innerTable)
+	// Apply background styles to inner table
+	// - Always for no-background sections
+	// - Also for non-full-width background sections (MRML puts background on both div and table)
+	if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
+		c.ApplyBackgroundStyles(innerTable)
+	}
 
 	// Then add width
 	innerTable.AddStyle("width", "100%")
@@ -168,6 +188,11 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	// Close MSO conditional
 	output.WriteString(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))
+
+	// Close outer table if we added one for full-width background
+	if backgroundColor != "" && fullWidth != "" {
+		output.WriteString("</td></tr></tbody></table>")
+	}
 
 	return output.String(), nil
 }

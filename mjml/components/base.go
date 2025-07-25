@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 
+	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
@@ -51,7 +52,7 @@ func NewBaseComponent(node *parser.MJMLNode) *BaseComponent {
 // GetAttribute gets an attribute value as a pointer, following the MRML attribute resolution order:
 // 1. Element attributes
 // 2. mj-class definitions (TODO: implement)
-// 3. Global element defaults (TODO: implement)
+// 3. Global element defaults (via GlobalAttributes)
 // 4. Component defaults (via GetDefaultAttribute)
 func (bc *BaseComponent) GetAttribute(name string) *string {
 	// 1. Check element attributes
@@ -60,7 +61,31 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 	}
 
 	// 2. Check mj-class (TODO: implement)
-	// 3. Check global defaults (TODO: implement)
+
+	// 3. Check global defaults - we can't access GetTagName from BaseComponent
+	// Global attributes will be checked in GetAttributeWithDefault or by passing component
+
+	// 4. Check component defaults
+	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
+		return &defaultVal
+	}
+
+	return nil
+}
+
+// GetAttributeWithGlobal gets an attribute value checking global attributes for the given component tag
+func (bc *BaseComponent) GetAttributeWithGlobal(name, tagName string) *string {
+	// 1. Check element attributes
+	if value, exists := bc.Attrs[name]; exists && value != "" {
+		return &value
+	}
+
+	// 2. Check mj-class (TODO: implement)
+
+	// 3. Check global defaults via globals package
+	if globalValue := globals.GetGlobalAttribute(tagName, name); globalValue != "" {
+		return &globalValue
+	}
 
 	// 4. Check component defaults
 	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
@@ -78,8 +103,19 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		return value
 	}
 
-	// 2. Check component defaults via interface method (properly calls overridden method)
+	// 2. Check global attributes if available (we'll get this via external function)
+	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
+		return globalValue
+	}
+
+	// 3. Check component defaults via interface method (properly calls overridden method)
 	return comp.GetDefaultAttribute(name)
+}
+
+// getGlobalAttribute gets a global attribute value from the global store
+func (bc *BaseComponent) getGlobalAttribute(componentName, attrName string) string {
+	// Access global attributes via globals package
+	return globals.GetGlobalAttribute(componentName, attrName)
 }
 
 // GetAttributeAsPixel parses an attribute value as a CSS pixel value
@@ -239,15 +275,14 @@ func (bc *BaseComponent) ApplyDimensionStyles(tag *html.HTMLTag) *html.HTMLTag {
 // AddDebugAttribute adds a debug attribute to an HTML tag for component traceability
 // This helps identify which MJML component generated which HTML elements during testing
 func (bc *BaseComponent) AddDebugAttribute(tag *html.HTMLTag, componentType string) {
-	// Only add debug attributes during testing (we can add environment check later if needed)
-	debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
-	tag.AddAttribute(debugAttr, "true")
-
-	// Add MJML tag name for more context
-	if bc.Node != nil {
-		mjmlTag := bc.Node.XMLName.Local
-		if mjmlTag != "" {
-			tag.AddAttribute("data-mj-tag", mjmlTag)
-		}
-	}
+	// Debug attributes disabled in production to match MRML output exactly
+	// Uncomment for debugging during development:
+	// debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
+	// tag.AddAttribute(debugAttr, "true")
+	// if bc.Node != nil {
+	//     mjmlTag := bc.Node.XMLName.Local
+	//     if mjmlTag != "" {
+	//         tag.AddAttribute("data-mj-tag", mjmlTag)
+	//     }
+	// }
 }

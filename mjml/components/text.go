@@ -77,6 +77,8 @@ func (c *MJTextComponent) Render() (string, error) {
 	lineHeight := c.GetAttributeWithDefault(c, "line-height")
 	textAlign := c.GetAttributeWithDefault(c, "align")
 	textDecoration := c.GetAttributeWithDefault(c, "text-decoration")
+	textTransform := c.GetAttributeWithDefault(c, "text-transform")
+	letterSpacing := c.GetAttributeWithDefault(c, "letter-spacing")
 
 	// Apply styles in the order expected by MRML
 	if fontFamily != "" {
@@ -88,11 +90,17 @@ func (c *MJTextComponent) Render() (string, error) {
 	if fontWeight != "" {
 		divTag.AddStyle("font-weight", fontWeight)
 	}
+	if letterSpacing != "" {
+		divTag.AddStyle("letter-spacing", letterSpacing)
+	}
 	if lineHeight != "" {
 		divTag.AddStyle("line-height", lineHeight)
 	}
 	if textAlign != "" {
 		divTag.AddStyle("text-align", textAlign)
+	}
+	if textTransform != "" {
+		divTag.AddStyle("text-transform", textTransform)
 	}
 	if color != "" {
 		divTag.AddStyle("color", color)
@@ -164,9 +172,14 @@ func (c *MJTextComponent) getRawInnerHTML() string {
 func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode) string {
 	var html strings.Builder
 
+	tagName := node.XMLName.Local
+
+	// Check if this is a void element (self-closing)
+	isVoidElement := isVoidHTMLElement(tagName)
+
 	// Opening tag
 	html.WriteString("<")
-	html.WriteString(node.XMLName.Local)
+	html.WriteString(tagName)
 
 	// Attributes
 	for _, attr := range node.Attrs {
@@ -175,6 +188,12 @@ func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode) string {
 		html.WriteString(`="`)
 		html.WriteString(attr.Value)
 		html.WriteString(`"`)
+	}
+
+	if isVoidElement {
+		// Self-closing tag
+		html.WriteString(" />")
+		return html.String()
 	}
 
 	html.WriteString(">")
@@ -190,8 +209,29 @@ func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode) string {
 
 	// Closing tag
 	html.WriteString("</")
-	html.WriteString(node.XMLName.Local)
+	html.WriteString(tagName)
 	html.WriteString(">")
 
 	return html.String()
+}
+
+// isVoidHTMLElement checks if an HTML element is a void element (self-closing)
+func isVoidHTMLElement(tagName string) bool {
+	voidElements := map[string]bool{
+		"area":   true,
+		"base":   true,
+		"br":     true,
+		"col":    true,
+		"embed":  true,
+		"hr":     true,
+		"img":    true,
+		"input":  true,
+		"link":   true,
+		"meta":   true,
+		"param":  true,
+		"source": true,
+		"track":  true,
+		"wbr":    true,
+	}
+	return voidElements[tagName]
 }
