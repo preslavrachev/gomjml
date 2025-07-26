@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )

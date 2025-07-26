@@ -14,9 +14,8 @@
             line-height="16px"
             font-weight="bold"
           >
-            <a class="footer-link" href="https://www.google.com">Privacy</a>&#xA0;&#xA0;&#xA0;&#xA0;&#xA0;&#xA0;&#xA0;&#xA0;<a
-              class="footer-link"
-              href="https://www.google.com"
+            <a class="footer-link" href="https://www.google.com">Privacy</a
+            ><a class="footer-link" href="https://www.google.com"
               >Unsubscribe</a
             >
           </mj-text>

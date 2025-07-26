@@ -42,7 +42,9 @@ func preprocessHTMLEntities(content string) string {
 	result = strings.ReplaceAll(result, "&gt;", ">")
 	result = strings.ReplaceAll(result, "&quot;", `"`)
 	result = strings.ReplaceAll(result, "&apos;", "'")
-	result = strings.ReplaceAll(result, "&nbsp;", " ")
+	result = strings.ReplaceAll(result, "&nbsp;", "\u00A0") // Unicode non-breaking space
+	result = strings.ReplaceAll(result, "&#xA0;", "\u00A0") // Numeric character reference for non-breaking space
+	result = strings.ReplaceAll(result, "&#160;", "\u00A0") // Decimal numeric reference for non-breaking space
 	result = strings.ReplaceAll(result, "&ndash;", "–")
 	result = strings.ReplaceAll(result, "&mdash;", "—")
 	result = strings.ReplaceAll(result, "&hellip;", "…")

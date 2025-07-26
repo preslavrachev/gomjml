@@ -166,8 +166,15 @@ func (c *MJSectionComponent) Render() (string, error) {
 			output.WriteString(html.RenderMSOConditional(
 				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
 		} else if groupComp, ok := child.(*MJGroupComponent); ok {
-			// Groups handle their own MSO structure, just set container width
+			// Groups also need MSO conditionals like columns
 			groupComp.SetContainerWidth(c.GetEffectiveWidth())
+
+			msoTable := html.NewTableTag()
+			msoTr := html.NewHTMLTag("tr")
+			msoTd := html.NewHTMLTag("td").AddStyle("width", fmt.Sprintf("%dpx", c.GetEffectiveWidth()))
+
+			output.WriteString(html.RenderMSOConditional(
+				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
 		}
 
 		childHTML, err := child.Render()
@@ -176,8 +183,10 @@ func (c *MJSectionComponent) Render() (string, error) {
 		}
 		output.WriteString(childHTML)
 
-		// Close MSO conditional TD/TR/TABLE for columns
+		// Close MSO conditional TD/TR/TABLE for columns and groups
 		if _, ok := child.(*MJColumnComponent); ok {
+			output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
+		} else if _, ok := child.(*MJGroupComponent); ok {
 			output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
 		}
 	}

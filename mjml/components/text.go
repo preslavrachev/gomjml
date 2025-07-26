@@ -152,9 +152,12 @@ func (c *MJTextComponent) getRawInnerHTML() string {
 	if len(c.Node.Children) > 0 {
 		var html strings.Builder
 
-		// Add any text content before children
+		// Add any text content before children (trimmed)
 		if c.Node.Text != "" {
-			html.WriteString(c.Node.Text)
+			trimmedText := strings.TrimSpace(c.Node.Text)
+			if trimmedText != "" {
+				html.WriteString(c.restoreHTMLEntities(trimmedText))
+			}
 		}
 
 		// Add children as HTML elements
@@ -165,8 +168,15 @@ func (c *MJTextComponent) getRawInnerHTML() string {
 		return html.String()
 	}
 
-	// If no children, just return the text content
-	return c.Node.Text
+	// If no children, return the text content with HTML entities restored and whitespace trimmed
+	return c.restoreHTMLEntities(strings.TrimSpace(c.Node.Text))
+}
+
+// restoreHTMLEntities converts Unicode characters back to HTML entities for proper output
+func (c *MJTextComponent) restoreHTMLEntities(text string) string {
+	// Convert Unicode non-breaking space back to HTML entity
+	result := strings.ReplaceAll(text, "\u00A0", "&#xA0;")
+	return result
 }
 
 // reconstructHTMLElement reconstructs an HTML element from a parsed node
@@ -201,7 +211,7 @@ func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode) string {
 
 	// Content (text + children)
 	if node.Text != "" {
-		html.WriteString(node.Text)
+		html.WriteString(c.restoreHTMLEntities(node.Text))
 	}
 
 	for _, child := range node.Children {

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // TestMJMLAgainstMRML compares Go implementation output with MRML (Rust) output
@@ -33,21 +34,35 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		// {"austin-hero-images", "testdata/austin-hero-images.mjml"},
 		{"austin-wrapper-basic", "testdata/austin-wrapper-basic.mjml"},
 		{"austin-text-with-links", "testdata/austin-text-with-links.mjml"},
-		// {"austin-buttons", "testdata/austin-buttons.mjml"},
-		// {"austin-two-column-images", "testdata/austin-two-column-images.mjml"},
+		{"austin-buttons", "testdata/austin-buttons.mjml"},
+		{"austin-two-column-images", "testdata/austin-two-column-images.mjml"},
 		// {"austin-divider", "testdata/austin-divider.mjml"},
 		// {"austin-two-column-text", "testdata/austin-two-column-text.mjml"},
 		// {"austin-full-width-wrapper", "testdata/austin-full-width-wrapper.mjml"},
 		// {"austin-social-media", "testdata/austin-social-media.mjml"},
 		// {"austin-footer-text", "testdata/austin-footer-text.mjml"},
-		// {"austin-group-component", "testdata/austin-group-component.mjml"},
-		// {"austin-global-attributes", "testdata/austin-global-attributes.mjml"},
-		// {"austin-map-image", "testdata/austin-map-image.mjml"},
-		// // MRML reference tests
-		// {"mrml-divider-basic", "testdata/mrml-divider-basic.mjml"},
-		// {"mrml-text-basic", "testdata/mrml-text-basic.mjml"},
-		// {"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
+		//{"austin-group-component", "testdata/austin-group-component.mjml"},
+		{"austin-global-attributes", "testdata/austin-global-attributes.mjml"},
+		{"austin-map-image", "testdata/austin-map-image.mjml"},
+		// MRML reference tests
+		{"mrml-divider-basic", "testdata/mrml-divider-basic.mjml"},
+		{"mrml-text-basic", "testdata/mrml-text-basic.mjml"},
+		{"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
 		{"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
+		// MJ-Group tests from MRML
+		// {"mj-group", "testdata/mj-group.mjml"},
+		// {"mj-group-background-color", "testdata/mj-group-background-color.mjml"},
+		// {"mj-group-class", "testdata/mj-group-class.mjml"},
+		// {"mj-group-direction", "testdata/mj-group-direction.mjml"},
+		// {"mj-group-vertical-align", "testdata/mj-group-vertical-align.mjml"},
+		// {"mj-group-width", "testdata/mj-group-width.mjml"},
+		// Simple MJML components from MRML test suite
+		{"mj-text", "testdata/mj-text.mjml"},
+		{"mj-button", "testdata/mj-button.mjml"},
+		{"mj-image", "testdata/mj-image.mjml"},
+		{"mj-section", "testdata/mj-section.mjml"},
+		{"mj-column", "testdata/mj-column.mjml"},
+		{"mj-wrapper", "testdata/mj-wrapper.mjml"},
 	}
 
 	for _, tc := range testCases {
@@ -72,13 +87,18 @@ func TestMJMLAgainstMRML(t *testing.T) {
 
 			// Compare outputs using DOM tree comparison
 			if !compareDOMTrees(expected, actual) {
-				// Enhanced DOM-based diff with debugging
-				diff := createDOMDiff(expected, actual)
-				t.Errorf("\n%s", diff)
+				// Show precise string diff between outputs
+				t.Logf("=== PRECISE HTML DIFF FOR %s ===", tc.name)
+				htmlDiff := createPreciseHTMLDiff(expected, actual)
+				t.Logf("\n%s", htmlDiff)
 
-				// Enhanced debugging: analyze style differences
+				// Enhanced DOM-based diff with debugging
+				domDiff := createDOMDiff(expected, actual)
+				t.Errorf("\n%s", domDiff)
+
+				// Enhanced debugging: analyze style differences with precise element identification
 				t.Logf("Style differences for %s:", tc.name)
-				compareStyles(t, expected, actual)
+				compareStylesPrecise(t, expected, actual)
 
 				// For debugging: write both outputs to temp files
 				os.WriteFile("/tmp/expected_"+tc.name+".html", []byte(expected), 0o644)
@@ -293,6 +313,156 @@ func compareStyles(t *testing.T, expected, actual string) {
 	}
 }
 
+// compareStylesPrecise provides exact element identification for style differences
+func compareStylesPrecise(t *testing.T, expected, actual string) {
+	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
+	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
+
+	if err1 != nil || err2 != nil {
+		t.Logf("DOM parsing failed: expected=%v, actual=%v", err1, err2)
+		return
+	}
+
+	// Build ordered lists of styled elements
+	var expectedElements []ElementInfo
+	var actualElements []ElementInfo
+
+	expectedDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
+		style, _ := el.Attr("style")
+		classes, _ := el.Attr("class")
+		tagName := goquery.NodeName(el)
+
+		expectedElements = append(expectedElements, ElementInfo{
+			Tag:     tagName,
+			Classes: classes,
+			Style:   style,
+			Index:   i,
+		})
+	})
+
+	actualDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
+		style, _ := el.Attr("style")
+		classes, _ := el.Attr("class")
+		tagName := goquery.NodeName(el)
+
+		// Extract debug info to identify which MJML component created this element
+		debugComponent := ""
+		if debugAttr, exists := el.Attr("data-mj-debug-group"); exists && debugAttr == "true" {
+			debugComponent = "mj-group"
+		} else if debugAttr, exists := el.Attr("data-mj-debug-column"); exists && debugAttr == "true" {
+			debugComponent = "mj-column"
+		} else if debugAttr, exists := el.Attr("data-mj-debug-section"); exists && debugAttr == "true" {
+			debugComponent = "mj-section"
+		} else if debugAttr, exists := el.Attr("data-mj-debug-text"); exists && debugAttr == "true" {
+			debugComponent = "mj-text"
+		} else if debugAttr, exists := el.Attr("data-mj-debug-wrapper"); exists && debugAttr == "true" {
+			debugComponent = "mj-wrapper"
+		}
+
+		actualElements = append(actualElements, ElementInfo{
+			Tag:       tagName,
+			Classes:   classes,
+			Style:     style,
+			Index:     i,
+			Component: debugComponent,
+		})
+	})
+
+	// Compare element by element
+	maxLen := max(len(expectedElements), len(actualElements))
+	for i := 0; i < maxLen; i++ {
+		var expected, actual *ElementInfo
+		if i < len(expectedElements) {
+			expected = &expectedElements[i]
+		}
+		if i < len(actualElements) {
+			actual = &actualElements[i]
+		}
+
+		if expected == nil {
+			componentInfo := ""
+			if actual.Component != "" {
+				componentInfo = fmt.Sprintf(" [created by %s]", actual.Component)
+			}
+			t.Logf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
+				i, actual.Tag, actual.Classes, actual.Style, componentInfo)
+		} else if actual == nil {
+			t.Logf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
+				i, expected.Tag, expected.Classes, expected.Style)
+		} else if expected.Style != actual.Style {
+			componentInfo := ""
+			if actual.Component != "" {
+				componentInfo = fmt.Sprintf(" [created by %s]", actual.Component)
+			}
+			t.Logf("  Style diff element[%d]: <%s class=\"%s\">%s",
+				i, actual.Tag, actual.Classes, componentInfo)
+			t.Logf("    Expected: style=\"%s\"", expected.Style)
+			t.Logf("    Actual:   style=\"%s\"", actual.Style)
+
+			// Show specific property differences
+			expectedProps := parseStyleProperties(expected.Style)
+			actualProps := parseStyleProperties(actual.Style)
+
+			for prop, expectedVal := range expectedProps {
+				if actualVal, exists := actualProps[prop]; !exists {
+					t.Logf("    Missing property: %s=%s", prop, expectedVal)
+				} else if actualVal != expectedVal {
+					t.Logf("    Wrong value: %s=%s (expected %s)", prop, actualVal, expectedVal)
+				}
+			}
+
+			for prop, actualVal := range actualProps {
+				if _, exists := expectedProps[prop]; !exists {
+					t.Logf("    Extra property: %s=%s", prop, actualVal)
+				}
+			}
+		}
+	}
+}
+
+// ElementInfo represents a styled HTML element
+type ElementInfo struct {
+	Tag       string
+	Classes   string
+	Style     string
+	Index     int
+	Component string // Which MJML component created this element (from debug attrs)
+}
+
+// parseStyleProperties parses CSS style string into property map
+func parseStyleProperties(style string) map[string]string {
+	props := make(map[string]string)
+	if style == "" {
+		return props
+	}
+
+	// Split by semicolon and parse each property
+	declarations := strings.Split(style, ";")
+	for _, decl := range declarations {
+		decl = strings.TrimSpace(decl)
+		if decl == "" {
+			continue
+		}
+
+		parts := strings.SplitN(decl, ":", 2)
+		if len(parts) == 2 {
+			prop := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			props[prop] = value
+		}
+	}
+
+	return props
+}
+
+// max returns the maximum of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // extractStyles extracts all style attributes from HTML
 func extractStyles(html string, regex *regexp.Regexp) []string {
 	matches := regex.FindAllStringSubmatch(html, -1)
@@ -491,31 +661,6 @@ func compareAllStyleAttributesSimple(expected, actual string) string {
 	}
 
 	return strings.Join(diffs, "\n")
-}
-
-// parseStyleProperties parses a CSS style string into a map of properties
-func parseStyleProperties(style string) map[string]string {
-	props := make(map[string]string)
-	if style == "" {
-		return props
-	}
-
-	declarations := strings.Split(style, ";")
-	for _, decl := range declarations {
-		decl = strings.TrimSpace(decl)
-		if decl == "" {
-			continue
-		}
-
-		parts := strings.SplitN(decl, ":", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			props[key] = value
-		}
-	}
-
-	return props
 }
 
 // compareDOMTrees compares two HTML strings using DOM tree comparison
@@ -901,4 +1046,22 @@ func getMJMLTagInfo(doc *goquery.Document) map[string]int {
 	})
 
 	return tagCounts
+}
+
+// createPreciseHTMLDiff creates a detailed diff showing exact character differences
+func createPreciseHTMLDiff(expected, actual string) string {
+	dmp := diffmatchpatch.New()
+
+	// Create character-level diff
+	diffs := dmp.DiffMain(expected, actual, false)
+
+	// Clean up for better readability
+	diffs = dmp.DiffCleanupSemantic(diffs)
+
+	if len(diffs) == 0 {
+		return "No differences found"
+	}
+
+	// Convert to unified diff format
+	return dmp.DiffPrettyText(diffs)
 }

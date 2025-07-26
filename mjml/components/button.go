@@ -1,6 +1,7 @@
 package components
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -18,6 +19,47 @@ func NewMJButtonComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJBu
 	return &MJButtonComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
+}
+
+// calculateInnerWidth calculates the inner width of the button by subtracting horizontal padding
+func (c *MJButtonComponent) calculateInnerWidth(width, innerPadding string) string {
+	if width == "" {
+		return ""
+	}
+
+	// Parse width (remove "px" suffix)
+	widthStr := strings.TrimSuffix(width, "px")
+	widthVal, err := strconv.Atoi(widthStr)
+	if err != nil {
+		return ""
+	}
+
+	// Parse inner-padding (format: "10px 25px" or "10px")
+	parts := strings.Fields(innerPadding)
+	if len(parts) == 0 {
+		return width
+	}
+
+	// Get horizontal padding (right padding)
+	horizontalPadding := parts[0]
+	if len(parts) >= 2 {
+		horizontalPadding = parts[1]
+	}
+
+	// Parse horizontal padding
+	paddingStr := strings.TrimSuffix(horizontalPadding, "px")
+	paddingVal, err := strconv.Atoi(paddingStr)
+	if err != nil {
+		return width
+	}
+
+	// Calculate inner width (subtract padding from both sides)
+	innerWidth := widthVal - (paddingVal * 2)
+	if innerWidth <= 0 {
+		return width
+	}
+
+	return strconv.Itoa(innerWidth) + "px"
 }
 
 func (c *MJButtonComponent) Render() (string, error) {
@@ -47,6 +89,7 @@ func (c *MJButtonComponent) Render() (string, error) {
 	target := getAttr("target")
 	verticalAlign := getAttr("vertical-align")
 	href := getAttr("href")
+	width := getAttr("width")
 
 	// Determine if we use <a> or <p> tag
 	tagName := "p"
@@ -75,8 +118,14 @@ func (c *MJButtonComponent) Render() (string, error) {
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
 		AddAttribute("role", "presentation").
-		AddStyle("border-collapse", "separate").
-		AddStyle("line-height", "100%")
+		AddStyle("border-collapse", "separate")
+
+	// Add width to table if specified
+	if width != "" {
+		tableTag.AddStyle("width", width)
+	}
+
+	tableTag.AddStyle("line-height", "100%")
 
 	output.WriteString(tableTag.RenderOpen())
 	output.WriteString("<tbody><tr>")
@@ -113,9 +162,18 @@ func (c *MJButtonComponent) Render() (string, error) {
 	textDecoration := c.GetAttributeWithDefault(c, "text-decoration")
 	textTransform := c.GetAttributeWithDefault(c, "text-transform")
 
+	// Calculate inner width for anchor tag
+	innerWidth := c.calculateInnerWidth(width, innerPadding)
+
 	// Apply button content styles in MRML order
-	contentTag.AddStyle("display", "inline-block").
-		AddStyle("background", backgroundColor).
+	contentTag.AddStyle("display", "inline-block")
+
+	// Add width if calculated
+	if innerWidth != "" {
+		contentTag.AddStyle("width", innerWidth)
+	}
+
+	contentTag.AddStyle("background", backgroundColor).
 		AddStyle("color", color).
 		AddStyle("font-family", fontFamily).
 		AddStyle("font-size", fontSize).

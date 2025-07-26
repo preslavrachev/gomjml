@@ -479,10 +479,8 @@ func (c *MJMLComponent) Render() (string, error) {
 	// Body with background-color support (matching MRML's get_body_tag)
 	var bodyStyles []string
 
-	// Only add word-spacing if we have text components that need font normalization
-	if c.hasTextComponents() {
-		bodyStyles = append(bodyStyles, "word-spacing:normal")
-	}
+	// Always add word-spacing:normal to match MRML behavior
+	bodyStyles = append(bodyStyles, "word-spacing:normal")
 
 	if c.Body != nil {
 		if bgColor := c.Body.GetAttribute("background-color"); bgColor != nil && *bgColor != "" {
@@ -495,6 +493,20 @@ func (c *MJMLComponent) Render() (string, error) {
 	} else {
 		html.WriteString(`<body>`)
 	}
+
+	// Add preview text from head components right after body tag
+	if c.Head != nil {
+		for _, child := range c.Head.Children {
+			if previewComp, ok := child.(*components.MJPreviewComponent); ok {
+				previewHTML, err := previewComp.Render()
+				if err != nil {
+					return "", err
+				}
+				html.WriteString(previewHTML)
+			}
+		}
+	}
+
 	if c.Body != nil {
 		bodyHTML, err := c.Body.Render()
 		if err != nil {

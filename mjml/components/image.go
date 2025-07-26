@@ -6,6 +6,7 @@ import (
 
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -34,7 +35,6 @@ func (c *MJImageComponent) Render() (string, error) {
 
 	// Get attributes with defaults
 	align := getAttr("align")
-	alt := getAttr("alt")
 	border := getAttr("border")
 	borderRadius := getAttr("border-radius")
 	height := getAttr("height")
@@ -45,6 +45,12 @@ func (c *MJImageComponent) Render() (string, error) {
 	target := getAttr("target")
 	title := getAttr("title")
 	width := getAttr("width")
+
+	// Handle alt attribute specially - only include if explicitly set in MJML
+	var alt *string
+	if value, exists := c.Attrs["alt"]; exists {
+		alt = &value
+	}
 
 	if src == "" {
 		return "", fmt.Errorf("mj-image requires src attribute")
@@ -107,8 +113,10 @@ func (c *MJImageComponent) Render() (string, error) {
 	imgTag := html.NewHTMLTag("img")
 	c.AddDebugAttribute(imgTag, "image")
 
-	// Set image attributes - always include alt for accessibility
-	imgTag.AddAttribute("alt", alt)
+	// Set image attributes - only include alt if explicitly set
+	if alt != nil {
+		imgTag.AddAttribute("alt", *alt)
+	}
 	if height != "" {
 		imgTag.AddAttribute("height", height)
 	}
@@ -178,8 +186,32 @@ func (c *MJImageComponent) GetDefaultAttribute(name string) string {
 	case "title":
 		return ""
 	case "width":
-		return ""
+		return c.calculateDefaultWidth()
 	default:
 		return ""
 	}
+}
+
+// calculateDefaultWidth calculates the default width for the image
+// based on the container width minus horizontal padding
+func (c *MJImageComponent) calculateDefaultWidth() string {
+	containerWidth := c.GetEffectiveWidth()
+
+	// Get padding and calculate horizontal padding
+	paddingAttr := c.GetAttribute("padding")
+	horizontalPadding := 50 // Default: 25px left + 25px right
+
+	if paddingAttr != nil {
+		if spacing, err := styles.ParseSpacing(*paddingAttr); err == nil {
+			horizontalPadding = int(spacing.Left + spacing.Right)
+		}
+	}
+
+	// Calculate available width
+	availableWidth := containerWidth - horizontalPadding
+	if availableWidth <= 0 {
+		availableWidth = containerWidth // Fallback to container width
+	}
+
+	return fmt.Sprintf("%dpx", availableWidth)
 }
