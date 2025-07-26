@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -14,9 +15,9 @@ type MJImageComponent struct {
 }
 
 // NewMJImageComponent creates a new mj-image component
-func NewMJImageComponent(node *parser.MJMLNode) *MJImageComponent {
+func NewMJImageComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJImageComponent {
 	return &MJImageComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

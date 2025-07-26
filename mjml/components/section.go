@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -14,9 +15,9 @@ type MJSectionComponent struct {
 }
 
 // NewMJSectionComponent creates a new mj-section component
-func NewMJSectionComponent(node *parser.MJMLNode) *MJSectionComponent {
+func NewMJSectionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSectionComponent {
 	return &MJSectionComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

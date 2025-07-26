@@ -36,7 +36,7 @@ func main() {
 		log.Fatal("Parse error:", err)
 	}
 
-	component, err := mjml.CreateComponent(ast)
+	component, err := mjml.CreateComponent(ast, nil)
 	if err != nil {
 		log.Fatal("Component creation error:", err)
 	}

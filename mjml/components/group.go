@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -14,9 +15,9 @@ type MJGroupComponent struct {
 }
 
 // NewMJGroupComponent creates a new mj-group component
-func NewMJGroupComponent(node *parser.MJMLNode) *MJGroupComponent {
+func NewMJGroupComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJGroupComponent {
 	return &MJGroupComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -14,9 +15,9 @@ type MJWrapperComponent struct {
 }
 
 // NewMJWrapperComponent creates a new mj-wrapper component
-func NewMJWrapperComponent(node *parser.MJMLNode) *MJWrapperComponent {
+func NewMJWrapperComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJWrapperComponent {
 	return &MJWrapperComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

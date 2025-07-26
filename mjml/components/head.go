@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -11,9 +12,9 @@ type MJHeadComponent struct {
 }
 
 // NewMJHeadComponent creates a new mj-head component
-func NewMJHeadComponent(node *parser.MJMLNode) *MJHeadComponent {
+func NewMJHeadComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHeadComponent {
 	return &MJHeadComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -35,9 +36,9 @@ type MJTitleComponent struct {
 }
 
 // NewMJTitleComponent creates a new mj-title component
-func NewMJTitleComponent(node *parser.MJMLNode) *MJTitleComponent {
+func NewMJTitleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTitleComponent {
 	return &MJTitleComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -59,9 +60,9 @@ type MJFontComponent struct {
 }
 
 // NewMJFontComponent creates a new mj-font component
-func NewMJFontComponent(node *parser.MJMLNode) *MJFontComponent {
+func NewMJFontComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJFontComponent {
 	return &MJFontComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -90,9 +91,9 @@ type MJPreviewComponent struct {
 }
 
 // NewMJPreviewComponent creates a new mj-preview component
-func NewMJPreviewComponent(node *parser.MJMLNode) *MJPreviewComponent {
+func NewMJPreviewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJPreviewComponent {
 	return &MJPreviewComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -118,9 +119,9 @@ type MJStyleComponent struct {
 }
 
 // NewMJStyleComponent creates a new mj-style component
-func NewMJStyleComponent(node *parser.MJMLNode) *MJStyleComponent {
+func NewMJStyleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJStyleComponent {
 	return &MJStyleComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -146,9 +147,9 @@ type MJAttributesComponent struct {
 }
 
 // NewMJAttributesComponent creates a new mj-attributes component
-func NewMJAttributesComponent(node *parser.MJMLNode) *MJAttributesComponent {
+func NewMJAttributesComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJAttributesComponent {
 	return &MJAttributesComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -171,9 +172,9 @@ type MJAllComponent struct {
 }
 
 // NewMJAllComponent creates a new mj-all component
-func NewMJAllComponent(node *parser.MJMLNode) *MJAllComponent {
+func NewMJAllComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJAllComponent {
 	return &MJAllComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

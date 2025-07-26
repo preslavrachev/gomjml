@@ -2,6 +2,7 @@ package components
 
 import (
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -11,9 +12,9 @@ type MJDividerComponent struct {
 }
 
 // NewMJDividerComponent creates a new mj-divider component
-func NewMJDividerComponent(node *parser.MJMLNode) *MJDividerComponent {
+func NewMJDividerComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJDividerComponent {
 	return &MJDividerComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

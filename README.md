@@ -45,6 +45,9 @@ The CLI provides a structured command system with individual commands:
 # Output to stdout
 ./bin/gomjml compile input.mjml -s
 
+# Include debug attributes for component traceability
+./bin/gomjml compile input.mjml -s --debug
+
 # Run test suite
 ./bin/gomjml test
 
@@ -67,6 +70,7 @@ The CLI provides a structured command system with individual commands:
 - `--beautify`: Beautify HTML output (default: true)
 - `--minify`: Minify HTML output (default: false)
 - `--validation-level string`: Validation level - strict, soft, or skip (default: "soft")
+- `--debug`: Include debug attributes for component traceability (default: false)
 
 ### Go Package API
 
@@ -105,13 +109,20 @@ func main() {
 	}
 	fmt.Println(html)
 
+	// Method 1b: Direct rendering with debug attributes
+	htmlWithDebug, err := mjml.Render(mjmlContent, mjml.WithDebugTags(true))
+	if err != nil {
+		log.Fatal("Render error:", err)
+	}
+	fmt.Println(htmlWithDebug) // Includes data-mj-debug-* attributes
+
 	// Method 2: Step-by-step processing
 	ast, err := parser.ParseMJML(mjmlContent)
 	if err != nil {
 		log.Fatal("Parse error:", err)
 	}
 
-	component, err := mjml.CreateComponent(ast)
+	component, err := mjml.NewFromAST(ast)
 	if err != nil {
 		log.Fatal("Component creation error:", err)
 	}
@@ -132,20 +143,24 @@ While it is not recommended to do so, because it will break the compatibility wi
 // 1. Create component file in mjml/components/
 package components
 
-import "github.com/preslavrachev/gomjml/parser"
+import (
+    "github.com/preslavrachev/gomjml/mjml/options"
+    "github.com/preslavrachev/gomjml/parser"
+)
 
 type MJNewComponent struct {
     *BaseComponent
 }
 
-func NewMJNewComponent(node *parser.MJMLNode) *MJNewComponent {
+func NewMJNewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNewComponent {
     return &MJNewComponent{
-        BaseComponent: NewBaseComponent(node),
+        BaseComponent: NewBaseComponent(node, opts),
     }
 }
 
 func (c *MJNewComponent) Render() (string, error) {
     // Implementation here
+    // Use c.AddDebugAttribute(tag, "new") for debug traceability
     return "", nil
 }
 
@@ -155,7 +170,7 @@ func (c *MJNewComponent) GetTagName() string {
 
 // 2. Add to component factory in mjml/component.go
 case "mj-new":
-    return components.NewMJNewComponent(node), nil
+    return components.NewMJNewComponent(node, opts), nil
 
 // 3. Add test cases in mjml/integration_test.go
 // 4. Update README.md documentation

@@ -6,6 +6,7 @@ import (
 
 	"github.com/preslavrachev/gomjml/mjml/components"
 	"github.com/preslavrachev/gomjml/mjml/globals"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -16,8 +17,26 @@ type MJMLNode = parser.MJMLNode
 // ParseMJML re-exports the parser function for convenience
 var ParseMJML = parser.ParseMJML
 
+// RenderOpts is an alias for convenience
+type RenderOpts = options.RenderOpts
+
+// RenderOption is a functional option for configuring MJML rendering
+type RenderOption func(*RenderOpts)
+
+// WithDebugTags enables or disables debug tag inclusion in the rendered output
+func WithDebugTags(enabled bool) RenderOption {
+	return func(opts *RenderOpts) {
+		opts.DebugTags = enabled
+	}
+}
+
 // Render provides the main MJML to HTML conversion function
-func Render(mjmlContent string) (string, error) {
+func Render(mjmlContent string, opts ...RenderOption) (string, error) {
+	// Apply render options
+	renderOpts := &RenderOpts{}
+	for _, opt := range opts {
+		opt(renderOpts)
+	}
 	// Parse MJML using the parser package
 	ast, err := ParseMJML(mjmlContent)
 	if err != nil {
@@ -36,7 +55,7 @@ func Render(mjmlContent string) (string, error) {
 	globals.SetGlobalAttributes(globalAttrs)
 
 	// Create component tree
-	component, err := CreateComponent(ast)
+	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
 		return "", err
 	}
@@ -46,8 +65,14 @@ func Render(mjmlContent string) (string, error) {
 }
 
 // RenderFromAST renders HTML from a pre-parsed AST
-func RenderFromAST(ast *MJMLNode) (string, error) {
-	component, err := CreateComponent(ast)
+func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
+	// Apply render options
+	renderOpts := &RenderOpts{}
+	for _, opt := range opts {
+		opt(renderOpts)
+	}
+
+	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
 		return "", err
 	}
@@ -56,8 +81,14 @@ func RenderFromAST(ast *MJMLNode) (string, error) {
 }
 
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)
-func NewFromAST(ast *MJMLNode) (Component, error) {
-	return CreateComponent(ast)
+func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
+	// Apply render options
+	renderOpts := &RenderOpts{}
+	for _, opt := range opts {
+		opt(renderOpts)
+	}
+
+	return CreateComponent(ast, renderOpts)
 }
 
 // MJMLComponent represents the root MJML component

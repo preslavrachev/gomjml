@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -13,9 +14,9 @@ type MJButtonComponent struct {
 }
 
 // NewMJButtonComponent creates a new mj-button component
-func NewMJButtonComponent(node *parser.MJMLNode) *MJButtonComponent {
+func NewMJButtonComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJButtonComponent {
 	return &MJButtonComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

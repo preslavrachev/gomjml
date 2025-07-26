@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -13,9 +14,9 @@ type MJSocialComponent struct {
 }
 
 // NewMJSocialComponent creates a new mj-social component
-func NewMJSocialComponent(node *parser.MJMLNode) *MJSocialComponent {
+func NewMJSocialComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSocialComponent {
 	return &MJSocialComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -102,9 +103,9 @@ type MJSocialElementComponent struct {
 }
 
 // NewMJSocialElementComponent creates a new mj-social-element component
-func NewMJSocialElementComponent(node *parser.MJMLNode) *MJSocialElementComponent {
+func NewMJSocialElementComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSocialElementComponent {
 	return &MJSocialElementComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

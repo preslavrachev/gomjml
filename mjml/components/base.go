@@ -5,6 +5,7 @@ import (
 
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -27,16 +28,21 @@ type BaseComponent struct {
 	Node           *parser.MJMLNode
 	Children       []Component
 	Attrs          map[string]string
-	ContainerWidth int // Container width in pixels (0 means use default)
-	Siblings       int // Total siblings count
-	RawSiblings    int // Raw siblings count (for width calculations)
+	ContainerWidth int                 // Container width in pixels (0 means use default)
+	Siblings       int                 // Total siblings count
+	RawSiblings    int                 // Raw siblings count (for width calculations)
+	RenderOpts     *options.RenderOpts // Rendering options
 }
 
 // NewBaseComponent creates a new base component
-func NewBaseComponent(node *parser.MJMLNode) *BaseComponent {
+func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComponent {
 	attrs := make(map[string]string)
 	for _, attr := range node.Attrs {
 		attrs[attr.Name.Local] = attr.Value
+	}
+
+	if opts == nil {
+		opts = &options.RenderOpts{}
 	}
 
 	return &BaseComponent{
@@ -46,6 +52,7 @@ func NewBaseComponent(node *parser.MJMLNode) *BaseComponent {
 		ContainerWidth: 0, // 0 means use default body width
 		Siblings:       1,
 		RawSiblings:    0,
+		RenderOpts:     opts,
 	}
 }
 
@@ -275,14 +282,9 @@ func (bc *BaseComponent) ApplyDimensionStyles(tag *html.HTMLTag) *html.HTMLTag {
 // AddDebugAttribute adds a debug attribute to an HTML tag for component traceability
 // This helps identify which MJML component generated which HTML elements during testing
 func (bc *BaseComponent) AddDebugAttribute(tag *html.HTMLTag, componentType string) {
-	// Debug attributes disabled in production to match MRML output exactly
-	// Uncomment for debugging during development:
-	// debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
-	// tag.AddAttribute(debugAttr, "true")
-	// if bc.Node != nil {
-	//     mjmlTag := bc.Node.XMLName.Local
-	//     if mjmlTag != "" {
-	//         tag.AddAttribute("data-mj-tag", mjmlTag)
-	//     }
-	// }
+	// Only add debug attributes if enabled in render options
+	if bc.RenderOpts != nil && bc.RenderOpts.DebugTags {
+		debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
+		tag.AddAttribute(debugAttr, "true")
+	}
 }

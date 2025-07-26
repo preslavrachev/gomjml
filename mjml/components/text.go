@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -13,9 +14,9 @@ type MJTextComponent struct {
 }
 
 // NewMJTextComponent creates a new mj-text component
-func NewMJTextComponent(node *parser.MJMLNode) *MJTextComponent {
+func NewMJTextComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTextComponent {
 	return &MJTextComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

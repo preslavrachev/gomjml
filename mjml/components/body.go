@@ -3,6 +3,7 @@ package components
 import (
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -22,9 +23,9 @@ type MJBodyComponent struct {
 }
 
 // NewMJBodyComponent creates a new mj-body component
-func NewMJBodyComponent(node *parser.MJMLNode) *MJBodyComponent {
+func NewMJBodyComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJBodyComponent {
 	return &MJBodyComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

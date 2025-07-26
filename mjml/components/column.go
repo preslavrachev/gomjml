@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -15,9 +16,9 @@ type MJColumnComponent struct {
 }
 
 // NewMJColumnComponent creates a new mj-column component
-func NewMJColumnComponent(node *parser.MJMLNode) *MJColumnComponent {
+func NewMJColumnComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJColumnComponent {
 	return &MJColumnComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 

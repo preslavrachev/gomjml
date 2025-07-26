@@ -96,7 +96,7 @@ func TestCreateComponent(t *testing.T) {
 		t.Fatalf("ParseMJML() error = %v", err)
 	}
 
-	comp, err := CreateComponent(ast)
+	comp, err := CreateComponent(ast, nil)
 	if err != nil {
 		t.Fatalf("CreateComponent() error = %v", err)
 	}
