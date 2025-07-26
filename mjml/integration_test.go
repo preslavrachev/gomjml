@@ -47,7 +47,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		// {"mrml-divider-basic", "testdata/mrml-divider-basic.mjml"},
 		// {"mrml-text-basic", "testdata/mrml-text-basic.mjml"},
 		// {"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
-		// {"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
+		{"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
 	}
 
 	for _, tc := range testCases {
@@ -284,41 +284,12 @@ func createSimpleDiff(expected, actual string) string {
 		green, actualMarker, reset)
 }
 
-// compareStyles analyzes and compares CSS styles between expected and actual output
+// compareStyles analyzes and compares CSS styles between expected and actual output using tag-scoped comparison
 func compareStyles(t *testing.T, expected, actual string) {
-	styleRegex := regexp.MustCompile(`style="([^"]*)"`)
-
-	expectedStyles := extractStyles(expected, styleRegex)
-	actualStyles := extractStyles(actual, styleRegex)
-
-	// Compare number of styled elements
-	if len(expectedStyles) != len(actualStyles) {
-		t.Logf("  Style count mismatch: expected %d, actual %d", len(expectedStyles), len(actualStyles))
-	}
-
-	// Compare individual styles
-	maxLen := len(expectedStyles)
-	if len(actualStyles) > maxLen {
-		maxLen = len(actualStyles)
-	}
-
-	for i := 0; i < maxLen; i++ {
-		var expectedStyle, actualStyle string
-		if i < len(expectedStyles) {
-			expectedStyle = expectedStyles[i]
-		}
-		if i < len(actualStyles) {
-			actualStyle = actualStyles[i]
-		}
-
-		if expectedStyle != actualStyle {
-			t.Logf("  Style %d mismatch:", i+1)
-			t.Logf("    Expected: %s", expectedStyle)
-			t.Logf("    Actual:   %s", actualStyle)
-
-			// Analyze individual CSS properties
-			compareStyleProperties(t, expectedStyle, actualStyle)
-		}
+	// Use DOM-based comparison instead of regex-based positional comparison
+	styleComparison := compareAllStyleAttributesSimple(expected, actual)
+	if styleComparison != "" {
+		t.Logf("%s", styleComparison)
 	}
 }
 
@@ -334,26 +305,192 @@ func extractStyles(html string, regex *regexp.Regexp) []string {
 	return styles
 }
 
-// compareStyleProperties compares individual CSS properties within a style attribute
-func compareStyleProperties(t *testing.T, expected, actual string) {
+// StyleDiff represents differences between expected and actual CSS properties
+type StyleDiff struct {
+	Missing    map[string]string    // prop: expectedValue
+	Mismatched map[string][2]string // prop: [expected, actual]
+	Extra      map[string]string    // prop: actualValue
+}
+
+// IsEmpty returns true if there are no differences
+func (d StyleDiff) IsEmpty() bool {
+	return len(d.Missing) == 0 && len(d.Mismatched) == 0 && len(d.Extra) == 0
+}
+
+// String formats the diff for readable output
+func (d StyleDiff) String() string {
+	if d.IsEmpty() {
+		return ""
+	}
+
+	var parts []string
+
+	if len(d.Missing) > 0 {
+		var missing []string
+		for prop, value := range d.Missing {
+			missing = append(missing, fmt.Sprintf("%s=%s", prop, value))
+		}
+		parts = append(parts, fmt.Sprintf("Missing: %s", strings.Join(missing, ", ")))
+	}
+
+	if len(d.Mismatched) > 0 {
+		var mismatched []string
+		for prop, values := range d.Mismatched {
+			mismatched = append(mismatched, fmt.Sprintf("%s=%s→%s", prop, values[0], values[1]))
+		}
+		parts = append(parts, fmt.Sprintf("Wrong values: %s", strings.Join(mismatched, ", ")))
+	}
+
+	if len(d.Extra) > 0 {
+		var extra []string
+		for prop, value := range d.Extra {
+			extra = append(extra, fmt.Sprintf("%s=%s", prop, value))
+		}
+		parts = append(parts, fmt.Sprintf("Extra: %s", strings.Join(extra, ", ")))
+	}
+
+	return strings.Join(parts, " | ")
+}
+
+// compareStyleProperties compares CSS properties using set-based comparison
+func compareStyleProperties(expected, actual string) StyleDiff {
 	expectedProps := parseStyleProperties(expected)
 	actualProps := parseStyleProperties(actual)
 
-	// Find properties only in expected
-	for prop, value := range expectedProps {
+	diff := StyleDiff{
+		Missing:    make(map[string]string),
+		Mismatched: make(map[string][2]string),
+		Extra:      make(map[string]string),
+	}
+
+	// Find properties only in expected (missing)
+	for prop, expectedValue := range expectedProps {
 		if actualValue, exists := actualProps[prop]; !exists {
-			t.Logf("      Missing property: %s: %s", prop, value)
-		} else if actualValue != value {
-			t.Logf("      Property mismatch %s: expected '%s', actual '%s'", prop, value, actualValue)
+			diff.Missing[prop] = expectedValue
+		} else if actualValue != expectedValue {
+			diff.Mismatched[prop] = [2]string{expectedValue, actualValue}
 		}
 	}
 
-	// Find properties only in actual
-	for prop, value := range actualProps {
+	// Find properties only in actual (extra)
+	for prop, actualValue := range actualProps {
 		if _, exists := expectedProps[prop]; !exists {
-			t.Logf("      Extra property: %s: %s", prop, value)
+			diff.Extra[prop] = actualValue
 		}
 	}
+
+	return diff
+}
+
+// compareStylePropertiesMaps compares two CSS property maps directly
+func compareStylePropertiesMaps(expectedProps, actualProps map[string]string) StyleDiff {
+	diff := StyleDiff{
+		Missing:    make(map[string]string),
+		Mismatched: make(map[string][2]string),
+		Extra:      make(map[string]string),
+	}
+
+	// Find properties only in expected (missing)
+	for prop, expectedValue := range expectedProps {
+		if actualValue, exists := actualProps[prop]; !exists {
+			diff.Missing[prop] = expectedValue
+		} else if actualValue != expectedValue {
+			diff.Mismatched[prop] = [2]string{expectedValue, actualValue}
+		}
+	}
+
+	// Find properties only in actual (extra)
+	for prop, actualValue := range actualProps {
+		if _, exists := expectedProps[prop]; !exists {
+			diff.Extra[prop] = actualValue
+		}
+	}
+
+	return diff
+}
+
+// compareAllStyleAttributesSimple compares style attributes using tag-scoped comparison and returns formatted output
+func compareAllStyleAttributesSimple(expected, actual string) string {
+	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
+	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
+
+	if err1 != nil || err2 != nil {
+		return fmt.Sprintf("DOM parsing failed: expected=%v, actual=%v", err1, err2)
+	}
+
+	var diffs []string
+
+	// Build maps of elements by tag name for proper position tracking
+	expectedElements := make(map[string][]*goquery.Selection)
+	actualElements := make(map[string][]*goquery.Selection)
+
+	// Collect expected styled elements by tag
+	expectedDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
+		tag := goquery.NodeName(el)
+		expectedElements[tag] = append(expectedElements[tag], el)
+	})
+
+	// Collect actual styled elements by tag
+	actualDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
+		tag := goquery.NodeName(el)
+		actualElements[tag] = append(actualElements[tag], el)
+	})
+
+	// Compare each tag type
+	for tag, expectedList := range expectedElements {
+		actualList := actualElements[tag] // Don't check exists, use empty slice if missing
+
+		if len(actualList) == 0 && len(expectedList) > 0 {
+			// No actual styled elements, but expected some - still compare properties to show what's missing
+		} else if len(expectedList) != len(actualList) {
+			diffs = append(diffs, fmt.Sprintf("  %s element count mismatch: expected %d, actual %d", tag, len(expectedList), len(actualList)))
+		}
+
+		// Aggregate all CSS properties for this tag type
+		expectedProps := make(map[string]string)
+		actualProps := make(map[string]string)
+
+		// Collect all expected properties for this tag type
+		for _, el := range expectedList {
+			if style, exists := el.Attr("style"); exists {
+				tagProps := parseStyleProperties(style)
+				for prop, value := range tagProps {
+					expectedProps[prop] = value
+				}
+			}
+		}
+
+		// Collect all actual properties for this tag type (actualList might be empty)
+		for _, el := range actualList {
+			if style, exists := el.Attr("style"); exists {
+				tagProps := parseStyleProperties(style)
+				for prop, value := range tagProps {
+					actualProps[prop] = value
+				}
+			}
+		}
+
+		// Compare aggregated properties for this tag type - this will now show specific missing properties
+		if len(expectedProps) > 0 || len(actualProps) > 0 {
+			styleDiff := compareStylePropertiesMaps(expectedProps, actualProps)
+			if !styleDiff.IsEmpty() {
+				diffs = append(diffs, fmt.Sprintf("  %s elements: %s", tag, styleDiff.String()))
+			}
+		}
+	}
+
+	// Check for actual elements that don't exist in expected
+	for tag, actualList := range actualElements {
+		if _, exists := expectedElements[tag]; !exists {
+			diffs = append(diffs, fmt.Sprintf("  Unexpected styled %s elements (found %d)", tag, len(actualList)))
+		}
+	}
+
+	if len(diffs) == 0 {
+		return ""
+	}
+
+	return strings.Join(diffs, "\n")
 }
 
 // parseStyleProperties parses a CSS style string into a map of properties
@@ -633,29 +770,35 @@ func compareAllStyleAttributes(expectedDoc, actualDoc *goquery.Document) string 
 			)
 		}
 
-		// Compare individual elements of this tag type
-		maxLen := max(len(expectedList), len(actualList))
+		// Aggregate all CSS properties for this tag type
+		expectedProps := make(map[string]string)
+		actualProps := make(map[string]string)
 
-		for i := 0; i < maxLen; i++ {
-			if i >= len(expectedList) {
-				diffs = append(diffs, fmt.Sprintf("  Extra styled %s element at position %d", tag, i))
-				continue
+		// Collect all expected properties for this tag type
+		for _, el := range expectedList {
+			if style, exists := el.Attr("style"); exists {
+				tagProps := parseStyleProperties(style)
+				for prop, value := range tagProps {
+					expectedProps[prop] = value
+				}
 			}
-			if i >= len(actualList) {
-				diffs = append(diffs, fmt.Sprintf("  Missing styled %s element at position %d", tag, i))
-				continue
+		}
+
+		// Collect all actual properties for this tag type
+		for _, el := range actualList {
+			if style, exists := el.Attr("style"); exists {
+				tagProps := parseStyleProperties(style)
+				for prop, value := range tagProps {
+					actualProps[prop] = value
+				}
 			}
+		}
 
-			expectedStyle, _ := expectedList[i].Attr("style")
-			actualStyle, _ := actualList[i].Attr("style")
-
-			normalizedExpected := normalizeStyleAttribute(expectedStyle)
-			normalizedActual := normalizeStyleAttribute(actualStyle)
-
-			if normalizedExpected != normalizedActual {
-				diffs = append(diffs, fmt.Sprintf("  %s[%d] style differs:", tag, i))
-				diffs = append(diffs, fmt.Sprintf("    Expected: %s", normalizedExpected))
-				diffs = append(diffs, fmt.Sprintf("    Actual:   %s", normalizedActual))
+		// Compare aggregated properties for this tag type
+		if len(expectedProps) > 0 || len(actualProps) > 0 {
+			styleDiff := compareStylePropertiesMaps(expectedProps, actualProps)
+			if !styleDiff.IsEmpty() {
+				diffs = append(diffs, fmt.Sprintf("  %s elements: %s", tag, styleDiff.String()))
 			}
 		}
 	}
