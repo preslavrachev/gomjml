@@ -176,6 +176,17 @@ case "mj-new":
 // 4. Update README.md documentation
 ```
 
+#### Delaying Component Implementation
+
+If you need to register a component but won't implement its functionality right away, use the `NotImplementedError` pattern:
+
+```go
+func (c *MJNewComponent) Render() (string, error) {
+    // TODO: Implement mj-new component functionality
+    return "", &NotImplementedError{ComponentName: "mj-new"}
+}
+```
+
 ## 📋 Supported Components
 
 ### Core Components ✅

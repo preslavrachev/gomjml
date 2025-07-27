@@ -10,6 +10,15 @@ import (
 	"github.com/preslavrachev/gomjml/parser"
 )
 
+// NotImplementedError indicates a component is not yet implemented
+type NotImplementedError struct {
+	ComponentName string
+}
+
+func (e *NotImplementedError) Error() string {
+	return fmt.Sprintf("component %s is not yet implemented", e.ComponentName)
+}
+
 // Component represents a renderable MJML component
 type Component interface {
 	Render() (string, error)

@@ -56,6 +56,26 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 		return components.NewMJAttributesComponent(node, opts), nil
 	case "mj-all":
 		return components.NewMJAllComponent(node, opts), nil
+	case "mj-accordion":
+		return components.NewMJAccordionComponent(node, opts), nil
+	case "mj-accordion-text":
+		return components.NewMJAccordionTextComponent(node, opts), nil
+	case "mj-accordion-title":
+		return components.NewMJAccordionTitleComponent(node, opts), nil
+	case "mj-carousel":
+		return components.NewMJCarouselComponent(node, opts), nil
+	case "mj-carousel-image":
+		return components.NewMJCarouselImageComponent(node, opts), nil
+	case "mj-hero":
+		return components.NewMJHeroComponent(node, opts), nil
+	case "mj-navbar":
+		return components.NewMJNavbarComponent(node, opts), nil
+	case "mj-navbar-link":
+		return components.NewMJNavbarLinkComponent(node, opts), nil
+	case "mj-spacer":
+		return components.NewMJSpacerComponent(node, opts), nil
+	case "mj-table":
+		return components.NewMJTableComponent(node, opts), nil
 	default:
 		return nil, fmt.Errorf("unknown component: %s", tagName)
 	}
