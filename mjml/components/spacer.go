@@ -24,3 +24,12 @@ func (c *MJSpacerComponent) Render() (string, error) {
 func (c *MJSpacerComponent) GetTagName() string {
 	return "mj-spacer"
 }
+
+func (c *MJSpacerComponent) GetDefaultAttribute(name string) string {
+	switch name {
+	case "height":
+		return "20px"
+	default:
+		return ""
+	}
+}

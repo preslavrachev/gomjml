@@ -24,3 +24,22 @@ func (c *MJHeroComponent) Render() (string, error) {
 func (c *MJHeroComponent) GetTagName() string {
 	return "mj-hero"
 }
+
+func (c *MJHeroComponent) GetDefaultAttribute(name string) string {
+	switch name {
+	case "background-color":
+		return "#ffffff"
+	case "background-position":
+		return "center center"
+	case "height":
+		return "0px"
+	case "mode":
+		return "fixed-height"
+	case "padding":
+		return "0px"
+	case "vertical-align":
+		return "top"
+	default:
+		return ""
+	}
+}

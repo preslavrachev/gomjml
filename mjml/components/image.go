@@ -171,6 +171,8 @@ func (c *MJImageComponent) GetDefaultAttribute(name string) string {
 		return "0"
 	case "border-radius":
 		return ""
+	case "font-size":
+		return "13px"
 	case "height":
 		return "auto"
 	case "href":

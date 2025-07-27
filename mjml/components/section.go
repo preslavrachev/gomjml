@@ -213,6 +213,8 @@ func (c *MJSectionComponent) GetTagName() string {
 
 func (c *MJSectionComponent) GetDefaultAttribute(name string) string {
 	switch name {
+	case "background-position":
+		return "top center"
 	case "background-repeat":
 		return "repeat"
 	case "background-size":
@@ -223,6 +225,8 @@ func (c *MJSectionComponent) GetDefaultAttribute(name string) string {
 		return "20px 0"
 	case "text-align":
 		return "center"
+	case "text-padding":
+		return "4px 4px 4px 0"
 	default:
 		return ""
 	}

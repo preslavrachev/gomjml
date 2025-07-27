@@ -112,7 +112,7 @@ func NewMJSocialElementComponent(node *parser.MJMLNode, opts *options.RenderOpts
 func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	switch name {
 	case "align":
-		return "center"
+		return "left"
 	case "alt":
 		if name := c.Node.GetAttribute("name"); name != "" {
 			return name
@@ -121,7 +121,7 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case "border-radius":
 		return "3px"
 	case "color":
-		return "#333333"
+		return "#000"
 	case "font-family":
 		return "Ubuntu, Helvetica, Arial, sans-serif"
 	case "font-size":
@@ -135,7 +135,7 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case "icon-size":
 		return "20px"
 	case "line-height":
-		return "22px"
+		return "1"
 	case "name":
 		return ""
 	case "padding":
@@ -162,6 +162,8 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 		return "_blank"
 	case "text-decoration":
 		return "none"
+	case "text-padding":
+		return "4px 4px 4px 0"
 	case "vertical-align":
 		return "middle"
 	default:
