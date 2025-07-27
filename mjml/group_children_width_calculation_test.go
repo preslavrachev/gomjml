@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 func TestGroupChildrenWidthCalculation(t *testing.T) {
@@ -53,7 +55,7 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 			expectedCSSClass = fmt.Sprintf("mj-column-per-%d-%s", integerPart, decimalString)
 		}
 
-		t.Logf("Testing with %d columns, expecting %.6f%% per column (%s)",
+		t.Logf("Testing with %d columns, expecting %.2f%% per column (%s)",
 			columnCount, expectedPercentage, expectedCSSClass)
 
 		// Verify CSS class appears in the HTML elements
@@ -75,6 +77,23 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 		if actualOccurrences != expectedOccurrences {
 			t.Errorf("Expected %d occurrences of CSS class '%s' in div elements, found %d",
 				expectedOccurrences, expectedCSSClass, actualOccurrences)
+		}
+
+		// Check that at least one <style> block contains the expected CSS class
+		// Use goquery to parse the HTML and select <style> blocks
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlOutput))
+		if err != nil {
+			t.Fatalf("Failed to parse HTML output with goquery: %v", err)
+		}
+		foundInStyle := false
+		doc.Find("style").Each(func(i int, s *goquery.Selection) {
+			styleText := s.Text()
+			if strings.Contains(styleText, expectedCSSClass) {
+				foundInStyle = true
+			}
+		})
+		if !foundInStyle {
+			t.Errorf("Expected CSS class '%s' not found in any <style> block", expectedCSSClass)
 		}
 	})
 }
