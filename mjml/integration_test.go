@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // TestMJMLAgainstMRML compares Go implementation output with MRML (Rust) output
@@ -50,7 +48,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
 		{"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
 		// MJ-Group tests from MRML
-		// {"mj-group", "testdata/mj-group.mjml"},
+		{"mj-group", "testdata/mj-group.mjml"},
 		// {"mj-group-background-color", "testdata/mj-group-background-color.mjml"},
 		// {"mj-group-class", "testdata/mj-group-class.mjml"},
 		// {"mj-group-direction", "testdata/mj-group-direction.mjml"},
@@ -87,11 +85,6 @@ func TestMJMLAgainstMRML(t *testing.T) {
 
 			// Compare outputs using DOM tree comparison
 			if !compareDOMTrees(expected, actual) {
-				// Show precise string diff between outputs
-				t.Logf("=== PRECISE HTML DIFF FOR %s ===", tc.name)
-				htmlDiff := createPreciseHTMLDiff(expected, actual)
-				t.Logf("\n%s", htmlDiff)
-
 				// Enhanced DOM-based diff with debugging
 				domDiff := createDOMDiff(expected, actual)
 				t.Errorf("\n%s", domDiff)
@@ -132,29 +125,6 @@ func runMRML(mjmlInput string) (string, error) {
 	}
 
 	return string(output), nil
-}
-
-// normalizeHTML normalizes HTML for comparison by removing extra whitespace
-func normalizeHTML(html string) string {
-	// Remove leading/trailing whitespace
-	html = strings.TrimSpace(html)
-
-	// Normalize line endings
-	html = strings.ReplaceAll(html, "\r\n", "\n")
-	html = strings.ReplaceAll(html, "\r", "\n")
-
-	// Remove extra whitespace between tags (but preserve content whitespace)
-	lines := strings.Split(html, "\n")
-	var normalizedLines []string
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			normalizedLines = append(normalizedLines, line)
-		}
-	}
-
-	return strings.Join(normalizedLines, "\n")
 }
 
 // TestDirectLibraryUsage demonstrates and tests direct library usage
@@ -214,102 +184,6 @@ func TestComponentCreation(t *testing.T) {
 	// Verify output
 	if !strings.Contains(html, "Test") {
 		t.Error("Output should contain test text")
-	}
-}
-
-// createSimpleDiff creates a character-level diff that shows exactly where they differ
-func createSimpleDiff(expected, actual string) string {
-	// ANSI color codes
-	red := "\033[31m"
-	green := "\033[32m"
-	reset := "\033[0m"
-	bold := "\033[1m"
-
-	// Normalize strings for comparison
-	expectedClean := strings.TrimSpace(expected)
-	actualClean := strings.TrimSpace(actual)
-
-	// Find first character difference
-	minLen := len(expectedClean)
-	if len(actualClean) < minLen {
-		minLen = len(actualClean)
-	}
-
-	diffPos := -1
-	for i := 0; i < minLen; i++ {
-		if expectedClean[i] != actualClean[i] {
-			diffPos = i
-			break
-		}
-	}
-
-	// If no character differences in common length, difference is at the end
-	if diffPos == -1 && len(expectedClean) != len(actualClean) {
-		diffPos = minLen
-	}
-
-	if diffPos == -1 {
-		return "No differences found"
-	}
-
-	// Show context around the difference (50 chars before, 100 chars after)
-	contextBefore := 50
-	contextAfter := 100
-
-	start := diffPos - contextBefore
-	if start < 0 {
-		start = 0
-	}
-
-	// Get expected snippet
-	expectedEnd := diffPos + contextAfter
-	if expectedEnd > len(expectedClean) {
-		expectedEnd = len(expectedClean)
-	}
-	expectedSnippet := expectedClean[start:expectedEnd]
-
-	// Get actual snippet
-	actualEnd := diffPos + contextAfter
-	if actualEnd > len(actualClean) {
-		actualEnd = len(actualClean)
-	}
-	actualSnippet := actualClean[start:actualEnd]
-
-	// Mark the difference position within the snippet
-	markerPos := diffPos - start
-
-	// Create visual markers
-	expectedMarker := ""
-	actualMarker := ""
-
-	if markerPos < len(expectedSnippet) {
-		expectedMarker = expectedSnippet[:markerPos] + bold + red + string(
-			expectedSnippet[markerPos],
-		) + reset + expectedSnippet[markerPos+1:]
-	} else {
-		expectedMarker = expectedSnippet + bold + red + "EOF" + reset
-	}
-
-	if markerPos < len(actualSnippet) {
-		actualMarker = actualSnippet[:markerPos] + bold + green + string(
-			actualSnippet[markerPos],
-		) + reset + actualSnippet[markerPos+1:]
-	} else {
-		actualMarker = actualSnippet + bold + green + "EOF" + reset
-	}
-
-	return fmt.Sprintf("DIFF at position %d:\n- MRML (expected): %s%s%s\n+ gomjml (actual): %s%s%s",
-		diffPos,
-		red, expectedMarker, reset,
-		green, actualMarker, reset)
-}
-
-// compareStyles analyzes and compares CSS styles between expected and actual output using tag-scoped comparison
-func compareStyles(t *testing.T, expected, actual string) {
-	// Use DOM-based comparison instead of regex-based positional comparison
-	styleComparison := compareAllStyleAttributesSimple(expected, actual)
-	if styleComparison != "" {
-		t.Logf("%s", styleComparison)
 	}
 }
 
@@ -463,18 +337,6 @@ func max(a, b int) int {
 	return b
 }
 
-// extractStyles extracts all style attributes from HTML
-func extractStyles(html string, regex *regexp.Regexp) []string {
-	matches := regex.FindAllStringSubmatch(html, -1)
-	styles := make([]string, len(matches))
-	for i, match := range matches {
-		if len(match) > 1 {
-			styles[i] = match[1]
-		}
-	}
-	return styles
-}
-
 // StyleDiff represents differences between expected and actual CSS properties
 type StyleDiff struct {
 	Missing    map[string]string    // prop: expectedValue
@@ -522,36 +384,6 @@ func (d StyleDiff) String() string {
 	return strings.Join(parts, " | ")
 }
 
-// compareStyleProperties compares CSS properties using set-based comparison
-func compareStyleProperties(expected, actual string) StyleDiff {
-	expectedProps := parseStyleProperties(expected)
-	actualProps := parseStyleProperties(actual)
-
-	diff := StyleDiff{
-		Missing:    make(map[string]string),
-		Mismatched: make(map[string][2]string),
-		Extra:      make(map[string]string),
-	}
-
-	// Find properties only in expected (missing)
-	for prop, expectedValue := range expectedProps {
-		if actualValue, exists := actualProps[prop]; !exists {
-			diff.Missing[prop] = expectedValue
-		} else if actualValue != expectedValue {
-			diff.Mismatched[prop] = [2]string{expectedValue, actualValue}
-		}
-	}
-
-	// Find properties only in actual (extra)
-	for prop, actualValue := range actualProps {
-		if _, exists := expectedProps[prop]; !exists {
-			diff.Extra[prop] = actualValue
-		}
-	}
-
-	return diff
-}
-
 // compareStylePropertiesMaps compares two CSS property maps directly
 func compareStylePropertiesMaps(expectedProps, actualProps map[string]string) StyleDiff {
 	diff := StyleDiff{
@@ -577,90 +409,6 @@ func compareStylePropertiesMaps(expectedProps, actualProps map[string]string) St
 	}
 
 	return diff
-}
-
-// compareAllStyleAttributesSimple compares style attributes using tag-scoped comparison and returns formatted output
-func compareAllStyleAttributesSimple(expected, actual string) string {
-	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
-	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
-
-	if err1 != nil || err2 != nil {
-		return fmt.Sprintf("DOM parsing failed: expected=%v, actual=%v", err1, err2)
-	}
-
-	var diffs []string
-
-	// Build maps of elements by tag name for proper position tracking
-	expectedElements := make(map[string][]*goquery.Selection)
-	actualElements := make(map[string][]*goquery.Selection)
-
-	// Collect expected styled elements by tag
-	expectedDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
-		tag := goquery.NodeName(el)
-		expectedElements[tag] = append(expectedElements[tag], el)
-	})
-
-	// Collect actual styled elements by tag
-	actualDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
-		tag := goquery.NodeName(el)
-		actualElements[tag] = append(actualElements[tag], el)
-	})
-
-	// Compare each tag type
-	for tag, expectedList := range expectedElements {
-		actualList := actualElements[tag] // Don't check exists, use empty slice if missing
-
-		if len(actualList) == 0 && len(expectedList) > 0 {
-			// No actual styled elements, but expected some - still compare properties to show what's missing
-		} else if len(expectedList) != len(actualList) {
-			diffs = append(diffs, fmt.Sprintf("  %s element count mismatch: expected %d, actual %d", tag, len(expectedList), len(actualList)))
-		}
-
-		// Aggregate all CSS properties for this tag type
-		expectedProps := make(map[string]string)
-		actualProps := make(map[string]string)
-
-		// Collect all expected properties for this tag type
-		for _, el := range expectedList {
-			if style, exists := el.Attr("style"); exists {
-				tagProps := parseStyleProperties(style)
-				for prop, value := range tagProps {
-					expectedProps[prop] = value
-				}
-			}
-		}
-
-		// Collect all actual properties for this tag type (actualList might be empty)
-		for _, el := range actualList {
-			if style, exists := el.Attr("style"); exists {
-				tagProps := parseStyleProperties(style)
-				for prop, value := range tagProps {
-					actualProps[prop] = value
-				}
-			}
-		}
-
-		// Compare aggregated properties for this tag type - this will now show specific missing properties
-		if len(expectedProps) > 0 || len(actualProps) > 0 {
-			styleDiff := compareStylePropertiesMaps(expectedProps, actualProps)
-			if !styleDiff.IsEmpty() {
-				diffs = append(diffs, fmt.Sprintf("  %s elements: %s", tag, styleDiff.String()))
-			}
-		}
-	}
-
-	// Check for actual elements that don't exist in expected
-	for tag, actualList := range actualElements {
-		if _, exists := expectedElements[tag]; !exists {
-			diffs = append(diffs, fmt.Sprintf("  Unexpected styled %s elements (found %d)", tag, len(actualList)))
-		}
-	}
-
-	if len(diffs) == 0 {
-		return ""
-	}
-
-	return strings.Join(diffs, "\n")
 }
 
 // compareDOMTrees compares two HTML strings using DOM tree comparison
@@ -1046,22 +794,4 @@ func getMJMLTagInfo(doc *goquery.Document) map[string]int {
 	})
 
 	return tagCounts
-}
-
-// createPreciseHTMLDiff creates a detailed diff showing exact character differences
-func createPreciseHTMLDiff(expected, actual string) string {
-	dmp := diffmatchpatch.New()
-
-	// Create character-level diff
-	diffs := dmp.DiffMain(expected, actual, false)
-
-	// Clean up for better readability
-	diffs = dmp.DiffCleanupSemantic(diffs)
-
-	if len(diffs) == 0 {
-		return "No differences found"
-	}
-
-	// Convert to unified diff format
-	return dmp.DiffPrettyText(diffs)
 }

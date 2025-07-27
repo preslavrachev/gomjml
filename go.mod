@@ -5,7 +5,6 @@ go 1.24.4
 require (
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/joho/godotenv v1.5.1
-	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.9.1
 )
 
