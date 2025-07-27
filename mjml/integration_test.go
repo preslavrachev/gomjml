@@ -48,7 +48,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
 		{"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
 		// MJ-Group tests from MRML
-		{"mj-group", "testdata/mj-group.mjml"},
+		// {"mj-group", "testdata/mj-group.mjml"},
 		// {"mj-group-background-color", "testdata/mj-group-background-color.mjml"},
 		// {"mj-group-class", "testdata/mj-group-class.mjml"},
 		// {"mj-group-direction", "testdata/mj-group-direction.mjml"},

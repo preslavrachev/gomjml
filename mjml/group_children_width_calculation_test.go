@@ -2,135 +2,126 @@ package mjml
 
 import (
 	"fmt"
-	"math/rand"
+	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
 func TestGroupChildrenWidthCalculation(t *testing.T) {
-	// Seed random number generator
-	rand.Seed(time.Now().UnixNano())
+	for columnCount := 1; columnCount <= 10; columnCount++ {
+		t.Run(fmt.Sprintf("with_%d_columns", columnCount), func(t *testing.T) {
+			// Build MJML string with the specified number of columns
+			var mjmlBuilder strings.Builder
+			mjmlBuilder.WriteString(`<mjml><mj-body><mj-section><mj-group>`)
 
-	// Test with 7 columns to check precise decimal CSS class generation
+			for j := 1; j <= columnCount; j++ {
+				mjmlBuilder.WriteString(fmt.Sprintf(`<mj-column><mj-text>Column %d</mj-text></mj-column>`, j))
+			}
 
-	columnCount := rand.Intn(20) + 1
+			mjmlBuilder.WriteString(`</mj-group></mj-section></mj-body></mjml>`)
+			mjmlInput := mjmlBuilder.String()
 
-	t.Run(fmt.Sprintf("with_%d_columns", columnCount), func(t *testing.T) {
-		// Build MJML string with the specified number of columns
-		var mjmlBuilder strings.Builder
-		mjmlBuilder.WriteString(`<mjml><mj-body><mj-section><mj-group>`)
+			// Render the MJML
+			htmlOutput, err := Render(mjmlInput)
+			if err != nil {
+				t.Fatalf("Failed to render MJML: %v", err)
+			}
 
-		for j := 1; j <= columnCount; j++ {
-			mjmlBuilder.WriteString(fmt.Sprintf(`<mj-column><mj-text>Column %d</mj-text></mj-column>`, j))
-		}
+			// Calculate expected percentage per column with decimal precision
+			expectedPercentage := 100.0 / float64(columnCount)
 
-		mjmlBuilder.WriteString(`</mj-group></mj-section></mj-body></mjml>`)
-		mjmlInput := mjmlBuilder.String()
+			// Generate the precise CSS class name with decimal digits
+			// Format: mj-column-per-{integer}-{decimal_digits}
+			integerPart := int(expectedPercentage)
+			decimalPart := expectedPercentage - float64(integerPart)
 
-		// Render the MJML
-		htmlOutput, err := Render(mjmlInput)
-		if err != nil {
-			t.Fatalf("Failed to render MJML: %v", err)
-		}
+			var expectedCSSClass string
+			if decimalPart == 0 {
+				// No decimal part (e.g., 2 columns = 50%)
+				expectedCSSClass = fmt.Sprintf("mj-column-per-%d", integerPart)
+			} else {
+				// With decimal part (e.g., 7 columns = 14.285714285714286%)
+				decimalString := fmt.Sprintf("%.15f", decimalPart)[2:] // Remove "0."
+				decimalString = strings.TrimRight(decimalString, "0")  // Remove trailing zeros
+				expectedCSSClass = fmt.Sprintf("mj-column-per-%d-%s", integerPart, decimalString)
+			}
 
-		// Calculate expected percentage per column with decimal precision
-		expectedPercentage := 100.0 / float64(columnCount)
+			// Verify CSS class appears in the HTML elements
+			if !strings.Contains(htmlOutput, expectedCSSClass) {
+				// Extract actual CSS classes that were found
+				actualClasses := extractCSSClasses(htmlOutput)
+				t.Errorf(
+					"Expected CSS class '%s' not found in HTML output. Found classes: %v",
+					expectedCSSClass,
+					actualClasses,
+				)
+				t.Logf("HTML output snippet: %s", htmlOutput[:min(1000, len(htmlOutput))])
+			}
 
-		// Generate the precise CSS class name with decimal digits
-		// Format: mj-column-per-{integer}-{decimal_digits}
-		integerPart := int(expectedPercentage)
-		decimalPart := expectedPercentage - float64(integerPart)
-
-		var expectedCSSClass string
-		if decimalPart == 0 {
-			// No decimal part (e.g., 2 columns = 50%)
-			expectedCSSClass = fmt.Sprintf("mj-column-per-%d", integerPart)
-		} else {
-			// With decimal part (e.g., 7 columns = 14.285714285714286%)
-			decimalString := fmt.Sprintf("%.15f", decimalPart)[2:] // Remove "0."
-			decimalString = strings.TrimRight(decimalString, "0")  // Remove trailing zeros
-			expectedCSSClass = fmt.Sprintf("mj-column-per-%d-%s", integerPart, decimalString)
-		}
-
-		t.Logf("Testing with %d columns, expecting %.2f%% per column (%s)",
-			columnCount, expectedPercentage, expectedCSSClass)
-
-		// Verify CSS class appears in the HTML elements
-		if !strings.Contains(htmlOutput, expectedCSSClass) {
-			// Extract actual CSS classes that were found
-			actualClasses := extractCSSClasses(htmlOutput)
-			t.Errorf(
-				"Expected CSS class '%s' not found in HTML output. Found classes: %v",
-				expectedCSSClass,
-				actualClasses,
+			// Count occurrences of the CSS class in div elements
+			expectedOccurrences := columnCount // Each column should have this class
+			actualOccurrences := strings.Count(
+				htmlOutput,
+				fmt.Sprintf(`class="mj-outlook-group-fix %s"`, expectedCSSClass),
 			)
-			t.Logf("HTML output snippet: %s", htmlOutput[:min(1000, len(htmlOutput))])
-		}
 
-		// Count occurrences of the CSS class in div elements
-		expectedOccurrences := columnCount // Each column should have this class
-		actualOccurrences := strings.Count(htmlOutput, fmt.Sprintf(`class="mj-outlook-group-fix %s"`, expectedCSSClass))
+			if actualOccurrences != expectedOccurrences {
+				t.Errorf("Expected %d occurrences of CSS class '%s' in div elements, found %d",
+					expectedOccurrences, expectedCSSClass, actualOccurrences)
+			}
 
-		if actualOccurrences != expectedOccurrences {
-			t.Errorf("Expected %d occurrences of CSS class '%s' in div elements, found %d",
-				expectedOccurrences, expectedCSSClass, actualOccurrences)
-		}
+			// Check that at least one <style> block contains the expected CSS class
+			// Use goquery to parse the HTML and select <style> blocks
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlOutput))
+			if err != nil {
+				t.Fatalf("Failed to parse HTML output with goquery: %v", err)
+			}
+			foundInStyle := false
+			doc.Find("style").Each(func(i int, s *goquery.Selection) {
+				styleText := s.Text()
+				if strings.Contains(styleText, expectedCSSClass) {
+					foundInStyle = true
+				}
+			})
+			if !foundInStyle {
+				t.Errorf("Expected CSS class '%s' not found in any <style> block", expectedCSSClass)
+			}
 
-		// Check that at least one <style> block contains the expected CSS class
-		// Use goquery to parse the HTML and select <style> blocks
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlOutput))
-		if err != nil {
-			t.Fatalf("Failed to parse HTML output with goquery: %v", err)
-		}
-		foundInStyle := false
-		doc.Find("style").Each(func(i int, s *goquery.Selection) {
-			styleText := s.Text()
-			if strings.Contains(styleText, expectedCSSClass) {
-				foundInStyle = true
+			// CRITICAL: Validate inline style width values (the actual layout-controlling CSS)
+			// Use 'g' format to avoid trailing zeros (e.g., 12.5 instead of 12.500000000000000)
+			expectedWidthPercent := fmt.Sprintf("width:%s%%", strconv.FormatFloat(expectedPercentage, 'g', -1, 64))
+
+			columnDivs := doc.Find(fmt.Sprintf("div.%s", expectedCSSClass))
+			if columnDivs.Length() != columnCount {
+				t.Errorf("Expected %d column divs with class '%s', found %d",
+					columnCount, expectedCSSClass, columnDivs.Length())
+			}
+
+			// Validate each column div has the correct inline width style
+			columnsWithWrongWidth := 0
+			columnDivs.Each(func(i int, s *goquery.Selection) {
+				styleAttr, exists := s.Attr("style")
+				if !exists {
+					t.Errorf("Column div %d missing style attribute", i)
+					return
+				}
+
+				// Check if the style contains the expected width percentage
+				if !strings.Contains(styleAttr, expectedWidthPercent) {
+					columnsWithWrongWidth++
+					t.Errorf("Column div %d has incorrect width in style attribute. Expected '%s' in: %s",
+						i, expectedWidthPercent, styleAttr)
+				}
+			})
+
+			if columnsWithWrongWidth > 0 {
+				t.Errorf("Found %d columns with incorrect width styling out of %d total columns",
+					columnsWithWrongWidth, columnCount)
 			}
 		})
-		if !foundInStyle {
-			t.Errorf("Expected CSS class '%s' not found in any <style> block", expectedCSSClass)
-		}
-
-		// CRITICAL: Validate inline style width values (the actual layout-controlling CSS)
-		expectedWidthPercent := fmt.Sprintf("width:%.1f%%", expectedPercentage)
-		if expectedPercentage == float64(int(expectedPercentage)) {
-			// For whole numbers, use integer format (e.g., "width:50%")
-			expectedWidthPercent = fmt.Sprintf("width:%d%%", int(expectedPercentage))
-		}
-
-		columnDivs := doc.Find(fmt.Sprintf("div.%s", expectedCSSClass))
-		if columnDivs.Length() != columnCount {
-			t.Errorf("Expected %d column divs with class '%s', found %d",
-				columnCount, expectedCSSClass, columnDivs.Length())
-		}
-
-		// Validate each column div has the correct inline width style
-		columnsWithWrongWidth := 0
-		columnDivs.Each(func(i int, s *goquery.Selection) {
-			styleAttr, exists := s.Attr("style")
-			if !exists {
-				t.Errorf("Column div %d missing style attribute", i)
-				return
-			}
-
-			// Check if the style contains the expected width percentage
-			if !strings.Contains(styleAttr, expectedWidthPercent) {
-				columnsWithWrongWidth++
-				t.Errorf("Column div %d has incorrect width in style attribute. Expected '%s' in: %s",
-					i, expectedWidthPercent, styleAttr)
-			}
-		})
-
-		if columnsWithWrongWidth > 0 {
-			t.Errorf("Found %d columns with incorrect width styling out of %d total columns",
-				columnsWithWrongWidth, columnCount)
-		}
-	})
+	}
 }
 
 // Helper function for Go versions that don't have built-in min

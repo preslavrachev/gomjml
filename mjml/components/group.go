@@ -116,6 +116,9 @@ func (c *MJGroupComponent) Render() (string, error) {
 				columnComp.Attrs["width"] = percentageWidth
 			}
 
+			// Set mobile-width signal for MRML compatibility (like group/render.rs:93)
+			columnComp.Attrs["mobile-width"] = "mobile-width"
+
 			// MSO conditional TD for each column (following MRML render_children pattern)
 			output.WriteString(html.RenderMSOConditional(
 				fmt.Sprintf("<td style=\"vertical-align:%s;width:%s;\">", verticalAlign, columnComp.GetWidthAsPixel())))

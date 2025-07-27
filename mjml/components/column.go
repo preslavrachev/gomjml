@@ -180,11 +180,10 @@ func (c *MJColumnComponent) GetWidthAsPixel() string {
 
 // GetMobileWidth returns the mobile width following MRML's get_mobile_width() logic
 func (c *MJColumnComponent) GetMobileWidth() styles.Size {
-	// Check if mobile-width attribute exists
-	if mobileWidthAttr := c.GetAttribute("mobile-width"); mobileWidthAttr != nil {
-		if size, err := styles.ParseSize(*mobileWidthAttr); err == nil {
-			return size
-		}
+	// Check if mobile-width attribute exists (MRML pattern - group sets this as signal)
+	if c.GetAttribute("mobile-width") != nil {
+		// Group context: use calculated width like MRML does
+		return c.GetParsedWidth()
 	}
 
 	// If no mobile-width attribute, return 100% (MRML line 60)
