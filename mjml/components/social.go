@@ -172,14 +172,42 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 }
 
 func (c *MJSocialElementComponent) getAttribute(name string) string {
+	// Handle special case for href - if no href is provided, generate platform-specific sharing URL
+	if name == "href" {
+		if value := c.Node.GetAttribute(name); value != "" {
+			socialName := c.Node.GetAttribute("name")
+			baseURL := value
+
+			// Generate platform-specific sharing URLs
+			switch socialName {
+			case "facebook":
+				return "https://www.facebook.com/sharer/sharer.php?u=" + baseURL
+			case "twitter":
+				return "https://twitter.com/home?status=" + baseURL
+			case "linkedin":
+				return "https://www.linkedin.com/shareArticle?mini=true&url=" + baseURL + "&title=&summary=&source="
+			case "google":
+				return "https://plus.google.com/share?url=" + baseURL
+			default:
+				return value
+			}
+		}
+		return ""
+	}
+
 	// First check if element has the attribute explicitly set
 	if value := c.Node.GetAttribute(name); value != "" {
 		return value
 	}
 
+	// For non-inheritable attributes like padding, go directly to defaults
+	if name == "padding" {
+		return c.GetDefaultAttribute(name)
+	}
+
 	// Check if parent has the attribute for inheritable attributes
 	inheritableAttrs := map[string]bool{
-		"icon-size": true, "font-size": true, "padding": true, "border-radius": true,
+		"icon-size": true, "font-size": true, "border-radius": true,
 	}
 
 	if c.parentSocial != nil && inheritableAttrs[name] {
@@ -261,11 +289,14 @@ func (c *MJSocialElementComponent) Render() (string, error) {
 
 	output.WriteString(iconTd.RenderOpen())
 
-	// Image with optional link
+	// Image with optional link - remove "px" suffix from dimensions for HTML attributes
+	heightAttr := strings.TrimSuffix(iconSize, "px")
+	widthAttr := strings.TrimSuffix(iconSize, "px")
+
 	img := html.NewHTMLTag("img").
-		AddAttribute("height", iconSize).
+		AddAttribute("height", heightAttr).
 		AddAttribute("src", src).
-		AddAttribute("width", iconSize).
+		AddAttribute("width", widthAttr).
 		AddStyle("border-radius", borderRadius).
 		AddStyle("display", "block")
 
