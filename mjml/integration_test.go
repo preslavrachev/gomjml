@@ -58,6 +58,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mj-text", "testdata/mj-text.mjml"},
 		{"mj-button", "testdata/mj-button.mjml"},
 		{"mj-image", "testdata/mj-image.mjml"},
+		{"mj-section-with-columns", "testdata/mj-section-with-columns.mjml"},
 		{"mj-section", "testdata/mj-section.mjml"},
 		{"mj-column", "testdata/mj-column.mjml"},
 		{"mj-wrapper", "testdata/mj-wrapper.mjml"},

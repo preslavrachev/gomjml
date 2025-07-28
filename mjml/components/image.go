@@ -62,6 +62,12 @@ func (c *MJImageComponent) Render() (string, error) {
 		imgWidth = strings.TrimSuffix(width, "px")
 	}
 
+	// Parse height to remove 'px' suffix for img height attribute
+	imgHeight := height
+	if strings.HasSuffix(height, "px") {
+		imgHeight = strings.TrimSuffix(height, "px")
+	}
+
 	// Create TR element
 	output.WriteString("<tr>")
 
@@ -117,8 +123,8 @@ func (c *MJImageComponent) Render() (string, error) {
 	if alt != nil {
 		imgTag.AddAttribute("alt", *alt)
 	}
-	if height != "" {
-		imgTag.AddAttribute("height", height)
+	if imgHeight != "" {
+		imgTag.AddAttribute("height", imgHeight)
 	}
 	imgTag.AddAttribute("src", src)
 	if title != "" {

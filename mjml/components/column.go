@@ -167,7 +167,8 @@ func (c *MJColumnComponent) GetColumnClass() (string, styles.Size) {
 // GetWidthAsPixel converts the parsed width to pixels for MSO compatibility
 // Following MRML's get_width_as_pixel() logic
 func (c *MJColumnComponent) GetWidthAsPixel() string {
-	containerWidth := c.GetEffectiveWidth()
+	// Use the parent container's width, not the column's own width
+	containerWidth := c.BaseComponent.GetEffectiveWidth()
 	parsedWidth := c.GetParsedWidth()
 
 	if containerWidth > 0 {

@@ -16,10 +16,10 @@
 - **Severity**: **HIGH** - Completely different HTML structure
 
 ### mj-section-with-columns.mjml Test Results  
-- **Status**: ❌ **FAILING** (Minor content differences)
+- **Status**: ✅ **PASSING** (Fixed - 2025-07-28)
 - **Table Count**: ✅ **MATCHES** (Same DOM structure)
-- **Issue Type**: "DOM structures match but content differs"
-- **Severity**: **LOW** - Minor MSO width calculation and text formatting
+- **Issue Type**: Resolved after shared fixes
+- **Severity**: **RESOLVED** - MSO width and image height format issues fixed
 
 ## Structural Analysis
 
@@ -105,23 +105,23 @@ This indicates a **shared bug in `GetWidthAsPixel()` method** used by both compo
 - **Responsive behavior failures** due to missing group wrapper
 - **Complete visual differences** from expected MJML output
 
-### mj-section Impact (Low Priority)  
-- **Minor visual inconsistencies** that likely won't affect email rendering
-- **MSO width issue** may cause slight layout problems in some clients
-- **Generally functional** with cosmetic differences
+### mj-section Impact (RESOLVED ✅)  
+- **Fixed**: MSO width calculation now correct (300px vs 150px)
+- **Fixed**: Image height format now matches MRML (no "px" suffix)  
+- **Status**: All section-with-columns tests now passing
 
 ## Fix Strategy
 
-### Phase 1: Fix Shared Issues (Affects Both)
-1. **Fix `GetWidthAsPixel()` calculation** in column component
-   - Location: `mjml/components/column.go`
-   - Issue: 50% of 600px should be 300px, not 150px
-   - Impact: ✅ **Fixes both group and section MSO width**
+### Phase 1: Fix Shared Issues (COMPLETED ✅)
+1. **✅ Fixed `GetWidthAsPixel()` calculation** in column component
+   - Location: `mjml/components/column.go:171`
+   - Solution: Use `BaseComponent.GetEffectiveWidth()` instead of column's own width
+   - Result: ✅ **Fixed both group and section MSO width** (300px instead of 150px)
 
-2. **Standardize image height format**
-   - Location: `mjml/components/image.go`
-   - Issue: Remove "px" suffix for height attribute
-   - Impact: ✅ **Fixes both group and section image rendering**
+2. **✅ Standardized image height format**
+   - Location: `mjml/components/image.go:66-68`
+   - Solution: Strip "px" suffix from height attribute like width
+   - Result: ✅ **Fixed both group and section image rendering** (height="185" not "185px")
 
 ### Phase 2: Fix Group-Specific Issues (Group Only)
 1. **Implement group wrapper div** (`mj-column-per-100 mj-outlook-group-fix`)
