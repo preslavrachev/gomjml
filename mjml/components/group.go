@@ -64,8 +64,9 @@ func (c *MJGroupComponent) Render() (string, error) {
 	direction := c.getAttribute("direction")
 	verticalAlign := c.getAttribute("vertical-align")
 	backgroundColor := c.getAttribute("background-color")
+	groupWidth := c.getAttribute("width")
 
-	// Count mj-column children to calculate percentage per column
+	// Count mj-column children to calculate width per column
 	columnCount := 0
 	for _, child := range c.Children {
 		if _, ok := child.(*MJColumnComponent); ok {
@@ -73,17 +74,29 @@ func (c *MJGroupComponent) Render() (string, error) {
 		}
 	}
 
-	// Calculate precise percentage per column (default to 100% if no columns)
-	percentagePerColumn := 100.0
-	if columnCount > 0 {
-		percentagePerColumn = 100.0 / float64(columnCount)
+	// Determine if group has pixel width or percentage width
+	var cssClass string
+	var groupWidthPx int
+	var childWidthPx int
+
+	if strings.HasSuffix(groupWidth, "px") {
+		// Parse pixel width (e.g., "100px" -> 100)
+		fmt.Sscanf(groupWidth, "%dpx", &groupWidthPx)
+		cssClass = fmt.Sprintf("mj-column-px-%d", groupWidthPx)
+		if columnCount > 0 {
+			childWidthPx = groupWidthPx / columnCount
+		}
+	} else {
+		// Default percentage behavior
+		cssClass = "mj-column-per-100"
+		groupWidthPx = 600 // Default container width
+		if columnCount > 0 {
+			childWidthPx = groupWidthPx / columnCount
+		}
 	}
 
-	// Group always takes full width of its container
-	cssClass := "mj-column-per-100"
-
 	// Root div wrapper (following MRML set_style_root_div)
-	// Note: Class order should be "mj-column-per-100 mj-outlook-group-fix" to match MRML
+	// Note: Class order should match MRML output
 	rootDiv := html.NewHTMLTag("div")
 	c.AddDebugAttribute(rootDiv, "group")
 	rootDiv.AddAttribute("class", fmt.Sprintf("%s mj-outlook-group-fix", cssClass)).
@@ -112,25 +125,32 @@ func (c *MJGroupComponent) Render() (string, error) {
 	// Render each column in the group
 	for _, child := range c.Children {
 		if columnComp, ok := child.(*MJColumnComponent); ok {
-			// Set the column width to the calculated percentage if no explicit width
+			// Set the column width based on group's width distribution
 			if columnComp.GetAttribute("width") == nil {
-				// Override the column's calculated width for group context with precise decimal
-				percentageWidth := fmt.Sprintf("%.15f%%", percentagePerColumn)
-				// Remove trailing zeros for cleaner output
-				percentageWidth = strings.TrimRight(percentageWidth, "0")
-				percentageWidth = strings.TrimRight(percentageWidth, ".")
-				if !strings.HasSuffix(percentageWidth, "%") {
-					percentageWidth += "%"
+				if strings.HasSuffix(groupWidth, "px") {
+					// For pixel-based groups, set pixel width for each column
+					columnComp.Attrs["width"] = fmt.Sprintf("%dpx", childWidthPx)
+				} else {
+					// For percentage-based groups, calculate percentage per column
+					percentagePerColumn := 100.0 / float64(columnCount)
+					percentageWidth := fmt.Sprintf("%.15f%%", percentagePerColumn)
+					// Remove trailing zeros for cleaner output
+					percentageWidth = strings.TrimRight(percentageWidth, "0")
+					percentageWidth = strings.TrimRight(percentageWidth, ".")
+					if !strings.HasSuffix(percentageWidth, "%") {
+						percentageWidth += "%"
+					}
+					columnComp.Attrs["width"] = percentageWidth
 				}
-				columnComp.Attrs["width"] = percentageWidth
 			}
 
 			// Set mobile-width signal for MRML compatibility (like group/render.rs:93)
 			columnComp.Attrs["mobile-width"] = "mobile-width"
 
-			// MSO conditional TD for each column (following MRML render_children pattern)
+			// MSO conditional TD for each column with correct width
+			msoWidth := fmt.Sprintf("%dpx", childWidthPx)
 			output.WriteString(html.RenderMSOConditional(
-				fmt.Sprintf("<td style=\"vertical-align:%s;width:%s;\">", verticalAlign, columnComp.GetWidthAsPixel())))
+				fmt.Sprintf("<td style=\"vertical-align:%s;width:%s;\">", verticalAlign, msoWidth)))
 
 			// Set group context for child rendering
 			childOpts := *c.RenderOpts // Copy the options

@@ -171,7 +171,21 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 			msoTable := html.NewTableTag()
 			msoTr := html.NewHTMLTag("tr")
-			msoTd := html.NewHTMLTag("td").AddStyle("width", fmt.Sprintf("%dpx", c.GetEffectiveWidth()))
+			msoTd := html.NewHTMLTag("td")
+
+			// Use group's specific width if it has one, otherwise use section's effective width
+			groupWidth := "100%" // default
+			if groupComp.GetAttribute("width") != nil {
+				groupWidth = *groupComp.GetAttribute("width")
+			}
+
+			if strings.HasSuffix(groupWidth, "px") {
+				// Use the group's pixel width directly
+				msoTd.AddStyle("width", groupWidth)
+			} else {
+				// Use section's effective width for percentage-based groups
+				msoTd.AddStyle("width", fmt.Sprintf("%dpx", c.GetEffectiveWidth()))
+			}
 
 			output.WriteString(html.RenderMSOConditional(
 				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))

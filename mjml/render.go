@@ -267,8 +267,18 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 			c.collectColumnClassesFromComponent(child)
 		}
 	case *components.MJGroupComponent:
-		// Groups always use mj-column-per-100 class - register it for CSS generation
-		c.columnClasses["mj-column-per-100"] = styles.NewPercentSize(100)
+		// Register group's CSS class based on its width attribute
+		groupWidth := v.GetAttribute("width")
+		if groupWidth != nil && strings.HasSuffix(*groupWidth, "px") {
+			// Parse pixel width and register pixel-based class
+			var widthPx int
+			fmt.Sscanf(*groupWidth, "%dpx", &widthPx)
+			className := fmt.Sprintf("mj-column-px-%d", widthPx)
+			c.columnClasses[className] = styles.NewPixelSize(float64(widthPx))
+		} else {
+			// Default to percentage-based class
+			c.columnClasses["mj-column-per-100"] = styles.NewPercentSize(100)
+		}
 
 		// Also recurse into children to collect column classes
 		for _, child := range v.Children {
@@ -284,30 +294,28 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	// Standard responsive media query
 	css.WriteString(`<style type="text/css">@media only screen and (min-width:480px) { `)
 	for className, size := range c.columnClasses {
-		if size.IsPercent() {
-			css.WriteString(`.`)
-			css.WriteString(className)
-			css.WriteString(` { width:`)
-			css.WriteString(size.String())
-			css.WriteString(` !important; max-width:`)
-			css.WriteString(size.String())
-			css.WriteString(`; } `)
-		}
+		// Include both percentage and pixel-based classes
+		css.WriteString(`.`)
+		css.WriteString(className)
+		css.WriteString(` { width:`)
+		css.WriteString(size.String())
+		css.WriteString(` !important; max-width:`)
+		css.WriteString(size.String())
+		css.WriteString(`; } `)
 	}
 	css.WriteString(` }</style>`)
 
 	// Mozilla-specific responsive media query
 	css.WriteString(`<style media="screen and (min-width:480px)">`)
 	for className, size := range c.columnClasses {
-		if size.IsPercent() {
-			css.WriteString(`.moz-text-html .`)
-			css.WriteString(className)
-			css.WriteString(` { width:`)
-			css.WriteString(size.String())
-			css.WriteString(` !important; max-width:`)
-			css.WriteString(size.String())
-			css.WriteString(`; } `)
-		}
+		// Include both percentage and pixel-based classes
+		css.WriteString(`.moz-text-html .`)
+		css.WriteString(className)
+		css.WriteString(` { width:`)
+		css.WriteString(size.String())
+		css.WriteString(` !important; max-width:`)
+		css.WriteString(size.String())
+		css.WriteString(`; } `)
 	}
 	css.WriteString(`</style>`)
 
