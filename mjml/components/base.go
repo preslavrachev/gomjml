@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -296,4 +297,47 @@ func (bc *BaseComponent) AddDebugAttribute(tag *html.HTMLTag, componentType stri
 		debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
 		tag.AddAttribute(debugAttr, "true")
 	}
+}
+
+// CSS Class Helper Methods - Generic css-class attribute handling for all components
+
+// GetCSSClass returns the css-class attribute value
+func (bc *BaseComponent) GetCSSClass() string {
+	if value, exists := bc.Attrs["css-class"]; exists {
+		return value
+	}
+	return ""
+}
+
+// BuildClassAttribute combines existing CSS classes with the css-class attribute
+// Usage: component.BuildClassAttribute("mj-column-per-100", "mj-outlook-group-fix")
+func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
+	var classes []string
+
+	// Add existing classes
+	for _, class := range existingClasses {
+		if class != "" {
+			classes = append(classes, class)
+		}
+	}
+
+	// Add css-class if present
+	if cssClass := bc.GetCSSClass(); cssClass != "" {
+		classes = append(classes, cssClass)
+	}
+
+	if len(classes) == 0 {
+		return ""
+	}
+
+	return strings.Join(classes, " ")
+}
+
+// GetMSOClassAttribute returns the MSO conditional comment class attribute with -outlook suffix
+// Returns empty string if no css-class is set, or " class=\"css-class-outlook\"" if set
+func (bc *BaseComponent) GetMSOClassAttribute() string {
+	if cssClass := bc.GetCSSClass(); cssClass != "" {
+		return fmt.Sprintf(` class="%s-outlook"`, cssClass)
+	}
+	return ""
 }

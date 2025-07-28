@@ -47,6 +47,11 @@ func (c *MJTextComponent) Render() (string, error) {
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
+	// Add css-class if present
+	if cssClass := c.BuildClassAttribute(); cssClass != "" {
+		tdTag.AddAttribute("class", cssClass)
+	}
+
 	// Add specific padding overrides if they exist (following MRML/section pattern)
 	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
 		tdTag.AddStyle("padding-top", *paddingTopAttr)

@@ -64,6 +64,11 @@ func (c *MJSectionComponent) Render() (string, error) {
 		AddAttribute("width", fmt.Sprintf("%d", c.GetEffectiveWidth())).
 		AddStyle("width", c.GetEffectiveWidthString())
 
+	// Add css-class-outlook if present
+	if cssClass := c.GetCSSClass(); cssClass != "" {
+		msoTable.AddAttribute("class", cssClass+"-outlook")
+	}
+
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
 		AddStyle("font-size", "0px").
@@ -75,6 +80,11 @@ func (c *MJSectionComponent) Render() (string, error) {
 	// Main section div with styles
 	sectionDiv := html.NewHTMLTag("div")
 	c.AddDebugAttribute(sectionDiv, "section")
+
+	// Add css-class if present
+	if cssClass := c.BuildClassAttribute(); cssClass != "" {
+		sectionDiv.AddAttribute("class", cssClass)
+	}
 
 	// For non-full-width background sections, apply background to the div (like MRML)
 	if backgroundColor != "" && fullWidth == "" {

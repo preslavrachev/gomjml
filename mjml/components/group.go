@@ -75,20 +75,20 @@ func (c *MJGroupComponent) Render() (string, error) {
 	}
 
 	// Determine if group has pixel width or percentage width
-	var cssClass string
+	var widthClass string
 	var groupWidthPx int
 	var childWidthPx int
 
 	if strings.HasSuffix(groupWidth, "px") {
 		// Parse pixel width (e.g., "100px" -> 100)
 		fmt.Sscanf(groupWidth, "%dpx", &groupWidthPx)
-		cssClass = fmt.Sprintf("mj-column-px-%d", groupWidthPx)
+		widthClass = fmt.Sprintf("mj-column-px-%d", groupWidthPx)
 		if columnCount > 0 {
 			childWidthPx = groupWidthPx / columnCount
 		}
 	} else {
 		// Default percentage behavior
-		cssClass = "mj-column-per-100"
+		widthClass = "mj-column-per-100"
 		groupWidthPx = 600 // Default container width
 		if columnCount > 0 {
 			childWidthPx = groupWidthPx / columnCount
@@ -99,7 +99,8 @@ func (c *MJGroupComponent) Render() (string, error) {
 	// Note: Class order should match MRML output
 	rootDiv := html.NewHTMLTag("div")
 	c.AddDebugAttribute(rootDiv, "group")
-	rootDiv.AddAttribute("class", fmt.Sprintf("%s mj-outlook-group-fix", cssClass)).
+
+	rootDiv.AddAttribute("class", c.BuildClassAttribute(widthClass, "mj-outlook-group-fix")).
 		AddStyle("font-size", "0"). // Note: "0" not "0px" to match MRML
 		AddStyle("line-height", "0").
 		AddStyle("text-align", "left").
@@ -149,8 +150,9 @@ func (c *MJGroupComponent) Render() (string, error) {
 
 			// MSO conditional TD for each column with correct width
 			msoWidth := fmt.Sprintf("%dpx", childWidthPx)
+
 			output.WriteString(html.RenderMSOConditional(
-				fmt.Sprintf("<td style=\"vertical-align:%s;width:%s;\">", verticalAlign, msoWidth)))
+				fmt.Sprintf("<td%s style=\"vertical-align:%s;width:%s;\">", c.GetMSOClassAttribute(), verticalAlign, msoWidth)))
 
 			// Set group context for child rendering
 			childOpts := *c.RenderOpts // Copy the options

@@ -78,6 +78,11 @@ func (c *MJImageComponent) Render() (string, error) {
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
 
+	// Add css-class if present
+	if cssClass := c.BuildClassAttribute(); cssClass != "" {
+		tdTag.AddAttribute("class", cssClass)
+	}
+
 	output.WriteString(tdTag.RenderOpen())
 
 	// Image table

@@ -50,17 +50,22 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		// MJ-Group tests from MRML
 		{"mj-group", "testdata/mj-group.mjml"},
 		{"mj-group-background-color", "testdata/mj-group-background-color.mjml"},
-		//{"mj-group-class", "testdata/mj-group-class.mjml"},
+		{"mj-group-class", "testdata/mj-group-class.mjml"},
 		{"mj-group-direction", "testdata/mj-group-direction.mjml"},
 		{"mj-group-vertical-align", "testdata/mj-group-vertical-align.mjml"},
 		{"mj-group-width", "testdata/mj-group-width.mjml"},
 		// Simple MJML components from MRML test suite
 		{"mj-text", "testdata/mj-text.mjml"},
+		{"mj-text-class", "testdata/mj-text-class.mjml"},
 		{"mj-button", "testdata/mj-button.mjml"},
+		{"mj-button-class", "testdata/mj-button-class.mjml"},
 		{"mj-image", "testdata/mj-image.mjml"},
+		{"mj-image-class", "testdata/mj-image-class.mjml"},
 		{"mj-section-with-columns", "testdata/mj-section-with-columns.mjml"},
 		{"mj-section", "testdata/mj-section.mjml"},
+		{"mj-section-class", "testdata/mj-section-class.mjml"},
 		{"mj-column", "testdata/mj-column.mjml"},
+		{"mj-column-class", "testdata/mj-column-class.mjml"},
 		{"mj-wrapper", "testdata/mj-wrapper.mjml"},
 	}
 
