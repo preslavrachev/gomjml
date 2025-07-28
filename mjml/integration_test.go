@@ -24,7 +24,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"wrapper-background", "testdata/wrapper-background.mjml"},
 		{"wrapper-fullwidth", "testdata/wrapper-fullwidth.mjml"},
 		{"wrapper-border", "testdata/wrapper-border.mjml"},
-		//{"group-footer-test", "testdata/group-footer-test.mjml"},
+		{"group-footer-test", "testdata/group-footer-test.mjml"},
 		{"section-padding-top-zero", "testdata/section-padding-top-zero.mjml"},
 		//{"Austin layout from the MJML.io site", "testdata/austin-layout-from-mjml-io.mjml"},
 		// Austin layout component tests
@@ -36,10 +36,10 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"austin-two-column-images", "testdata/austin-two-column-images.mjml"},
 		{"austin-divider", "testdata/austin-divider.mjml"},
 		{"austin-two-column-text", "testdata/austin-two-column-text.mjml"},
-		//{"austin-full-width-wrapper", "testdata/austin-full-width-wrapper.mjml"},
-		//{"austin-social-media", "testdata/austin-social-media.mjml"},
+		{"austin-full-width-wrapper", "testdata/austin-full-width-wrapper.mjml"},
+		// {"austin-social-media", "testdata/austin-social-media.mjml"},
 		{"austin-footer-text", "testdata/austin-footer-text.mjml"},
-		//{"austin-group-component", "testdata/austin-group-component.mjml"},
+		{"austin-group-component", "testdata/austin-group-component.mjml"},
 		{"austin-global-attributes", "testdata/austin-global-attributes.mjml"},
 		{"austin-map-image", "testdata/austin-map-image.mjml"},
 		// MRML reference tests
@@ -65,6 +65,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mj-section", "testdata/mj-section.mjml"},
 		{"mj-section-class", "testdata/mj-section-class.mjml"},
 		{"mj-column", "testdata/mj-column.mjml"},
+		{"mj-column-padding", "testdata/mj-column-padding.mjml"},
 		{"mj-column-class", "testdata/mj-column-class.mjml"},
 		{"mj-wrapper", "testdata/mj-wrapper.mjml"},
 	}

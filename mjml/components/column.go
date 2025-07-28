@@ -68,27 +68,13 @@ func (c *MJColumnComponent) Render() (string, error) {
 
 	output.WriteString(columnDiv.RenderOpen())
 
-	// Inner table for column content
-	innerTable := html.NewTableTag().
-		AddAttribute("width", "100%")
-
-	// Add vertical-align for proper alignment - required for both section and group contexts
-	innerTable.AddStyle("vertical-align", verticalAlign)
-
-	output.WriteString(innerTable.RenderOpen())
-	output.WriteString("<tbody>")
-
-	// Render column content
-	for _, child := range c.Children {
-		childHTML, err := child.Render()
-		if err != nil {
-			return "", err
-		}
-		output.WriteString(childHTML)
+	// Check if we need gutter table for padding (following MJML JS pattern)
+	if c.hasGutter() {
+		output.WriteString(c.renderGutter())
+	} else {
+		output.WriteString(c.renderColumn())
 	}
 
-	output.WriteString("</tbody>")
-	output.WriteString(innerTable.RenderClose())
 	output.WriteString(columnDiv.RenderClose())
 
 	return output.String(), nil
@@ -232,4 +218,115 @@ func (c *MJColumnComponent) GetMSOTDStyles() map[string]string {
 		"vertical-align": verticalAlign,
 		"width":          msoPixelWidth,
 	}
+}
+
+// hasGutter checks if the column has any padding attributes
+func (c *MJColumnComponent) hasGutter() bool {
+	paddingAttrs := []string{"padding", "padding-top", "padding-right", "padding-bottom", "padding-left"}
+	for _, attr := range paddingAttrs {
+		if c.GetAttribute(attr) != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// renderGutter creates the gutter table wrapper when padding is present
+func (c *MJColumnComponent) renderGutter() string {
+	var output strings.Builder
+
+	// Helper function to get attribute with default
+	getAttr := func(name string) string {
+		if attr := c.GetAttribute(name); attr != nil {
+			return *attr
+		}
+		return c.GetDefaultAttribute(name)
+	}
+
+	verticalAlign := getAttr("vertical-align")
+
+	// Outer gutter table
+	gutterTable := html.NewTableTag().AddAttribute("width", "100%")
+	output.WriteString(gutterTable.RenderOpen())
+	output.WriteString("<tbody><tr>")
+
+	// TD with padding styles (this is where the padding gets applied)
+	gutterTd := html.NewHTMLTag("td")
+	gutterTd.AddStyle("vertical-align", verticalAlign)
+
+	// Apply padding attributes to the gutter TD
+	if padding := c.GetAttribute("padding"); padding != nil {
+		gutterTd.AddStyle("padding", *padding)
+	}
+	if paddingTop := c.GetAttribute("padding-top"); paddingTop != nil {
+		gutterTd.AddStyle("padding-top", *paddingTop)
+	}
+	if paddingRight := c.GetAttribute("padding-right"); paddingRight != nil {
+		gutterTd.AddStyle("padding-right", *paddingRight)
+	}
+	if paddingBottom := c.GetAttribute("padding-bottom"); paddingBottom != nil {
+		gutterTd.AddStyle("padding-bottom", *paddingBottom)
+	}
+	if paddingLeft := c.GetAttribute("padding-left"); paddingLeft != nil {
+		gutterTd.AddStyle("padding-left", *paddingLeft)
+	}
+
+	output.WriteString(gutterTd.RenderOpen())
+
+	// Inner column table (without styles since gutter TD handles them)
+	output.WriteString(c.renderColumnForGutter())
+
+	output.WriteString(gutterTd.RenderClose())
+	output.WriteString("</tr></tbody>")
+	output.WriteString(gutterTable.RenderClose())
+
+	return output.String()
+}
+
+// renderColumn creates the inner column table for content
+func (c *MJColumnComponent) renderColumn() string {
+	return c.renderColumnWithStyles(true)
+}
+
+// renderColumnForGutter creates the inner column table for content without styles (used inside gutter)
+func (c *MJColumnComponent) renderColumnForGutter() string {
+	return c.renderColumnWithStyles(false)
+}
+
+// renderColumnWithStyles creates the inner column table with optional styles
+func (c *MJColumnComponent) renderColumnWithStyles(includeStyles bool) string {
+	var output strings.Builder
+
+	// Inner table for column content
+	innerTable := html.NewTableTag().AddAttribute("width", "100%")
+
+	// Only add vertical-align when not inside a gutter (gutter TD handles vertical-align)
+	if includeStyles {
+		getAttr := func(name string) string {
+			if attr := c.GetAttribute(name); attr != nil {
+				return *attr
+			}
+			return c.GetDefaultAttribute(name)
+		}
+		verticalAlign := getAttr("vertical-align")
+		innerTable.AddStyle("vertical-align", verticalAlign)
+	}
+
+	output.WriteString(innerTable.RenderOpen())
+	output.WriteString("<tbody>")
+
+	// Render column content (child components)
+	for _, child := range c.Children {
+		childHTML, err := child.Render()
+		if err != nil {
+			output.WriteString(fmt.Sprintf("<!-- Error rendering child: %v -->", err))
+			continue
+		}
+		output.WriteString(childHTML)
+	}
+
+	output.WriteString("</tbody>")
+	output.WriteString(innerTable.RenderClose())
+
+	return output.String()
 }
