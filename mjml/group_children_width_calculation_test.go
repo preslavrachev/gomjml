@@ -2,6 +2,7 @@ package mjml
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -36,9 +37,6 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 				t.Fatalf("No CSS classes found in AST for %d columns", columnCount)
 			}
 			expectedCSSClass := expectedClasses[0] // Should be only one class for a single group
-
-			// Calculate expected percentage for validation
-			// expectedPercentage := 100.0 / float64(columnCount)
 
 			// Verify CSS class appears in the HTML elements
 			if !strings.Contains(htmlOutput, expectedCSSClass) {
@@ -81,37 +79,39 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 				t.Errorf("Expected CSS class '%s' not found in any <style> block", expectedCSSClass)
 			}
 
-			// // CRITICAL: Validate inline style width values (the actual layout-controlling CSS)
-			// // Use 'g' format to avoid trailing zeros (e.g., 12.5 instead of 12.500000000000000)
-			// expectedWidthPercent := fmt.Sprintf("width:%s%%", strconv.FormatFloat(expectedPercentage, 'g', -1, 64))
+			// CRITICAL: Validate inline style width values (the actual layout-controlling CSS)
+			// Use 'g' format to avoid trailing zeros (e.g., 12.5 instead of 12.500000000000000)
+			// Calculate expected percentage for validation
+			expectedPercentage := 100.0 / float64(columnCount)
+			expectedWidthPercent := fmt.Sprintf("width:%s%%", strconv.FormatFloat(expectedPercentage, 'g', -1, 32))
 
-			// columnDivs := doc.Find(fmt.Sprintf("div.%s", expectedCSSClass))
-			// if columnDivs.Length() != columnCount {
-			// 	t.Errorf("Expected %d column divs with class '%s', found %d",
-			// 		columnCount, expectedCSSClass, columnDivs.Length())
-			// }
+			columnDivs := doc.Find(fmt.Sprintf("div.%s", expectedCSSClass))
+			if columnDivs.Length() != columnCount {
+				t.Errorf("Expected %d column divs with class '%s', found %d",
+					columnCount, expectedCSSClass, columnDivs.Length())
+			}
 
-			// // Validate each column div has the correct inline width style
-			// columnsWithWrongWidth := 0
-			// columnDivs.Each(func(i int, s *goquery.Selection) {
-			// 	styleAttr, exists := s.Attr("style")
-			// 	if !exists {
-			// 		t.Errorf("Column div %d missing style attribute", i)
-			// 		return
-			// 	}
+			// Validate each column div has the correct inline width style
+			columnsWithWrongWidth := 0
+			columnDivs.Each(func(i int, s *goquery.Selection) {
+				styleAttr, exists := s.Attr("style")
+				if !exists {
+					t.Errorf("Column div %d missing style attribute", i)
+					return
+				}
 
-			// 	// Check if the style contains the expected width percentage
-			// 	if !strings.Contains(styleAttr, expectedWidthPercent) {
-			// 		columnsWithWrongWidth++
-			// 		t.Errorf("Column div %d has incorrect width in style attribute. Expected '%s' in: %s",
-			// 			i, expectedWidthPercent, styleAttr)
-			// 	}
-			// })
+				// Check if the style contains the expected width percentage
+				if !strings.Contains(styleAttr, expectedWidthPercent) {
+					columnsWithWrongWidth++
+					t.Errorf("Column div %d has incorrect width in style attribute. Expected '%s' in: %s",
+						i, expectedWidthPercent, styleAttr)
+				}
+			})
 
-			// if columnsWithWrongWidth > 0 {
-			// 	t.Errorf("Found %d columns with incorrect width styling out of %d total columns",
-			// 		columnsWithWrongWidth, columnCount)
-			// }
+			if columnsWithWrongWidth > 0 {
+				t.Errorf("Found %d columns with incorrect width styling out of %d total columns",
+					columnsWithWrongWidth, columnCount)
+			}
 		})
 	}
 }
