@@ -267,7 +267,10 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 			c.collectColumnClassesFromComponent(child)
 		}
 	case *components.MJGroupComponent:
-		// Treat groups like sections - just recurse into children and let columns generate their own classes
+		// Groups always use mj-column-per-100 class - register it for CSS generation
+		c.columnClasses["mj-column-per-100"] = styles.NewPercentSize(100)
+
+		// Also recurse into children to collect column classes
 		for _, child := range v.Children {
 			c.collectColumnClassesFromComponent(child)
 		}
@@ -294,10 +297,10 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	css.WriteString(` }</style>`)
 
 	// Mozilla-specific responsive media query
-	css.WriteString(`<style media="screen and (min-width:480px)">.moz-text-html `)
+	css.WriteString(`<style media="screen and (min-width:480px)">`)
 	for className, size := range c.columnClasses {
 		if size.IsPercent() {
-			css.WriteString(`.`)
+			css.WriteString(`.moz-text-html .`)
 			css.WriteString(className)
 			css.WriteString(` { width:`)
 			css.WriteString(size.String())
@@ -419,6 +422,12 @@ func (c *MJMLComponent) checkComponentForMobileCSS(comp Component) bool {
 			}
 		}
 	case *components.MJWrapperComponent:
+		for _, child := range v.Children {
+			if c.checkComponentForMobileCSS(child) {
+				return true
+			}
+		}
+	case *components.MJGroupComponent:
 		for _, child := range v.Children {
 			if c.checkComponentForMobileCSS(child) {
 				return true

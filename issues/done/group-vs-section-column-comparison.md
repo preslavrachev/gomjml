@@ -119,9 +119,13 @@ This indicates a **shared bug in `GetWidthAsPixel()` method** used by both compo
    - Result: ✅ **Fixed both group and section MSO width** (300px instead of 150px)
 
 2. **✅ Standardized image height format**
-   - Location: `mjml/components/image.go:66-68`
+   - Location: `mjml/components/image.go:66-68,127`
    - Solution: Strip "px" suffix from height attribute like width
    - Result: ✅ **Fixed both group and section image rendering** (height="185" not "185px")
+
+**Phase 1 Results**: 
+- ✅ **mj-section-with-columns test now PASSES completely**
+- ⚠️ **mj-group test still has structural issues** (table count mismatch, missing wrapper)
 
 ### Phase 2: Fix Group-Specific Issues (Group Only)
 1. **Implement group wrapper div** (`mj-column-per-100 mj-outlook-group-fix`)
@@ -171,6 +175,7 @@ diff -u /tmp/mrml_mj_group.html /tmp/gomjml_mj_group.html
 ---
 
 **Created**: 2025-07-28  
-**Status**: Open  
-**Priority**: High (Group), Medium (Section)  
+**Updated**: 2025-07-28  
+**Status**: Partial Resolution (Section: ✅ Complete, Group: ⚠️ Ongoing)  
+**Priority**: High (Group remaining issues)  
 **Category**: Component Architecture Analysis

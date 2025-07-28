@@ -72,10 +72,8 @@ func (c *MJColumnComponent) Render() (string, error) {
 	innerTable := html.NewTableTag().
 		AddAttribute("width", "100%")
 
-	// Only add vertical-align if not inside a group (group handles vertical alignment itself)
-	if c.RenderOpts == nil || !c.RenderOpts.InsideGroup {
-		innerTable.AddStyle("vertical-align", verticalAlign)
-	}
+	// Add vertical-align for proper alignment - required for both section and group contexts
+	innerTable.AddStyle("vertical-align", verticalAlign)
 
 	output.WriteString(innerTable.RenderOpen())
 	output.WriteString("<tbody>")
