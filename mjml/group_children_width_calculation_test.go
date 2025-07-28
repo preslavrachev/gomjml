@@ -85,7 +85,11 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 			expectedPercentage := 100.0 / float64(columnCount)
 			expectedWidthPercent := fmt.Sprintf("width:%s%%", strconv.FormatFloat(expectedPercentage, 'g', -1, 32))
 
-			columnDivs := doc.Find(fmt.Sprintf("div.%s", expectedCSSClass))
+			// NOTE: We specifically target column divs (not group wrapper divs) by looking for
+			// the exact class attribute "mj-outlook-group-fix {expectedCSSClass}".
+			// Groups have the class order reversed: "{expectedCSSClass} mj-outlook-group-fix"
+			// This ensures we only validate the actual column elements that control layout.
+			columnDivs := doc.Find(fmt.Sprintf("div[class=\"mj-outlook-group-fix %s\"]", expectedCSSClass))
 			if columnDivs.Length() != columnCount {
 				t.Errorf("Expected %d column divs with class '%s', found %d",
 					columnCount, expectedCSSClass, columnDivs.Length())
