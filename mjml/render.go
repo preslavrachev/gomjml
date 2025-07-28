@@ -192,10 +192,40 @@ func (c *MJMLComponent) prepareBodySiblings(comp Component) {
 			c.prepareBodySiblings(child)
 		}
 	case *components.MJGroupComponent:
-		// Group components set up their children
+		// Group components set up their children and distribute width equally
+		columnCount := 0
 		for _, child := range v.Children {
-			child.SetContainerWidth(v.GetEffectiveWidth())
-			c.prepareBodySiblings(child)
+			if _, ok := child.(*components.MJColumnComponent); ok {
+				columnCount++
+			}
+		}
+
+		if columnCount > 0 {
+			percentagePerColumn := 100.0 / float64(columnCount)
+
+			for _, child := range v.Children {
+				child.SetContainerWidth(v.GetEffectiveWidth())
+
+				// Set width attributes on columns like the group's Render() method does
+				if columnComp, ok := child.(*components.MJColumnComponent); ok {
+					if columnComp.GetAttribute("width") == nil {
+						percentageWidth := fmt.Sprintf("%.15f%%", percentagePerColumn)
+						percentageWidth = strings.TrimRight(percentageWidth, "0")
+						percentageWidth = strings.TrimRight(percentageWidth, ".")
+						if !strings.HasSuffix(percentageWidth, "%") {
+							percentageWidth += "%"
+						}
+						columnComp.Attrs["width"] = percentageWidth
+					}
+				}
+
+				c.prepareBodySiblings(child)
+			}
+		} else {
+			for _, child := range v.Children {
+				child.SetContainerWidth(v.GetEffectiveWidth())
+				c.prepareBodySiblings(child)
+			}
 		}
 	}
 }
@@ -237,40 +267,7 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 			c.collectColumnClassesFromComponent(child)
 		}
 	case *components.MJGroupComponent:
-		// Pre-calculate the CSS classes that group's column children will use
-		// This mirrors the width calculation logic from the group's Render() method
-		columnCount := 0
-		for _, child := range v.Children {
-			if _, ok := child.(*components.MJColumnComponent); ok {
-				columnCount++
-			}
-		}
-
-		if columnCount > 0 {
-			// Calculate percentage per column (same logic as group rendering)
-			percentagePerColumn := 100.0 / float64(columnCount)
-
-			// Generate CSS class name using the same logic as the test expects
-			// This mirrors the exact logic from group_children_width_calculation_test.go:44-55
-			integerPart := int(percentagePerColumn)
-			decimalPart := percentagePerColumn - float64(integerPart)
-
-			var className string
-			if decimalPart == 0 {
-				// No decimal part (e.g., 2 columns = 50%)
-				className = fmt.Sprintf("mj-column-per-%d", integerPart)
-			} else {
-				// With decimal part (e.g., 7 columns = 14.285714285714286%)
-				decimalString := fmt.Sprintf("%.15f", decimalPart)[2:] // Remove "0."
-				decimalString = strings.TrimRight(decimalString, "0")  // Remove trailing zeros
-				className = fmt.Sprintf("mj-column-per-%d-%s", integerPart, decimalString)
-			}
-
-			// Add to collection so generateResponsiveCSS() will include it in <style> blocks
-			c.columnClasses[className] = styles.NewPercentSize(percentagePerColumn)
-		}
-
-		// Still recurse into children for any nested components
+		// Treat groups like sections - just recurse into children and let columns generate their own classes
 		for _, child := range v.Children {
 			c.collectColumnClassesFromComponent(child)
 		}
