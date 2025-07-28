@@ -30,8 +30,14 @@ func WithDebugTags(enabled bool) RenderOption {
 	}
 }
 
-// Render provides the main MJML to HTML conversion function
-func Render(mjmlContent string, opts ...RenderOption) (string, error) {
+// RenderResult contains both the rendered HTML and the MJML AST
+type RenderResult struct {
+	HTML string
+	AST  *MJMLNode
+}
+
+// RenderWithAST provides the internal MJML to HTML conversion function that returns both HTML and AST
+func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, error) {
 	// Apply render options
 	renderOpts := &RenderOpts{}
 	for _, opt := range opts {
@@ -40,7 +46,7 @@ func Render(mjmlContent string, opts ...RenderOption) (string, error) {
 	// Parse MJML using the parser package
 	ast, err := ParseMJML(mjmlContent)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Initialize global attributes
@@ -57,11 +63,28 @@ func Render(mjmlContent string, opts ...RenderOption) (string, error) {
 	// Create component tree
 	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Render to HTML
-	return component.Render()
+	html, err := component.Render()
+	if err != nil {
+		return nil, err
+	}
+
+	return &RenderResult{
+		HTML: html,
+		AST:  ast,
+	}, nil
+}
+
+// Render provides the main MJML to HTML conversion function
+func Render(mjmlContent string, opts ...RenderOption) (string, error) {
+	result, err := RenderWithAST(mjmlContent, opts...)
+	if err != nil {
+		return "", err
+	}
+	return result.HTML, nil
 }
 
 // RenderFromAST renders HTML from a pre-parsed AST
