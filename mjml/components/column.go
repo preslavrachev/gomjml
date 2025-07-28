@@ -11,6 +11,12 @@ import (
 )
 
 // MJColumnComponent represents mj-column
+// Columns enable you to horizontally organize the content within your sections.
+// They must be located under mj-section tags in order to be considered by the engine.
+// To be responsive, columns are expressed in terms of percentage.
+// The sum of columns in a section cannot be greater than the width of the parent `mj-section` (or 100%).
+// Every single column has to contain something because they are responsive containers, and will be vertically stacked on a mobile view.
+// Any standard component, or component that you have defined and registered, can be placed within a column – except mj-column or mj-section elements.
 type MJColumnComponent struct {
 	*BaseComponent
 }
@@ -145,10 +151,9 @@ func (c *MJColumnComponent) GetColumnClass() (string, styles.Size) {
 
 	if parsedWidth.IsPercent() {
 		// Format: mj-column-per-{width} where dots are replaced with dashes
-		// Use full precision for decimal values like 14.285714285714286
-		widthStr := fmt.Sprintf("%.15f", parsedWidth.Value())
-		widthStr = strings.TrimRight(widthStr, "0") // Remove trailing zeros
-		widthStr = strings.TrimRight(widthStr, ".") // Remove trailing decimal point
+		// Use float32 precision to match MRML's Rust f32 behavior
+		f32Value := float32(parsedWidth.Value())
+		widthStr := fmt.Sprintf("%g", f32Value)
 		className = fmt.Sprintf("mj-column-per-%s", strings.ReplaceAll(widthStr, ".", "-"))
 	} else {
 		// Format: mj-column-px-{width} for pixel values
