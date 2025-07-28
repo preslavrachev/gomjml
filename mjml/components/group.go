@@ -9,6 +9,10 @@ import (
 	"github.com/preslavrachev/gomjml/parser"
 )
 
+const (
+	defaultVerticalAlign = "top"
+)
+
 // generateDecimalCSSClass creates precise CSS class names like mj-column-per-14-285714285714286
 func generateDecimalCSSClass(percentage float64) string {
 	integerPart := int(percentage)
@@ -42,7 +46,7 @@ func (c *MJGroupComponent) GetDefaultAttribute(name string) string {
 	case "direction":
 		return "ltr"
 	case "vertical-align":
-		return "top"
+		return defaultVerticalAlign
 	case "width":
 		return "100%"
 	default:
@@ -89,6 +93,11 @@ func (c *MJGroupComponent) Render() (string, error) {
 		AddStyle("display", "inline-block").
 		AddStyle("width", "100%").
 		AddStyle("direction", direction)
+
+	// Only add vertical-align if it's not the default value
+	if verticalAlign != defaultVerticalAlign {
+		rootDiv.AddStyle("vertical-align", verticalAlign)
+	}
 
 	if backgroundColor != "" {
 		rootDiv.AddStyle("background-color", backgroundColor)

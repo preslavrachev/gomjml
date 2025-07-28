@@ -50,9 +50,9 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		// MJ-Group tests from MRML
 		{"mj-group", "testdata/mj-group.mjml"},
 		{"mj-group-background-color", "testdata/mj-group-background-color.mjml"},
-		// {"mj-group-class", "testdata/mj-group-class.mjml"},
+		//{"mj-group-class", "testdata/mj-group-class.mjml"},
 		{"mj-group-direction", "testdata/mj-group-direction.mjml"},
-		//{"mj-group-vertical-align", "testdata/mj-group-vertical-align.mjml"},
+		{"mj-group-vertical-align", "testdata/mj-group-vertical-align.mjml"},
 		//{"mj-group-width", "testdata/mj-group-width.mjml"},
 		// Simple MJML components from MRML test suite
 		{"mj-text", "testdata/mj-text.mjml"},
