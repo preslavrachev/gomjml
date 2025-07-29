@@ -1,6 +1,8 @@
 # gomjml - Native Go MJML Compiler
 
-A native Go implementation of the MJML email framework, providing fast compilation of MJML markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML.
+A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML.
+
+> **Full Disclaimer**: This project has been created in some cooperation with [Claude Code](https://www.anthropic.com/claude-code). I wouldn't have been able to achieve such a feat without Claude's help in turning my bizarre requirements into Go code. Still, it wasn't all smooth sailing. While Claude was able to generate a plausible MVP relatively quickly, bringing it somethign even remotely usable took a lot more human guidance, goign back and forth, throwing away a bunch of code and starting over. There's lots I have learned in the process, and I will soon write a series of blog posts addressing my experience.
 
 ## 🚀 Features
 
@@ -233,6 +235,28 @@ func (c *MJNewComponent) Render() (string, error) {
 
 ### Integration Test Status
 Based on the integration test suite in `mjml/integration_test.go`, the implemented components are thoroughly tested against the MRML (Rust) reference implementation to ensure compatibility and correctness.
+
+### Baseline Benchmark
+
+The following benchmarks were run on a MacBook Pro M1 Pro with 16GB RAM, Go 1.21.4. As you can see, for a MVP, the performance is will eb quite sufficient for most use cases, however, there is something to be desired in terms of memory usage and allocations. I am hopign to make significant refactoring and improvement in future releases.
+
+```bash
+./bench.sh  # You can also add --markdown for a markdown table output
+```
+
+
+| Benchmark                          |  Time   |  Memory  | Allocs  |
+| :--------------------------------- | :-----: | :------: | :-----: |
+| BenchmarkMJMLRender_Small-8        | 0.66ms  |  1.03MB  |  13.7K  |
+| BenchmarkMJMLRender_Medium-8       | 7.87ms  | 10.73MB  | 134.5K  |
+| BenchmarkMJMLRender_Large-8        | 73.19ms | 108.35MB | 1341.4K |
+| BenchmarkMJMLRender_SmallMemory-8  | 0.66ms  |  1.03MB  |  13.7K  |
+| BenchmarkMJMLRender_MediumMemory-8 | 7.99ms  | 10.73MB  | 134.4K  |
+| BenchmarkMJMLRender_LargeMemory-8  | 73.12ms | 108.35MB | 1341.4K |
+| BenchmarkMJMLParsing_Only-8        | 1.76ms  |  0.71MB  |  19.3K  |
+| BenchmarkMJMLComponentCreation-8   | 0.17ms  |  0.38MB  |  4.6K   |
+| BenchmarkMJMLFullPipeline-8        | 8.17ms  | 10.73MB  | 134.4K  |
+| BenchmarkMJMLTemplateGeneration-8  | 0.13ms  |  0.59MB  |  0.1K   |
 
 ## 🏗️ Architecture
 
