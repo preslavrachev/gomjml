@@ -2,7 +2,7 @@
 
 A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML.
 
-> **Full Disclaimer**: This project has been created in some cooperation with [Claude Code](https://www.anthropic.com/claude-code). I wouldn't have been able to achieve such a feat without Claude's help in turning my bizarre requirements into Go code. Still, it wasn't all smooth sailing. While Claude was able to generate a plausible MVP relatively quickly, bringing it somethign even remotely usable took a lot more human guidance, goign back and forth, throwing away a bunch of code and starting over. There's lots I have learned in the process, and I will soon write a series of blog posts addressing my experience.
+> **Full Disclosure**: This project has been created in some cooperation with [Claude Code](https://www.anthropic.com/claude-code). I wouldn't have been able to achieve such a feat without Claude's help in turning my bizarre requirements into Go code. Still, it wasn't all smooth sailing. While Claude was able to generate a plausible MVP relatively quickly, bringing it something even remotely usable took a lot more human guidance, going back and forth, throwing away a bunch of code and starting over. There's lots I have learned in the process, and I will soon write a series of blog posts addressing my experience.
 
 ## 🚀 Features
 
@@ -238,7 +238,7 @@ Based on the integration test suite in `mjml/integration_test.go`, the implement
 
 ### Baseline Benchmark
 
-The following benchmarks were run on a MacBook Pro M1 Pro with 16GB RAM, Go 1.21.4. As you can see, for a MVP, the performance is will eb quite sufficient for most use cases, however, there is something to be desired in terms of memory usage and allocations. I am hopign to make significant refactoring and improvement in future releases.
+The following benchmarks were run on a Mac Mini M1 with 16GB RAM and Go 1.21.4. As you can see, for a MVP, the performance is quite sufficient for most use cases, however, there is something to be desired in terms of memory usage and allocations. I am hoping to make significant refactoring and improvement in future releases.
 
 ```bash
 ./bench.sh  # You can also add --markdown for a markdown table output
