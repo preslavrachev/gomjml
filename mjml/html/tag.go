@@ -152,35 +152,7 @@ func (t *HTMLTag) RenderOpen() string {
 	var b strings.Builder
 	b.WriteString("<")
 	b.WriteString(t.name)
-
-	// Add HTML attributes in order
-	for _, attr := range t.attributes {
-		b.WriteByte(' ')
-		b.WriteString(attr.Name)
-		b.WriteString(`="`)
-		b.WriteString(attr.Value)
-		b.WriteByte('"')
-	}
-
-	// Add CSS classes
-	if len(t.classes) > 0 {
-		b.WriteString(` class="`)
-		b.WriteString(strings.Join(t.classes, " "))
-		b.WriteByte('"')
-	}
-
-	// Add inline styles
-	if len(t.styles) > 0 {
-		b.WriteString(` style="`)
-		for _, style := range t.styles {
-			b.WriteString(style.Name)
-			b.WriteByte(':')
-			b.WriteString(style.Value)
-			b.WriteByte(';')
-		}
-		b.WriteByte('"')
-	}
-
+	t.renderAttributes(&b)
 	b.WriteByte('>')
 	return b.String()
 }
@@ -209,7 +181,13 @@ func (t *HTMLTag) RenderSelfClosing() string {
 	var b strings.Builder
 	b.WriteString("<")
 	b.WriteString(t.name)
+	t.renderAttributes(&b)
+	b.WriteString(" />")
+	return b.String()
+}
 
+// renderAttributes renders the common HTML attributes, CSS classes, and inline styles
+func (t *HTMLTag) renderAttributes(b *strings.Builder) {
 	// Add HTML attributes in order
 	for _, attr := range t.attributes {
 		b.WriteByte(' ')
@@ -237,7 +215,4 @@ func (t *HTMLTag) RenderSelfClosing() string {
 		}
 		b.WriteByte('"')
 	}
-
-	b.WriteString(" />")
-	return b.String()
 }

@@ -117,44 +117,7 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 		for _, child := range body.Children {
 			switch comp := child.(type) {
 			case *components.MJSectionComponent:
-				for _, colNode := range comp.Node.Children {
-					if colComponent, err := CreateComponent(colNode, opts); err == nil {
-						comp.Children = append(comp.Children, colComponent)
-
-						// Handle different column types
-						switch col := colComponent.(type) {
-						case *components.MJColumnComponent:
-							// Process column children
-							for _, contentNode := range col.Node.Children {
-								if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
-									col.Children = append(col.Children, contentComponent)
-
-									// Process nested children (e.g., social elements within social component)
-									processComponentChildren(contentComponent, contentNode, opts)
-								}
-							}
-						case *components.MJGroupComponent:
-							// Process group children (columns within the group)
-							for _, groupChildNode := range col.Node.Children {
-								if groupChildComponent, err := CreateComponent(groupChildNode, opts); err == nil {
-									col.Children = append(col.Children, groupChildComponent)
-
-									// Process column children within the group
-									if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
-										for _, contentNode := range groupColumn.Node.Children {
-											if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
-												groupColumn.Children = append(groupColumn.Children, contentComponent)
-
-												// Process nested children (e.g., social elements within social component)
-												processComponentChildren(contentComponent, contentNode, opts)
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
+				processSectionChildren(comp, opts)
 			case *components.MJWrapperComponent:
 				for _, childNode := range comp.Node.Children {
 					if childComponent, err := CreateComponent(childNode, opts); err == nil {
@@ -162,44 +125,7 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 
 						// Process wrapper's section children
 						if section, ok := childComponent.(*components.MJSectionComponent); ok {
-							for _, colNode := range section.Node.Children {
-								if colComponent, err := CreateComponent(colNode, opts); err == nil {
-									section.Children = append(section.Children, colComponent)
-
-									// Handle different column types
-									switch col := colComponent.(type) {
-									case *components.MJColumnComponent:
-										// Process column children
-										for _, contentNode := range col.Node.Children {
-											if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
-												col.Children = append(col.Children, contentComponent)
-
-												// Process nested children (e.g., social elements within social component)
-												processComponentChildren(contentComponent, contentNode, opts)
-											}
-										}
-									case *components.MJGroupComponent:
-										// Process group children (columns within the group)
-										for _, groupChildNode := range col.Node.Children {
-											if groupChildComponent, err := CreateComponent(groupChildNode, opts); err == nil {
-												col.Children = append(col.Children, groupChildComponent)
-
-												// Process column children within the group
-												if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
-													for _, contentNode := range groupColumn.Node.Children {
-														if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
-															groupColumn.Children = append(groupColumn.Children, contentComponent)
-
-															// Process nested children (e.g., social elements within social component)
-															processComponentChildren(contentComponent, contentNode, opts)
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							}
+							processSectionChildren(section, opts)
 						}
 					}
 				}
@@ -222,5 +148,47 @@ func processComponentChildren(component Component, node *parser.MJMLNode, opts *
 			}
 		}
 		// Add more component types here as needed
+	}
+}
+
+// processSectionChildren processes the children of a section component (columns and groups)
+func processSectionChildren(section *components.MJSectionComponent, opts *options.RenderOpts) {
+	for _, colNode := range section.Node.Children {
+		if colComponent, err := CreateComponent(colNode, opts); err == nil {
+			section.Children = append(section.Children, colComponent)
+
+			// Handle different column types
+			switch col := colComponent.(type) {
+			case *components.MJColumnComponent:
+				// Process column children
+				for _, contentNode := range col.Node.Children {
+					if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
+						col.Children = append(col.Children, contentComponent)
+
+						// Process nested children (e.g., social elements within social component)
+						processComponentChildren(contentComponent, contentNode, opts)
+					}
+				}
+			case *components.MJGroupComponent:
+				// Process group children (columns within the group)
+				for _, groupChildNode := range col.Node.Children {
+					if groupChildComponent, err := CreateComponent(groupChildNode, opts); err == nil {
+						col.Children = append(col.Children, groupChildComponent)
+
+						// Process column children within the group
+						if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
+							for _, contentNode := range groupColumn.Node.Children {
+								if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
+									groupColumn.Children = append(groupColumn.Children, contentComponent)
+
+									// Process nested children (e.g., social elements within social component)
+									processComponentChildren(contentComponent, contentNode, opts)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 }

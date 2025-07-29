@@ -52,34 +52,7 @@ func TestParsePixel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := ParsePixel(tt.input)
-
-			if tt.hasError {
-				if err == nil {
-					t.Error("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
-
-			if tt.expected == nil && result != nil {
-				t.Errorf("Expected nil, got %v", result)
-				return
-			}
-
-			if tt.expected != nil && result == nil {
-				t.Error("Expected result, got nil")
-				return
-			}
-
-			if tt.expected != nil && result != nil {
-				if result.Value != tt.expected.Value {
-					t.Errorf("Expected value %f, got %f", tt.expected.Value, result.Value)
-				}
-			}
+			validatePixelParseResult(t, tt.expected, result, err, tt.hasError)
 		})
 	}
 }
@@ -304,34 +277,7 @@ func TestParseColor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := ParseColor(tt.input)
-
-			if tt.expectError {
-				if err == nil {
-					t.Error("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
-
-			if tt.expected == nil && result != nil {
-				t.Errorf("Expected nil, got %v", result)
-				return
-			}
-
-			if tt.expected != nil && result == nil {
-				t.Error("Expected result, got nil")
-				return
-			}
-
-			if tt.expected != nil && result != nil {
-				if result.Value != tt.expected.Value {
-					t.Errorf("Expected value '%s', got '%s'", tt.expected.Value, result.Value)
-				}
-			}
+			validateColorParseResult(t, tt.expected, result, err, tt.expectError)
 		})
 	}
 }
@@ -412,5 +358,67 @@ func TestParseNonEmpty(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// validatePixelParseResult validates the result of ParsePixel function
+func validatePixelParseResult(t *testing.T, expected *Pixel, result *Pixel, err error, hasError bool) {
+	if hasError {
+		if err == nil {
+			t.Error("Expected error but got none")
+		}
+		return
+	}
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+
+	if expected == nil && result != nil {
+		t.Errorf("Expected nil, got %v", result)
+		return
+	}
+
+	if expected != nil && result == nil {
+		t.Error("Expected result, got nil")
+		return
+	}
+
+	if expected != nil && result != nil {
+		if result.Value != expected.Value {
+			t.Errorf("Expected value %f, got %f", expected.Value, result.Value)
+		}
+	}
+}
+
+// validateColorParseResult validates the result of ParseColor function
+func validateColorParseResult(t *testing.T, expected *Color, result *Color, err error, expectError bool) {
+	if expectError {
+		if err == nil {
+			t.Error("Expected error but got none")
+		}
+		return
+	}
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+
+	if expected == nil && result != nil {
+		t.Errorf("Expected nil, got %v", result)
+		return
+	}
+
+	if expected != nil && result == nil {
+		t.Error("Expected result, got nil")
+		return
+	}
+
+	if expected != nil && result != nil {
+		if result.Value != expected.Value {
+			t.Errorf("Expected value '%s', got '%s'", expected.Value, result.Value)
+		}
 	}
 }

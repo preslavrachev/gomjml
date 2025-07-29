@@ -367,39 +367,7 @@ func (c *MJMLComponent) hasTextComponentsRecursive(component Component) bool {
 	}
 
 	// Check specific component types that have children
-	switch v := component.(type) {
-	case *components.MJBodyComponent:
-		for _, child := range v.Children {
-			if c.hasTextComponentsRecursive(child) {
-				return true
-			}
-		}
-	case *components.MJSectionComponent:
-		for _, child := range v.Children {
-			if c.hasTextComponentsRecursive(child) {
-				return true
-			}
-		}
-	case *components.MJColumnComponent:
-		for _, child := range v.Children {
-			if c.hasTextComponentsRecursive(child) {
-				return true
-			}
-		}
-	case *components.MJWrapperComponent:
-		for _, child := range v.Children {
-			if c.hasTextComponentsRecursive(child) {
-				return true
-			}
-		}
-	case *components.MJGroupComponent:
-		for _, child := range v.Children {
-			if c.hasTextComponentsRecursive(child) {
-				return true
-			}
-		}
-	}
-	return false
+	return c.checkChildrenForCondition(component, c.hasTextComponentsRecursive)
 }
 
 // checkComponentForMobileCSS recursively checks a component and its children
@@ -410,39 +378,43 @@ func (c *MJMLComponent) checkComponentForMobileCSS(comp Component) bool {
 	}
 
 	// Check specific component types that have children
-	switch v := comp.(type) {
+	return c.checkChildrenForCondition(comp, c.checkComponentForMobileCSS)
+}
+
+// checkChildrenForCondition is a helper function that checks if any children of a component meet a condition
+func (c *MJMLComponent) checkChildrenForCondition(component Component, condition func(Component) bool) bool {
+	switch v := component.(type) {
 	case *components.MJBodyComponent:
 		for _, child := range v.Children {
-			if c.checkComponentForMobileCSS(child) {
+			if condition(child) {
 				return true
 			}
 		}
 	case *components.MJSectionComponent:
 		for _, child := range v.Children {
-			if c.checkComponentForMobileCSS(child) {
+			if condition(child) {
 				return true
 			}
 		}
 	case *components.MJColumnComponent:
 		for _, child := range v.Children {
-			if c.checkComponentForMobileCSS(child) {
+			if condition(child) {
 				return true
 			}
 		}
 	case *components.MJWrapperComponent:
 		for _, child := range v.Children {
-			if c.checkComponentForMobileCSS(child) {
+			if condition(child) {
 				return true
 			}
 		}
 	case *components.MJGroupComponent:
 		for _, child := range v.Children {
-			if c.checkComponentForMobileCSS(child) {
+			if condition(child) {
 				return true
 			}
 		}
 	}
-
 	return false
 }
 
