@@ -1,6 +1,7 @@
 package components
 
 import (
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -29,32 +30,45 @@ func NewMJBodyComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJBody
 	}
 }
 
-func (c *MJBodyComponent) Render() (string, error) {
-	var html strings.Builder
-
-	// Apply background-color to div if specified (matching MRML's set_body_style)
-	backgroundColor := c.GetAttribute("background-color")
-
-	if backgroundColor != nil && *backgroundColor != "" {
-		html.WriteString(`<div style="background-color:` + *backgroundColor + `;">`)
-	} else {
-		html.WriteString(`<div>`)
+func (c *MJBodyComponent) RenderString() (string, error) {
+	var output strings.Builder
+	err := c.Render(&output)
+	if err != nil {
+		return "", err
 	}
-
-	for _, child := range c.Children {
-		childHTML, err := child.Render()
-		if err != nil {
-			return "", err
-		}
-		html.WriteString(childHTML)
-	}
-
-	html.WriteString(`</div>`)
-	return html.String(), nil
+	return output.String(), nil
 }
 
 func (c *MJBodyComponent) GetTagName() string {
 	return "mj-body"
+}
+
+// Render implements optimized Writer-based rendering for MJBodyComponent
+func (c *MJBodyComponent) Render(w io.Writer) error {
+	// Apply background-color to div if specified (matching MRML's set_body_style)
+	backgroundColor := c.GetAttribute("background-color")
+
+	if backgroundColor != nil && *backgroundColor != "" {
+		if _, err := w.Write([]byte(`<div style="background-color:` + *backgroundColor + `;">`)); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write([]byte(`<div>`)); err != nil {
+			return err
+		}
+	}
+
+	for _, child := range c.Children {
+		if err := child.Render(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.Write([]byte(`</div>`)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJBodyComponent) GetDefaultAttribute(name string) string {

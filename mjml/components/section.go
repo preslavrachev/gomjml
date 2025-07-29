@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -21,9 +22,21 @@ func NewMJSectionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJS
 	}
 }
 
-func (c *MJSectionComponent) Render() (string, error) {
+func (c *MJSectionComponent) RenderString() (string, error) {
 	var output strings.Builder
+	err := c.Render(&output)
+	if err != nil {
+		return "", err
+	}
+	return output.String(), nil
+}
 
+func (c *MJSectionComponent) GetTagName() string {
+	return "mj-section"
+}
+
+// Render implements optimized Writer-based rendering for MJSectionComponent
+func (c *MJSectionComponent) Render(w io.Writer) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -48,8 +61,12 @@ func (c *MJSectionComponent) Render() (string, error) {
 		c.ApplyBackgroundStyles(outerTable)
 		outerTable.AddStyle("width", "100%")
 
-		output.WriteString(outerTable.RenderOpen())
-		output.WriteString("<tbody><tr><td>")
+		if _, err := w.Write([]byte(outerTable.RenderOpen())); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte("<tbody><tr><td>")); err != nil {
+			return err
+		}
 	}
 
 	// MSO conditional comment - table wrapper for Outlook
@@ -74,8 +91,10 @@ func (c *MJSectionComponent) Render() (string, error) {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	output.WriteString(html.RenderMSOConditional(
-		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))
+	if _, err := w.Write([]byte(html.RenderMSOConditional(
+		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))); err != nil {
+		return err
+	}
 
 	// Main section div with styles
 	sectionDiv := html.NewHTMLTag("div")
@@ -95,7 +114,9 @@ func (c *MJSectionComponent) Render() (string, error) {
 	sectionDiv.AddStyle("margin", "0px auto").
 		AddStyle("max-width", c.GetEffectiveWidthString())
 
-	output.WriteString(sectionDiv.RenderOpen())
+	if _, err := w.Write([]byte(sectionDiv.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Inner table with styles
 	innerTable := html.NewTableTag().
@@ -111,8 +132,12 @@ func (c *MJSectionComponent) Render() (string, error) {
 	// Then add width
 	innerTable.AddStyle("width", "100%")
 
-	output.WriteString(innerTable.RenderOpen())
-	output.WriteString("<tbody><tr>")
+	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		return err
+	}
 
 	// TD with padding and text alignment
 	tdTag := html.NewHTMLTag("td").
@@ -136,7 +161,9 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	tdTag.AddStyle("text-align", textAlign)
 
-	output.WriteString(tdTag.RenderOpen())
+	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Calculate sibling counts for width calculations (following MRML logic)
 	siblings := len(c.Children)
@@ -173,8 +200,10 @@ func (c *MJSectionComponent) Render() (string, error) {
 			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
 			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
 
-			output.WriteString(html.RenderMSOConditional(
-				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
+			if _, err := w.Write([]byte(html.RenderMSOConditional(
+				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))); err != nil {
+				return err
+			}
 		} else if groupComp, ok := child.(*MJGroupComponent); ok {
 			// Groups also need MSO conditionals like columns
 			groupComp.SetContainerWidth(c.GetEffectiveWidth())
@@ -197,42 +226,55 @@ func (c *MJSectionComponent) Render() (string, error) {
 				msoTd.AddStyle("width", fmt.Sprintf("%dpx", c.GetEffectiveWidth()))
 			}
 
-			output.WriteString(html.RenderMSOConditional(
-				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
+			if _, err := w.Write([]byte(html.RenderMSOConditional(
+				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))); err != nil {
+				return err
+			}
 		}
 
-		childHTML, err := child.Render()
-		if err != nil {
-			return "", err
+		// Use optimized rendering with fallback to string-based
+		if err := child.Render(w); err != nil {
+			return err
 		}
-		output.WriteString(childHTML)
 
 		// Close MSO conditional TD/TR/TABLE for columns and groups
 		if _, ok := child.(*MJColumnComponent); ok {
-			output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
+			if _, err := w.Write([]byte(html.RenderMSOConditional("</td></tr></table>"))); err != nil {
+				return err
+			}
 		} else if _, ok := child.(*MJGroupComponent); ok {
-			output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
+			if _, err := w.Write([]byte(html.RenderMSOConditional("</td></tr></table>"))); err != nil {
+				return err
+			}
 		}
 	}
 
-	output.WriteString(tdTag.RenderClose())
-	output.WriteString("</tr></tbody>")
-	output.WriteString(innerTable.RenderClose())
-	output.WriteString(sectionDiv.RenderClose())
+	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(sectionDiv.RenderClose())); err != nil {
+		return err
+	}
 
 	// Close MSO conditional
-	output.WriteString(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))
+	if _, err := w.Write([]byte(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))); err != nil {
+		return err
+	}
 
 	// Close outer table if we added one for full-width background
 	if backgroundColor != "" && fullWidth != "" {
-		output.WriteString("</td></tr></tbody></table>")
+		if _, err := w.Write([]byte("</td></tr></tbody></table>")); err != nil {
+			return err
+		}
 	}
 
-	return output.String(), nil
-}
-
-func (c *MJSectionComponent) GetTagName() string {
-	return "mj-section"
+	return nil
 }
 
 func (c *MJSectionComponent) GetDefaultAttribute(name string) string {

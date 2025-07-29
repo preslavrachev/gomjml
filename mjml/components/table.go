@@ -1,6 +1,8 @@
 package components
 
 import (
+	"io"
+
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -16,9 +18,14 @@ func NewMJTableComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTab
 	}
 }
 
-func (c *MJTableComponent) Render() (string, error) {
+func (c *MJTableComponent) RenderString() (string, error) {
 	// TODO: Implement mj-table component functionality
 	return "", &NotImplementedError{ComponentName: "mj-table"}
+}
+
+func (c *MJTableComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-table component functionality
+	return &NotImplementedError{ComponentName: "mj-table"}
 }
 
 func (c *MJTableComponent) GetTagName() string {

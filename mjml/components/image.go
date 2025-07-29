@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -22,9 +23,21 @@ func NewMJImageComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJIma
 	}
 }
 
-func (c *MJImageComponent) Render() (string, error) {
+func (c *MJImageComponent) RenderString() (string, error) {
 	var output strings.Builder
+	err := c.Render(&output)
+	if err != nil {
+		return "", err
+	}
+	return output.String(), nil
+}
 
+func (c *MJImageComponent) GetTagName() string {
+	return "mj-image"
+}
+
+// Render implements optimized Writer-based rendering for MJImageComponent
+func (c *MJImageComponent) Render(w io.Writer) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -53,7 +66,7 @@ func (c *MJImageComponent) Render() (string, error) {
 	}
 
 	if src == "" {
-		return "", fmt.Errorf("mj-image requires src attribute")
+		return fmt.Errorf("mj-image requires src attribute")
 	}
 
 	// Parse width to remove 'px' suffix for img width attribute
@@ -69,7 +82,9 @@ func (c *MJImageComponent) Render() (string, error) {
 	}
 
 	// Create TR element
-	output.WriteString("<tr>")
+	if _, err := w.Write([]byte("<tr>")); err != nil {
+		return err
+	}
 
 	// Create TD container with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
@@ -83,7 +98,9 @@ func (c *MJImageComponent) Render() (string, error) {
 		tdTag.AddAttribute("class", cssClass)
 	}
 
-	output.WriteString(tdTag.RenderOpen())
+	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Image table
 	tableTag := html.NewHTMLTag("table").
@@ -94,8 +111,12 @@ func (c *MJImageComponent) Render() (string, error) {
 		AddStyle("border-collapse", "collapse").
 		AddStyle("border-spacing", "0px")
 
-	output.WriteString(tableTag.RenderOpen())
-	output.WriteString("<tbody><tr>")
+	if _, err := w.Write([]byte(tableTag.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		return err
+	}
 
 	// Image cell with width constraint
 	imageTdTag := html.NewHTMLTag("td")
@@ -103,7 +124,9 @@ func (c *MJImageComponent) Render() (string, error) {
 		imageTdTag.AddStyle("width", width)
 	}
 
-	output.WriteString(imageTdTag.RenderOpen())
+	if _, err := w.Write([]byte(imageTdTag.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Optional link wrapper
 	if href != "" {
@@ -117,7 +140,9 @@ func (c *MJImageComponent) Render() (string, error) {
 			linkTag.AddAttribute("target", target)
 		}
 
-		output.WriteString(linkTag.RenderOpen())
+		if _, err := w.Write([]byte(linkTag.RenderOpen())); err != nil {
+			return err
+		}
 	}
 
 	// Image element with styles
@@ -152,24 +177,34 @@ func (c *MJImageComponent) Render() (string, error) {
 		imgTag.AddStyle("border-radius", borderRadius)
 	}
 
-	output.WriteString(imgTag.RenderSelfClosing())
+	if _, err := w.Write([]byte(imgTag.RenderSelfClosing())); err != nil {
+		return err
+	}
 
 	// Close optional link wrapper
 	if href != "" {
-		output.WriteString("</a>")
+		if _, err := w.Write([]byte("</a>")); err != nil {
+			return err
+		}
 	}
 
-	output.WriteString(imageTdTag.RenderClose())
-	output.WriteString("</tr></tbody>")
-	output.WriteString(tableTag.RenderClose())
-	output.WriteString(tdTag.RenderClose())
-	output.WriteString("</tr>")
+	if _, err := w.Write([]byte(imageTdTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(tableTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr>")); err != nil {
+		return err
+	}
 
-	return output.String(), nil
-}
-
-func (c *MJImageComponent) GetTagName() string {
-	return "mj-image"
+	return nil
 }
 
 func (c *MJImageComponent) GetDefaultAttribute(name string) string {

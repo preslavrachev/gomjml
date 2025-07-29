@@ -150,6 +150,9 @@ While it is not recommended to do so, because it will break the compatibility wi
 package components
 
 import (
+    "io"
+    "strings"
+    
     "github.com/preslavrachev/gomjml/mjml/options"
     "github.com/preslavrachev/gomjml/parser"
 )
@@ -164,10 +167,24 @@ func NewMJNewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNewCo
     }
 }
 
-func (c *MJNewComponent) Render() (string, error) {
-    // Implementation here
+func (c *MJNewComponent) RenderString() (string, error) {
+    var output strings.Builder
+    err := c.Render(&output)
+    if err != nil {
+        return "", err
+    }
+    return output.String(), nil
+}
+
+func (c *MJNewComponent) Render(w io.Writer) error {
+    // Implementation here - write HTML directly to Writer
     // Use c.AddDebugAttribute(tag, "new") for debug traceability
-    return "", nil
+    
+    // Example implementation:
+    // if _, err := w.Write([]byte("<div>Hello World</div>")); err != nil {
+    //     return err
+    // }
+    return nil
 }
 
 func (c *MJNewComponent) GetTagName() string {
@@ -182,14 +199,28 @@ case "mj-new":
 // 4. Update README.md documentation
 ```
 
+#### Component Interface Requirements
+
+All MJML components must implement the `Component` interface, which now requires both `RenderString()` and `Render()` methods:
+
+- **`Render(w io.Writer) error`**: Primary rendering method that writes HTML directly to a Writer for optimal performance
+- **`RenderString() (string, error)`**: Convenience method that typically delegates to `Render()` for string-based access
+
+The `Render` method is the core rendering method used throughout the framework, while `RenderString` is provided for backwards compatibility and convenience.
+
 #### Delaying Component Implementation
 
 If you need to register a component but won't implement its functionality right away, use the `NotImplementedError` pattern:
 
 ```go
-func (c *MJNewComponent) Render() (string, error) {
+func (c *MJNewComponent) RenderString() (string, error) {
     // TODO: Implement mj-new component functionality
     return "", &NotImplementedError{ComponentName: "mj-new"}
+}
+
+func (c *MJNewComponent) Render(w io.Writer) error {
+    // TODO: Implement mj-new component functionality
+    return &NotImplementedError{ComponentName: "mj-new"}
 }
 ```
 
@@ -247,18 +278,20 @@ The following benchmarks were run on a Mac Mini M1 with 16GB RAM and Go 1.21.4. 
 ```bash
 ./bench.sh  # You can also add --markdown for a markdown table output
 ```
+
 | Benchmark                                  |  Time   | Memory  | Allocs |
 | :----------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8          | 0.46ms  | 0.94MB  |  7.3K  |
-| BenchmarkMJMLRender_100_Sections-8         | 5.73ms  | 9.79MB  | 70.5K  |
-| BenchmarkMJMLRender_1000_Sections-8        | 51.84ms | 98.88MB | 702.4K |
-| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.47ms  | 0.94MB  |  7.3K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8  | 5.72ms  | 9.79MB  | 70.5K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8 | 51.42ms | 98.88MB | 702.4K |
-| BenchmarkMJMLParsing_Only-8                | 1.75ms  | 0.71MB  | 19.3K  |
+| BenchmarkMJMLRender_10_Sections-8          | 0.42ms  | 0.64MB  |  7.7K  |
+| BenchmarkMJMLRender_100_Sections-8         | 4.83ms  | 6.92MB  | 74.7K  |
+| BenchmarkMJMLRender_1000_Sections-8        | 46.11ms | 66.38MB | 744.4K |
+| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.43ms  | 0.64MB  |  7.7K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.94ms  | 6.92MB  | 74.7K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8 | 45.56ms | 66.38MB | 744.4K |
+| BenchmarkMJMLParsing_Only-8                | 1.80ms  | 0.71MB  | 19.3K  |
 | BenchmarkMJMLComponentCreation-8           | 0.17ms  | 0.38MB  |  4.6K  |
-| BenchmarkMJMLFullPipeline-8                | 5.70ms  | 9.79MB  | 70.5K  |
+| BenchmarkMJMLFullPipeline-8                | 4.94ms  | 6.99MB  | 74.7K  |
 | BenchmarkMJMLTemplateGeneration-8          | 0.12ms  | 0.59MB  |  0.1K  |
+| BenchmarkMJMLRender_100_Sections_Writer-8  | 2.86ms  | 5.90MB  | 50.7K  |
 
 ## 🏗️ Architecture
 

@@ -1,6 +1,7 @@
 package components
 
 import (
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -20,9 +21,21 @@ func NewMJTextComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJText
 	}
 }
 
-func (c *MJTextComponent) Render() (string, error) {
+func (c *MJTextComponent) RenderString() (string, error) {
 	var output strings.Builder
+	err := c.Render(&output)
+	if err != nil {
+		return "", err
+	}
+	return output.String(), nil
+}
 
+func (c *MJTextComponent) GetTagName() string {
+	return "mj-text"
+}
+
+// Render implements optimized Writer-based rendering for MJTextComponent
+func (c *MJTextComponent) Render(w io.Writer) error {
 	// Get raw inner HTML content (preserve HTML tags and formatting)
 	textContent := c.getRawInnerHTML()
 
@@ -39,7 +52,9 @@ func (c *MJTextComponent) Render() (string, error) {
 	padding := getAttr("padding")
 
 	// Create TR element
-	output.WriteString("<tr>")
+	if _, err := w.Write([]byte("<tr>")); err != nil {
+		return err
+	}
 
 	// Create TD with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
@@ -68,7 +83,9 @@ func (c *MJTextComponent) Render() (string, error) {
 
 	tdTag.AddStyle("word-break", "break-word")
 
-	output.WriteString(tdTag.RenderOpen())
+	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Create inner div with font styling
 	divTag := html.NewHTMLTag("div")
@@ -118,17 +135,23 @@ func (c *MJTextComponent) Render() (string, error) {
 		divTag.AddStyle("text-decoration", textDecoration)
 	}
 
-	output.WriteString(divTag.RenderOpen())
-	output.WriteString(textContent)
-	output.WriteString(divTag.RenderClose())
-	output.WriteString(tdTag.RenderClose())
-	output.WriteString("</tr>")
+	if _, err := w.Write([]byte(divTag.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(textContent)); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(divTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr>")); err != nil {
+		return err
+	}
 
-	return output.String(), nil
-}
-
-func (c *MJTextComponent) GetTagName() string {
-	return "mj-text"
+	return nil
 }
 
 func (c *MJTextComponent) GetDefaultAttribute(name string) string {

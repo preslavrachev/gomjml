@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -28,9 +29,21 @@ func NewMJColumnComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJCo
 	}
 }
 
-func (c *MJColumnComponent) Render() (string, error) {
+func (c *MJColumnComponent) RenderString() (string, error) {
 	var output strings.Builder
+	err := c.Render(&output)
+	if err != nil {
+		return "", err
+	}
+	return output.String(), nil
+}
 
+func (c *MJColumnComponent) GetTagName() string {
+	return "mj-column"
+}
+
+// Render implements optimized Writer-based rendering for MJColumnComponent
+func (c *MJColumnComponent) Render(w io.Writer) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -66,22 +79,73 @@ func (c *MJColumnComponent) Render() (string, error) {
 	c.ApplyBackgroundStyles(columnDiv)
 	c.ApplyBorderStyles(columnDiv)
 
-	output.WriteString(columnDiv.RenderOpen())
+	if _, err := w.Write([]byte(columnDiv.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Check if we need gutter table for padding (following MJML JS pattern)
 	if c.hasGutter() {
-		output.WriteString(c.renderGutter())
+		gutterHTML := c.renderGutter()
+		if _, err := w.Write([]byte(gutterHTML)); err != nil {
+			return err
+		}
 	} else {
-		output.WriteString(c.renderColumn())
+		if err := c.renderColumnToWriter(w); err != nil {
+			return err
+		}
 	}
 
-	output.WriteString(columnDiv.RenderClose())
+	if _, err := w.Write([]byte(columnDiv.RenderClose())); err != nil {
+		return err
+	}
 
-	return output.String(), nil
+	return nil
 }
 
-func (c *MJColumnComponent) GetTagName() string {
-	return "mj-column"
+// renderColumnToWriter renders the column content directly to Writer
+func (c *MJColumnComponent) renderColumnToWriter(w io.Writer) error {
+	return c.renderColumnWithStylesToWriter(w, true)
+}
+
+// renderColumnWithStylesToWriter creates the inner column table with optional styles and writes to Writer
+func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeStyles bool) error {
+	// Inner table for column content
+	innerTable := html.NewTableTag().AddAttribute("width", "100%")
+
+	// Only add vertical-align when not inside a gutter (gutter TD handles vertical-align)
+	if includeStyles {
+		getAttr := func(name string) string {
+			if attr := c.GetAttribute(name); attr != nil {
+				return *attr
+			}
+			return c.GetDefaultAttribute(name)
+		}
+		verticalAlign := getAttr("vertical-align")
+		innerTable.AddStyle("vertical-align", verticalAlign)
+	}
+
+	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("<tbody>")); err != nil {
+		return err
+	}
+
+	// Render column content (child components)
+	for _, child := range c.Children {
+		if err := child.Render(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.Write([]byte("</tbody>")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJColumnComponent) GetDefaultAttribute(name string) string {
@@ -317,7 +381,7 @@ func (c *MJColumnComponent) renderColumnWithStyles(includeStyles bool) string {
 
 	// Render column content (child components)
 	for _, child := range c.Children {
-		childHTML, err := child.Render()
+		childHTML, err := child.RenderString()
 		if err != nil {
 			output.WriteString(fmt.Sprintf("<!-- Error rendering child: %v -->", err))
 			continue

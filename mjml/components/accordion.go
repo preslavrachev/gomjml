@@ -1,6 +1,8 @@
 package components
 
 import (
+	"io"
+
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -16,9 +18,14 @@ func NewMJAccordionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *M
 	}
 }
 
-func (c *MJAccordionComponent) Render() (string, error) {
+func (c *MJAccordionComponent) RenderString() (string, error) {
 	// TODO: Implement mj-accordion component functionality
 	return "", &NotImplementedError{ComponentName: "mj-accordion"}
+}
+
+func (c *MJAccordionComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-accordion component functionality
+	return &NotImplementedError{ComponentName: "mj-accordion"}
 }
 
 func (c *MJAccordionComponent) GetTagName() string {
@@ -65,9 +72,14 @@ func NewMJAccordionTextComponent(node *parser.MJMLNode, opts *options.RenderOpts
 	}
 }
 
-func (c *MJAccordionTextComponent) Render() (string, error) {
+func (c *MJAccordionTextComponent) RenderString() (string, error) {
 	// TODO: Implement mj-accordion-text component functionality
 	return "", &NotImplementedError{ComponentName: "mj-accordion-text"}
+}
+
+func (c *MJAccordionTextComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-accordion-text component functionality
+	return &NotImplementedError{ComponentName: "mj-accordion-text"}
 }
 
 func (c *MJAccordionTextComponent) GetTagName() string {
@@ -98,9 +110,14 @@ func NewMJAccordionTitleComponent(node *parser.MJMLNode, opts *options.RenderOpt
 	}
 }
 
-func (c *MJAccordionTitleComponent) Render() (string, error) {
+func (c *MJAccordionTitleComponent) RenderString() (string, error) {
 	// TODO: Implement mj-accordion-title component functionality
 	return "", &NotImplementedError{ComponentName: "mj-accordion-title"}
+}
+
+func (c *MJAccordionTitleComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-accordion-title component functionality
+	return &NotImplementedError{ComponentName: "mj-accordion-title"}
 }
 
 func (c *MJAccordionTitleComponent) GetTagName() string {

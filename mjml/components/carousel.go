@@ -1,6 +1,8 @@
 package components
 
 import (
+	"io"
+
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -16,9 +18,14 @@ func NewMJCarouselComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJ
 	}
 }
 
-func (c *MJCarouselComponent) Render() (string, error) {
+func (c *MJCarouselComponent) RenderString() (string, error) {
 	// TODO: Implement mj-carousel component functionality
 	return "", &NotImplementedError{ComponentName: "mj-carousel"}
+}
+
+func (c *MJCarouselComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-carousel component functionality
+	return &NotImplementedError{ComponentName: "mj-carousel"}
 }
 
 func (c *MJCarouselComponent) GetTagName() string {
@@ -67,9 +74,14 @@ func NewMJCarouselImageComponent(node *parser.MJMLNode, opts *options.RenderOpts
 	}
 }
 
-func (c *MJCarouselImageComponent) Render() (string, error) {
+func (c *MJCarouselImageComponent) RenderString() (string, error) {
 	// TODO: Implement mj-carousel-image component functionality
 	return "", &NotImplementedError{ComponentName: "mj-carousel-image"}
+}
+
+func (c *MJCarouselImageComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-carousel-image component functionality
+	return &NotImplementedError{ComponentName: "mj-carousel-image"}
 }
 
 func (c *MJCarouselImageComponent) GetTagName() string {

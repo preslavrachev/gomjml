@@ -1,6 +1,8 @@
 package components
 
 import (
+	"io"
+
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -16,9 +18,14 @@ func NewMJHeroComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHero
 	}
 }
 
-func (c *MJHeroComponent) Render() (string, error) {
+func (c *MJHeroComponent) RenderString() (string, error) {
 	// TODO: Implement mj-hero component functionality
 	return "", &NotImplementedError{ComponentName: "mj-hero"}
+}
+
+func (c *MJHeroComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-hero component functionality
+	return &NotImplementedError{ComponentName: "mj-hero"}
 }
 
 func (c *MJHeroComponent) GetTagName() string {

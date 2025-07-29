@@ -1,6 +1,8 @@
 package components
 
 import (
+	"io"
+
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -16,9 +18,14 @@ func NewMJSpacerComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSp
 	}
 }
 
-func (c *MJSpacerComponent) Render() (string, error) {
+func (c *MJSpacerComponent) RenderString() (string, error) {
 	// TODO: Implement mj-spacer component functionality
 	return "", &NotImplementedError{ComponentName: "mj-spacer"}
+}
+
+func (c *MJSpacerComponent) Render(w io.Writer) error {
+	// TODO: Implement mj-spacer component functionality
+	return &NotImplementedError{ComponentName: "mj-spacer"}
 }
 
 func (c *MJSpacerComponent) GetTagName() string {
