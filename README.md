@@ -244,19 +244,18 @@ The following benchmarks were run on a MacBook Pro M1 Pro with 16GB RAM, Go 1.21
 ./bench.sh  # You can also add --markdown for a markdown table output
 ```
 
-
-| Benchmark                          |  Time   |  Memory  | Allocs  |
-| :--------------------------------- | :-----: | :------: | :-----: |
-| BenchmarkMJMLRender_Small-8        | 0.66ms  |  1.03MB  |  13.7K  |
-| BenchmarkMJMLRender_Medium-8       | 7.87ms  | 10.73MB  | 134.5K  |
-| BenchmarkMJMLRender_Large-8        | 73.19ms | 108.35MB | 1341.4K |
-| BenchmarkMJMLRender_SmallMemory-8  | 0.66ms  |  1.03MB  |  13.7K  |
-| BenchmarkMJMLRender_MediumMemory-8 | 7.99ms  | 10.73MB  | 134.4K  |
-| BenchmarkMJMLRender_LargeMemory-8  | 73.12ms | 108.35MB | 1341.4K |
-| BenchmarkMJMLParsing_Only-8        | 1.76ms  |  0.71MB  |  19.3K  |
-| BenchmarkMJMLComponentCreation-8   | 0.17ms  |  0.38MB  |  4.6K   |
-| BenchmarkMJMLFullPipeline-8        | 8.17ms  | 10.73MB  | 134.4K  |
-| BenchmarkMJMLTemplateGeneration-8  | 0.13ms  |  0.59MB  |  0.1K   |
+| Benchmark                          |  Time   | Memory  | Allocs |
+| :--------------------------------- | :-----: | :-----: | :----: |
+| BenchmarkMJMLRender_Small-8        | 0.48ms  | 0.93MB  |  7.9K  |
+| BenchmarkMJMLRender_Medium-8       | 5.83ms  | 9.75MB  | 76.5K  |
+| BenchmarkMJMLRender_Large-8        | 52.59ms | 98.51MB | 762.4K |
+| BenchmarkMJMLRender_SmallMemory-8  | 0.49ms  | 0.93MB  |  7.9K  |
+| BenchmarkMJMLRender_MediumMemory-8 | 5.85ms  | 9.75MB  | 76.5K  |
+| BenchmarkMJMLRender_LargeMemory-8  | 52.37ms | 98.51MB | 762.4K |
+| BenchmarkMJMLParsing_Only-8        | 1.75ms  | 0.71MB  | 19.3K  |
+| BenchmarkMJMLComponentCreation-8   | 0.17ms  | 0.38MB  |  4.6K  |
+| BenchmarkMJMLFullPipeline-8        | 5.50ms  | 9.75MB  | 76.5K  |
+| BenchmarkMJMLTemplateGeneration-8  | 0.12ms  | 0.59MB  |  0.1K  |
 
 ## 🏗️ Architecture
 
