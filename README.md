@@ -187,29 +187,52 @@ func (c *MJNewComponent) Render() (string, error) {
 }
 ```
 
-## 📋 Supported Components
+## 📋 Component Implementation Status
 
-### Core Components ✅
-- **`mjml`** - Root document container with DOCTYPE and HTML structure
-- **`mj-head`** - Document metadata container  
-- **`mj-body`** - Email body container with responsive layout
-- **`mj-section`** - Layout sections with background color support
-- **`mj-column`** - Responsive columns with automatic width calculation
-- **`mj-text`** - Text content with full styling support (fonts, colors, alignment)
+| Component | Status | Description | Notes |
+|-----------|--------|-------------|-------|
+| **Core Layout** | | | |
+| `mjml` | ✅ **Implemented** | Root document container with DOCTYPE and HTML structure | |
+| `mj-head` | ✅ **Implemented** | Document metadata container | |
+| `mj-body` | ✅ **Implemented** | Email body container with responsive layout | |
+| `mj-section` | ✅ **Implemented** | Layout sections with background support | |
+| `mj-column` | ✅ **Implemented** | Responsive columns with automatic width calculation | |
+| `mj-wrapper` | ✅ **Implemented** | Wrapper component with border, background-color, and padding support | |
+| `mj-group` | ✅ **Implemented** | Group multiple columns in a section | |
+| **Content Components** | | | |
+| `mj-text` | ✅ **Implemented** | Text content with full styling support | |
+| `mj-button` | ✅ **Implemented** | Email-safe buttons with customizable styling and links | |
+| `mj-image` | ✅ **Implemented** | Responsive images with link wrapping and alt text | |
+| `mj-divider` | ✅ **Implemented** | Visual separators and spacing elements | |
+| `mj-social` | ✅ **Implemented** | Social media icons container | |
+| `mj-social-element` | ✅ **Implemented** | Individual social media icons | |
+| `mj-raw` | ✅ **Implemented** | Raw HTML content insertion | |
+| **Head Components** | | | |
+| `mj-title` | ✅ **Implemented** | Document title for email clients | |
+| `mj-font` | ✅ **Implemented** | Custom font imports with Google Fonts support | |
+| `mj-preview` | ✅ **Implemented** | Preview text for email clients | |
+| `mj-style` | ✅ **Implemented** | Custom CSS styles | |
+| `mj-attributes` | ✅ **Implemented** | Global attribute definitions | |
+| `mj-all` | ✅ **Implemented** | Global attributes for all components | |
+| **Interactive Components** | | | |
+| `mj-accordion` | ❌ **Not Implemented** | Collapsible content sections | |
+| `mj-accordion-text` | ❌ **Not Implemented** | Text content within accordion | |
+| `mj-accordion-title` | ❌ **Not Implemented** | Title for accordion sections | |
+| `mj-carousel` | ❌ **Not Implemented** | Image carousel component | |
+| `mj-carousel-image` | ❌ **Not Implemented** | Images within carousel | |
+| `mj-hero` | ❌ **Not Implemented** | Header/banner sections with background images | |
+| `mj-navbar` | ❌ **Not Implemented** | Navigation bar component | |
+| `mj-navbar-link` | ❌ **Not Implemented** | Navigation links within navbar | |
+| `mj-spacer` | ❌ **Not Implemented** | Layout spacing control | |
+| `mj-table` | ❌ **Not Implemented** | Email-safe table component | |
 
-### Interactive Components ✅  
-- **`mj-button`** - Email-safe buttons with customizable styling and links
-- **`mj-image`** - Responsive images with link wrapping and alt text
+### Implementation Summary
+- **✅ Implemented: 16 components** - Core layout, content, and head components are fully functional
+- **❌ Not Implemented: 10 components** - Advanced interactive components return `NotImplementedError`
+- **Total MJML Components: 26** - Covers all major MJML specification components
 
-### Head Components ✅
-- **`mj-title`** - Document title for email clients
-- **`mj-font`** - Custom font imports with Google Fonts support
-
-### Advanced Components (Future Phases)
-- **`mj-divider`** - Visual separators and spacing elements (planned)
-- **`mj-spacer`** - Layout spacing control (planned)
-- **`mj-navbar`** - Navigation components (planned)
-- **`mj-hero`** - Header/banner sections (planned)
+### Integration Test Status
+Based on the integration test suite in `mjml/integration_test.go`, the implemented components are thoroughly tested against the MRML (Rust) reference implementation to ensure compatibility and correctness.
 
 ## 🏗️ Architecture
 
