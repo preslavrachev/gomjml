@@ -37,7 +37,7 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"austin-divider", "testdata/austin-divider.mjml"},
 		{"austin-two-column-text", "testdata/austin-two-column-text.mjml"},
 		{"austin-full-width-wrapper", "testdata/austin-full-width-wrapper.mjml"},
-		// {"austin-social-media", "testdata/austin-social-media.mjml"},
+		//{"austin-social-media", "testdata/austin-social-media.mjml"},
 		{"austin-footer-text", "testdata/austin-footer-text.mjml"},
 		{"austin-group-component", "testdata/austin-group-component.mjml"},
 		{"austin-global-attributes", "testdata/austin-global-attributes.mjml"},
@@ -68,6 +68,10 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mj-column-padding", "testdata/mj-column-padding.mjml"},
 		{"mj-column-class", "testdata/mj-column-class.mjml"},
 		{"mj-wrapper", "testdata/mj-wrapper.mjml"},
+		// MJ-RAW tests
+		{"mj-raw", "testdata/mj-raw.mjml"},
+		{"mj-raw-conditional-comment", "testdata/mj-raw-conditional-comment.mjml"},
+		{"mj-raw-go-template", "testdata/mj-raw-go-template.mjml"},
 	}
 
 	for _, tc := range testCases {
@@ -81,6 +85,37 @@ func TestMJMLAgainstMRML(t *testing.T) {
 			// Get expected output from MRML (Rust implementation)
 			expected, err := runMRML(string(mjmlContent))
 			if err != nil {
+				// Some test cases with conditional comments can't be parsed by MRML
+				// due to XML parsing limitations, but our implementation should still work
+				if tc.name == "mj-raw-conditional-comment" {
+					t.Logf(
+						"MRML cannot parse %s due to conditional comments, checking that our implementation works",
+						tc.name,
+					)
+
+					// Just verify our implementation doesn't crash and produces some output
+					actual, err := Render(string(mjmlContent))
+					if err != nil {
+						t.Fatalf("Failed to render MJML: %v", err)
+					}
+
+					if len(actual) == 0 {
+						t.Fatal("Expected non-empty output")
+					}
+
+					// Verify it contains the expected raw content
+					if !strings.Contains(actual, `<div>mso</div>`) {
+						t.Error("Expected output to contain <div>mso</div>")
+					}
+					if !strings.Contains(actual, `<span>general</span>`) {
+						t.Error("Expected output to contain <span>general</span>")
+					}
+					if !strings.Contains(actual, `<img src="bananas" alt=""`) {
+						t.Error("Expected output to contain img tag with bananas src")
+					}
+
+					return
+				}
 				t.Fatalf("Failed to run MRML: %v", err)
 			}
 

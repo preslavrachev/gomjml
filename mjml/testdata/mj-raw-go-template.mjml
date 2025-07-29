@@ -1,0 +1,13 @@
+<mjml>
+  <mj-body>
+    <mj-raw> {{ range .Columns }} </mj-raw>
+    <mj-section>
+      <mj-column>
+        <mj-text>
+          <mj-raw>{{ . }}</mj-raw>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-raw> {{ end }} </mj-raw>
+  </mj-body>
+</mjml>

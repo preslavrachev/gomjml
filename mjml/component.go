@@ -76,6 +76,8 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 		return components.NewMJSpacerComponent(node, opts), nil
 	case "mj-table":
 		return components.NewMJTableComponent(node, opts), nil
+	case "mj-raw":
+		return components.NewMJRawComponent(node, opts), nil
 	default:
 		return nil, fmt.Errorf("unknown component: %s", tagName)
 	}
