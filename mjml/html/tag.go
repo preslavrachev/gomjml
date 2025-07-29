@@ -4,7 +4,6 @@
 package html
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -156,24 +155,33 @@ func (t *HTMLTag) RenderOpen() string {
 
 	// Add HTML attributes in order
 	for _, attr := range t.attributes {
-		b.WriteString(fmt.Sprintf(` %s="%s"`, attr.Name, attr.Value))
+		b.WriteByte(' ')
+		b.WriteString(attr.Name)
+		b.WriteString(`="`)
+		b.WriteString(attr.Value)
+		b.WriteByte('"')
 	}
 
 	// Add CSS classes
 	if len(t.classes) > 0 {
-		b.WriteString(fmt.Sprintf(` class="%s"`, strings.Join(t.classes, " ")))
+		b.WriteString(` class="`)
+		b.WriteString(strings.Join(t.classes, " "))
+		b.WriteByte('"')
 	}
 
 	// Add inline styles
 	if len(t.styles) > 0 {
 		b.WriteString(` style="`)
 		for _, style := range t.styles {
-			b.WriteString(fmt.Sprintf("%s:%s;", style.Name, style.Value))
+			b.WriteString(style.Name)
+			b.WriteByte(':')
+			b.WriteString(style.Value)
+			b.WriteByte(';')
 		}
-		b.WriteString(`"`)
+		b.WriteByte('"')
 	}
 
-	b.WriteString(">")
+	b.WriteByte('>')
 	return b.String()
 }
 
@@ -183,7 +191,12 @@ func (t *HTMLTag) RenderOpen() string {
 //
 //	</div>
 func (t *HTMLTag) RenderClose() string {
-	return fmt.Sprintf("</%s>", t.name)
+	var b strings.Builder
+	b.Grow(len(t.name) + 3) // Pre-allocate for "</name>"
+	b.WriteString("</")
+	b.WriteString(t.name)
+	b.WriteByte('>')
+	return b.String()
 }
 
 // RenderSelfClosing renders a self-closing HTML tag with all attributes, classes, and styles.
@@ -199,21 +212,30 @@ func (t *HTMLTag) RenderSelfClosing() string {
 
 	// Add HTML attributes in order
 	for _, attr := range t.attributes {
-		b.WriteString(fmt.Sprintf(` %s="%s"`, attr.Name, attr.Value))
+		b.WriteByte(' ')
+		b.WriteString(attr.Name)
+		b.WriteString(`="`)
+		b.WriteString(attr.Value)
+		b.WriteByte('"')
 	}
 
 	// Add CSS classes
 	if len(t.classes) > 0 {
-		b.WriteString(fmt.Sprintf(` class="%s"`, strings.Join(t.classes, " ")))
+		b.WriteString(` class="`)
+		b.WriteString(strings.Join(t.classes, " "))
+		b.WriteByte('"')
 	}
 
 	// Add inline styles
 	if len(t.styles) > 0 {
 		b.WriteString(` style="`)
 		for _, style := range t.styles {
-			b.WriteString(fmt.Sprintf("%s:%s;", style.Name, style.Value))
+			b.WriteString(style.Name)
+			b.WriteByte(':')
+			b.WriteString(style.Value)
+			b.WriteByte(';')
 		}
-		b.WriteString(`"`)
+		b.WriteByte('"')
 	}
 
 	b.WriteString(" />")
