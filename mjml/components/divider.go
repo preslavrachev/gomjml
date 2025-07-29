@@ -1,8 +1,6 @@
 package components
 
 import (
-	"strings"
-
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -82,29 +80,11 @@ func (c *MJDividerComponent) Render() (string, error) {
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
 
-	// MSO conditional comment for Outlook compatibility - use strings.Builder for efficiency
-	var msoBuilder strings.Builder
-	msoBuilder.Grow(256) // Pre-allocate for MSO table HTML
-	msoBuilder.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="550px" style="border-top:`)
-	msoBuilder.WriteString(borderStyle)
-	msoBuilder.WriteByte(' ')
-	msoBuilder.WriteString(borderWidth)
-	msoBuilder.WriteByte(' ')
-	msoBuilder.WriteString(borderColor)
-	msoBuilder.WriteString(`;font-size:1px;margin:0px auto;width:550px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`)
-	msoTable := msoBuilder.String()
+	// MSO conditional comment for Outlook compatibility
+	msoTable := `<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="550px" style="border-top:` + borderStyle + ` ` + borderWidth + ` ` + borderColor + `;font-size:1px;margin:0px auto;width:550px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`
 
 	// Render complete table row - paragraph must be empty, not self-closing to match MRML
-	var result strings.Builder
-	result.Grow(128 + len(msoTable)) // Pre-allocate for full HTML
-	result.WriteString("<tr>")
-	result.WriteString(td.RenderOpen())
-	result.WriteString(p.RenderOpen())
-	result.WriteString(p.RenderClose())
-	result.WriteString(msoTable)
-	result.WriteString(td.RenderClose())
-	result.WriteString("</tr>")
-	return result.String(), nil
+	return "<tr>" + td.RenderOpen() + p.RenderOpen() + p.RenderClose() + msoTable + td.RenderClose() + "</tr>", nil
 }
 
 func (c *MJDividerComponent) GetTagName() string {
