@@ -1,43 +1,75 @@
 package components
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
+
+// NotImplementedError indicates a component is not yet implemented
+type NotImplementedError struct {
+	ComponentName string
+}
+
+func (e *NotImplementedError) Error() string {
+	return fmt.Sprintf("component %s is not yet implemented", e.ComponentName)
+}
 
 // Component represents a renderable MJML component
 type Component interface {
 	Render() (string, error)
 	GetTagName() string
 	GetDefaultAttribute(name string) string
+	SetContainerWidth(widthPx int)
+	GetContainerWidth() int
+	SetSiblings(siblings int)
+	SetRawSiblings(rawSiblings int)
+	GetSiblings() int
+	GetRawSiblings() int
 }
 
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
-	Node     *parser.MJMLNode
-	Children []Component
-	Attrs    map[string]string
+	Node           *parser.MJMLNode
+	Children       []Component
+	Attrs          map[string]string
+	ContainerWidth int                 // Container width in pixels (0 means use default)
+	Siblings       int                 // Total siblings count
+	RawSiblings    int                 // Raw siblings count (for width calculations)
+	RenderOpts     *options.RenderOpts // Rendering options
 }
 
 // NewBaseComponent creates a new base component
-func NewBaseComponent(node *parser.MJMLNode) *BaseComponent {
+func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComponent {
 	attrs := make(map[string]string)
 	for _, attr := range node.Attrs {
 		attrs[attr.Name.Local] = attr.Value
 	}
 
+	if opts == nil {
+		opts = &options.RenderOpts{}
+	}
+
 	return &BaseComponent{
-		Node:     node,
-		Attrs:    attrs,
-		Children: make([]Component, 0),
+		Node:           node,
+		Attrs:          attrs,
+		Children:       make([]Component, 0),
+		ContainerWidth: 0, // 0 means use default body width
+		Siblings:       1,
+		RawSiblings:    0,
+		RenderOpts:     opts,
 	}
 }
 
 // GetAttribute gets an attribute value as a pointer, following the MRML attribute resolution order:
 // 1. Element attributes
 // 2. mj-class definitions (TODO: implement)
-// 3. Global element defaults (TODO: implement)
+// 3. Global element defaults (via GlobalAttributes)
 // 4. Component defaults (via GetDefaultAttribute)
 func (bc *BaseComponent) GetAttribute(name string) *string {
 	// 1. Check element attributes
@@ -46,7 +78,31 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 	}
 
 	// 2. Check mj-class (TODO: implement)
-	// 3. Check global defaults (TODO: implement)
+
+	// 3. Check global defaults - we can't access GetTagName from BaseComponent
+	// Global attributes will be checked in GetAttributeWithDefault or by passing component
+
+	// 4. Check component defaults
+	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
+		return &defaultVal
+	}
+
+	return nil
+}
+
+// GetAttributeWithGlobal gets an attribute value checking global attributes for the given component tag
+func (bc *BaseComponent) GetAttributeWithGlobal(name, tagName string) *string {
+	// 1. Check element attributes
+	if value, exists := bc.Attrs[name]; exists && value != "" {
+		return &value
+	}
+
+	// 2. Check mj-class (TODO: implement)
+
+	// 3. Check global defaults via globals package
+	if globalValue := globals.GetGlobalAttribute(tagName, name); globalValue != "" {
+		return &globalValue
+	}
 
 	// 4. Check component defaults
 	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
@@ -64,8 +120,19 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		return value
 	}
 
-	// 2. Check component defaults via interface method (properly calls overridden method)
+	// 2. Check global attributes if available (we'll get this via external function)
+	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
+		return globalValue
+	}
+
+	// 3. Check component defaults via interface method (properly calls overridden method)
 	return comp.GetDefaultAttribute(name)
+}
+
+// getGlobalAttribute gets a global attribute value from the global store
+func (bc *BaseComponent) getGlobalAttribute(componentName, attrName string) string {
+	// Access global attributes via globals package
+	return globals.GetGlobalAttribute(componentName, attrName)
 }
 
 // GetAttributeAsPixel parses an attribute value as a CSS pixel value
@@ -102,6 +169,57 @@ func (bc *BaseComponent) GetAttributeAsColor(name string) *styles.Color {
 // Override this method in specific components to provide component-specific defaults.
 func (bc *BaseComponent) GetDefaultAttribute(name string) string {
 	return ""
+}
+
+// SetContainerWidth sets the container width in pixels for this component
+func (bc *BaseComponent) SetContainerWidth(widthPx int) {
+	bc.ContainerWidth = widthPx
+}
+
+// GetContainerWidth returns the container width in pixels (0 means use default body width)
+func (bc *BaseComponent) GetContainerWidth() int {
+	return bc.ContainerWidth
+}
+
+// SetSiblings sets the total number of siblings for this component
+func (bc *BaseComponent) SetSiblings(siblings int) {
+	bc.Siblings = siblings
+}
+
+// SetRawSiblings sets the number of raw siblings for this component
+func (bc *BaseComponent) SetRawSiblings(rawSiblings int) {
+	bc.RawSiblings = rawSiblings
+}
+
+// GetSiblings returns the total number of siblings
+func (bc *BaseComponent) GetSiblings() int {
+	return bc.Siblings
+}
+
+// GetRawSiblings returns the number of raw siblings
+func (bc *BaseComponent) GetRawSiblings() int {
+	return bc.RawSiblings
+}
+
+// GetNonRawSiblings returns the number of non-raw siblings (used for width calculations)
+func (bc *BaseComponent) GetNonRawSiblings() int {
+	return bc.Siblings - bc.RawSiblings
+}
+
+// GetEffectiveWidth returns the container width if set, otherwise default body width
+func (bc *BaseComponent) GetEffectiveWidth() int {
+	if bc.ContainerWidth > 0 {
+		return bc.ContainerWidth
+	}
+	return GetDefaultBodyWidthPixels()
+}
+
+// GetEffectiveWidthString returns the effective width as a string with px units
+func (bc *BaseComponent) GetEffectiveWidthString() string {
+	if bc.ContainerWidth > 0 {
+		return fmt.Sprintf("%dpx", bc.ContainerWidth)
+	}
+	return GetDefaultBodyWidth()
 }
 
 // Style Mixin Methods - Common styling patterns that components can use
@@ -169,4 +287,57 @@ func (bc *BaseComponent) ApplyDimensionStyles(tag *html.HTMLTag) *html.HTMLTag {
 	maxHeight := bc.GetAttribute("max-height")
 
 	return styles.ApplyDimensionStyles(tag, width, height, minWidth, maxWidth, minHeight, maxHeight)
+}
+
+// AddDebugAttribute adds a debug attribute to an HTML tag for component traceability
+// This helps identify which MJML component generated which HTML elements during testing
+func (bc *BaseComponent) AddDebugAttribute(tag *html.HTMLTag, componentType string) {
+	// Only add debug attributes if enabled in render options
+	if bc.RenderOpts != nil && bc.RenderOpts.DebugTags {
+		debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
+		tag.AddAttribute(debugAttr, "true")
+	}
+}
+
+// CSS Class Helper Methods - Generic css-class attribute handling for all components
+
+// GetCSSClass returns the css-class attribute value
+func (bc *BaseComponent) GetCSSClass() string {
+	if value, exists := bc.Attrs["css-class"]; exists {
+		return value
+	}
+	return ""
+}
+
+// BuildClassAttribute combines existing CSS classes with the css-class attribute
+// Usage: component.BuildClassAttribute("mj-column-per-100", "mj-outlook-group-fix")
+func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
+	var classes []string
+
+	// Add existing classes
+	for _, class := range existingClasses {
+		if class != "" {
+			classes = append(classes, class)
+		}
+	}
+
+	// Add css-class if present
+	if cssClass := bc.GetCSSClass(); cssClass != "" {
+		classes = append(classes, cssClass)
+	}
+
+	if len(classes) == 0 {
+		return ""
+	}
+
+	return strings.Join(classes, " ")
+}
+
+// GetMSOClassAttribute returns the MSO conditional comment class attribute with -outlook suffix
+// Returns empty string if no css-class is set, or " class=\"css-class-outlook\"" if set
+func (bc *BaseComponent) GetMSOClassAttribute() string {
+	if cssClass := bc.GetCSSClass(); cssClass != "" {
+		return fmt.Sprintf(` class="%s-outlook"`, cssClass)
+	}
+	return ""
 }

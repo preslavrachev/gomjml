@@ -2,3 +2,4 @@ bin/
 gomjml
 coverage.out
 .DS_Store
+.env

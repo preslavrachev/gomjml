@@ -1,0 +1,29 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Hero Images</mj-title>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section full-width="full-width" background-color="#040B4F" padding-bottom="0">
+      <mj-column width="100%">
+        <mj-image
+          src="https://res.cloudinary.com/dheck1ubc/image/upload/v1544156968/Email/Images/AnnouncementOffset/header-top.png"
+          width="600px"
+          alt=""
+          padding="0"
+          href="https://google.com"
+        />
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#1f2e78">
+      <mj-column width="100%">
+        <mj-image
+          src="https://res.cloudinary.com/dheck1ubc/image/upload/v1544156968/Email/Images/AnnouncementOffset/header-bottom.png"
+          width="600px"
+          alt=""
+          padding="0"
+          href="https://google.com"
+        />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

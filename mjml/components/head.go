@@ -1,6 +1,11 @@
 package components
 
-import "github.com/preslavrachev/gomjml/parser"
+import (
+	"fmt"
+
+	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/parser"
+)
 
 // MJHeadComponent represents mj-head
 type MJHeadComponent struct {
@@ -8,9 +13,9 @@ type MJHeadComponent struct {
 }
 
 // NewMJHeadComponent creates a new mj-head component
-func NewMJHeadComponent(node *parser.MJMLNode) *MJHeadComponent {
+func NewMJHeadComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHeadComponent {
 	return &MJHeadComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -32,9 +37,9 @@ type MJTitleComponent struct {
 }
 
 // NewMJTitleComponent creates a new mj-title component
-func NewMJTitleComponent(node *parser.MJMLNode) *MJTitleComponent {
+func NewMJTitleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTitleComponent {
 	return &MJTitleComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -56,9 +61,9 @@ type MJFontComponent struct {
 }
 
 // NewMJFontComponent creates a new mj-font component
-func NewMJFontComponent(node *parser.MJMLNode) *MJFontComponent {
+func NewMJFontComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJFontComponent {
 	return &MJFontComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -79,4 +84,110 @@ func (c *MJFontComponent) GetDefaultAttribute(name string) string {
 	default:
 		return ""
 	}
+}
+
+// MJPreviewComponent represents mj-preview
+type MJPreviewComponent struct {
+	*BaseComponent
+}
+
+// NewMJPreviewComponent creates a new mj-preview component
+func NewMJPreviewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJPreviewComponent {
+	return &MJPreviewComponent{
+		BaseComponent: NewBaseComponent(node, opts),
+	}
+}
+
+func (c *MJPreviewComponent) Render() (string, error) {
+	// Preview text is rendered as hidden div in body
+	if c.Node.Text != "" {
+		return fmt.Sprintf(`<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">%s</div>`, c.Node.Text), nil
+	}
+	return "", nil
+}
+
+func (c *MJPreviewComponent) GetTagName() string {
+	return "mj-preview"
+}
+
+func (c *MJPreviewComponent) GetDefaultAttribute(name string) string {
+	return ""
+}
+
+// MJStyleComponent represents mj-style
+type MJStyleComponent struct {
+	*BaseComponent
+}
+
+// NewMJStyleComponent creates a new mj-style component
+func NewMJStyleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJStyleComponent {
+	return &MJStyleComponent{
+		BaseComponent: NewBaseComponent(node, opts),
+	}
+}
+
+func (c *MJStyleComponent) Render() (string, error) {
+	// Custom CSS styles - render as style tag
+	if c.Node.Text != "" {
+		return fmt.Sprintf(`<style type="text/css">%s</style>`, c.Node.Text), nil
+	}
+	return "", nil
+}
+
+func (c *MJStyleComponent) GetTagName() string {
+	return "mj-style"
+}
+
+func (c *MJStyleComponent) GetDefaultAttribute(name string) string {
+	return ""
+}
+
+// MJAttributesComponent represents mj-attributes
+type MJAttributesComponent struct {
+	*BaseComponent
+}
+
+// NewMJAttributesComponent creates a new mj-attributes component
+func NewMJAttributesComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJAttributesComponent {
+	return &MJAttributesComponent{
+		BaseComponent: NewBaseComponent(node, opts),
+	}
+}
+
+func (c *MJAttributesComponent) Render() (string, error) {
+	// Attributes are processed during parsing, no HTML output
+	return "", nil
+}
+
+func (c *MJAttributesComponent) GetTagName() string {
+	return "mj-attributes"
+}
+
+func (c *MJAttributesComponent) GetDefaultAttribute(name string) string {
+	return ""
+}
+
+// MJAllComponent represents mj-all (global attributes)
+type MJAllComponent struct {
+	*BaseComponent
+}
+
+// NewMJAllComponent creates a new mj-all component
+func NewMJAllComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJAllComponent {
+	return &MJAllComponent{
+		BaseComponent: NewBaseComponent(node, opts),
+	}
+}
+
+func (c *MJAllComponent) Render() (string, error) {
+	// Global attributes are processed during parsing, no HTML output
+	return "", nil
+}
+
+func (c *MJAllComponent) GetTagName() string {
+	return "mj-all"
+}
+
+func (c *MJAllComponent) GetDefaultAttribute(name string) string {
+	return ""
 }

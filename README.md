@@ -1,6 +1,8 @@
 # gomjml - Native Go MJML Compiler
 
-A native Go implementation of the MJML email framework, providing fast compilation of MJML markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML.
+A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML.
+
+> **Full Disclaimer**: This project has been created in some cooperation with [Claude Code](https://www.anthropic.com/claude-code). I wouldn't have been able to achieve such a feat without Claude's help in turning my bizarre requirements into Go code. Still, it wasn't all smooth sailing. While Claude was able to generate a plausible MVP relatively quickly, bringing it somethign even remotely usable took a lot more human guidance, goign back and forth, throwing away a bunch of code and starting over. There's lots I have learned in the process, and I will soon write a series of blog posts addressing my experience.
 
 ## 🚀 Features
 
@@ -45,6 +47,9 @@ The CLI provides a structured command system with individual commands:
 # Output to stdout
 ./bin/gomjml compile input.mjml -s
 
+# Include debug attributes for component traceability
+./bin/gomjml compile input.mjml -s --debug
+
 # Run test suite
 ./bin/gomjml test
 
@@ -67,6 +72,7 @@ The CLI provides a structured command system with individual commands:
 - `--beautify`: Beautify HTML output (default: true)
 - `--minify`: Minify HTML output (default: false)
 - `--validation-level string`: Validation level - strict, soft, or skip (default: "soft")
+- `--debug`: Include debug attributes for component traceability (default: false)
 
 ### Go Package API
 
@@ -105,13 +111,20 @@ func main() {
 	}
 	fmt.Println(html)
 
+	// Method 1b: Direct rendering with debug attributes
+	htmlWithDebug, err := mjml.Render(mjmlContent, mjml.WithDebugTags(true))
+	if err != nil {
+		log.Fatal("Render error:", err)
+	}
+	fmt.Println(htmlWithDebug) // Includes data-mj-debug-* attributes
+
 	// Method 2: Step-by-step processing
 	ast, err := parser.ParseMJML(mjmlContent)
 	if err != nil {
 		log.Fatal("Parse error:", err)
 	}
 
-	component, err := mjml.CreateComponent(ast)
+	component, err := mjml.NewFromAST(ast)
 	if err != nil {
 		log.Fatal("Component creation error:", err)
 	}
@@ -132,20 +145,24 @@ While it is not recommended to do so, because it will break the compatibility wi
 // 1. Create component file in mjml/components/
 package components
 
-import "github.com/preslavrachev/gomjml/parser"
+import (
+    "github.com/preslavrachev/gomjml/mjml/options"
+    "github.com/preslavrachev/gomjml/parser"
+)
 
 type MJNewComponent struct {
     *BaseComponent
 }
 
-func NewMJNewComponent(node *parser.MJMLNode) *MJNewComponent {
+func NewMJNewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNewComponent {
     return &MJNewComponent{
-        BaseComponent: NewBaseComponent(node),
+        BaseComponent: NewBaseComponent(node, opts),
     }
 }
 
 func (c *MJNewComponent) Render() (string, error) {
     // Implementation here
+    // Use c.AddDebugAttribute(tag, "new") for debug traceability
     return "", nil
 }
 
@@ -155,35 +172,91 @@ func (c *MJNewComponent) GetTagName() string {
 
 // 2. Add to component factory in mjml/component.go
 case "mj-new":
-    return components.NewMJNewComponent(node), nil
+    return components.NewMJNewComponent(node, opts), nil
 
 // 3. Add test cases in mjml/integration_test.go
 // 4. Update README.md documentation
 ```
 
-## 📋 Supported Components
+#### Delaying Component Implementation
 
-### Core Components ✅
-- **`mjml`** - Root document container with DOCTYPE and HTML structure
-- **`mj-head`** - Document metadata container  
-- **`mj-body`** - Email body container with responsive layout
-- **`mj-section`** - Layout sections with background color support
-- **`mj-column`** - Responsive columns with automatic width calculation
-- **`mj-text`** - Text content with full styling support (fonts, colors, alignment)
+If you need to register a component but won't implement its functionality right away, use the `NotImplementedError` pattern:
 
-### Interactive Components ✅  
-- **`mj-button`** - Email-safe buttons with customizable styling and links
-- **`mj-image`** - Responsive images with link wrapping and alt text
+```go
+func (c *MJNewComponent) Render() (string, error) {
+    // TODO: Implement mj-new component functionality
+    return "", &NotImplementedError{ComponentName: "mj-new"}
+}
+```
 
-### Head Components ✅
-- **`mj-title`** - Document title for email clients
-- **`mj-font`** - Custom font imports with Google Fonts support
+## 📋 Component Implementation Status
 
-### Advanced Components (Future Phases)
-- **`mj-divider`** - Visual separators and spacing elements (planned)
-- **`mj-spacer`** - Layout spacing control (planned)
-- **`mj-navbar`** - Navigation components (planned)
-- **`mj-hero`** - Header/banner sections (planned)
+| Component | Status | Description | Notes |
+|-----------|--------|-------------|-------|
+| **Core Layout** | | | |
+| `mjml` | ✅ **Implemented** | Root document container with DOCTYPE and HTML structure | |
+| `mj-head` | ✅ **Implemented** | Document metadata container | |
+| `mj-body` | ✅ **Implemented** | Email body container with responsive layout | |
+| `mj-section` | ✅ **Implemented** | Layout sections with background support | |
+| `mj-column` | ✅ **Implemented** | Responsive columns with automatic width calculation | |
+| `mj-wrapper` | ✅ **Implemented** | Wrapper component with border, background-color, and padding support | |
+| `mj-group` | ✅ **Implemented** | Group multiple columns in a section | |
+| **Content Components** | | | |
+| `mj-text` | ✅ **Implemented** | Text content with full styling support | |
+| `mj-button` | ✅ **Implemented** | Email-safe buttons with customizable styling and links | |
+| `mj-image` | ✅ **Implemented** | Responsive images with link wrapping and alt text | |
+| `mj-divider` | ✅ **Implemented** | Visual separators and spacing elements | |
+| `mj-social` | ✅ **Implemented** | Social media icons container | |
+| `mj-social-element` | ✅ **Implemented** | Individual social media icons | |
+| `mj-raw` | ✅ **Implemented** | Raw HTML content insertion | |
+| **Head Components** | | | |
+| `mj-title` | ✅ **Implemented** | Document title for email clients | |
+| `mj-font` | ✅ **Implemented** | Custom font imports with Google Fonts support | |
+| `mj-preview` | ✅ **Implemented** | Preview text for email clients | |
+| `mj-style` | ✅ **Implemented** | Custom CSS styles | |
+| `mj-attributes` | ✅ **Implemented** | Global attribute definitions | |
+| `mj-all` | ✅ **Implemented** | Global attributes for all components | |
+| **Interactive Components** | | | |
+| `mj-accordion` | ❌ **Not Implemented** | Collapsible content sections | |
+| `mj-accordion-text` | ❌ **Not Implemented** | Text content within accordion | |
+| `mj-accordion-title` | ❌ **Not Implemented** | Title for accordion sections | |
+| `mj-carousel` | ❌ **Not Implemented** | Image carousel component | |
+| `mj-carousel-image` | ❌ **Not Implemented** | Images within carousel | |
+| `mj-hero` | ❌ **Not Implemented** | Header/banner sections with background images | |
+| `mj-navbar` | ❌ **Not Implemented** | Navigation bar component | |
+| `mj-navbar-link` | ❌ **Not Implemented** | Navigation links within navbar | |
+| `mj-spacer` | ❌ **Not Implemented** | Layout spacing control | |
+| `mj-table` | ❌ **Not Implemented** | Email-safe table component | |
+
+### Implementation Summary
+- **✅ Implemented: 16 components** - Core layout, content, and head components are fully functional
+- **❌ Not Implemented: 10 components** - Advanced interactive components return `NotImplementedError`
+- **Total MJML Components: 26** - Covers all major MJML specification components
+
+### Integration Test Status
+Based on the integration test suite in `mjml/integration_test.go`, the implemented components are thoroughly tested against the MRML (Rust) reference implementation to ensure compatibility and correctness.
+
+### Baseline Benchmark
+
+The following benchmarks were run on a MacBook Pro M1 Pro with 16GB RAM, Go 1.21.4. As you can see, for a MVP, the performance is will eb quite sufficient for most use cases, however, there is something to be desired in terms of memory usage and allocations. I am hopign to make significant refactoring and improvement in future releases.
+
+```bash
+./bench.sh  # You can also add --markdown for a markdown table output
+```
+
+
+| Benchmark                          |  Time   |  Memory  | Allocs  |
+| :--------------------------------- | :-----: | :------: | :-----: |
+| BenchmarkMJMLRender_Small-8        | 0.66ms  |  1.03MB  |  13.7K  |
+| BenchmarkMJMLRender_Medium-8       | 7.87ms  | 10.73MB  | 134.5K  |
+| BenchmarkMJMLRender_Large-8        | 73.19ms | 108.35MB | 1341.4K |
+| BenchmarkMJMLRender_SmallMemory-8  | 0.66ms  |  1.03MB  |  13.7K  |
+| BenchmarkMJMLRender_MediumMemory-8 | 7.99ms  | 10.73MB  | 134.4K  |
+| BenchmarkMJMLRender_LargeMemory-8  | 73.12ms | 108.35MB | 1341.4K |
+| BenchmarkMJMLParsing_Only-8        | 1.76ms  |  0.71MB  |  19.3K  |
+| BenchmarkMJMLComponentCreation-8   | 0.17ms  |  0.38MB  |  4.6K   |
+| BenchmarkMJMLFullPipeline-8        | 8.17ms  | 10.73MB  | 134.4K  |
+| BenchmarkMJMLTemplateGeneration-8  | 0.13ms  |  0.59MB  |  0.1K   |
 
 ## 🏗️ Architecture
 

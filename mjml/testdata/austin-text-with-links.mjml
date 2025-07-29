@@ -1,0 +1,41 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Text with Links</mj-title>
+    <mj-style inline="inline"> .text-link { color: #5e6ebf } </mj-style>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section background-color="#ffffff" padding="15px">
+      <mj-column width="100%">
+        <mj-text color="#637381" font-size="16px">
+          Lorem ipsum, dolor sit amet consectetur adipisicing elit. Quia a
+          assumenda nulla in quisquam optio quibusdam fugiat perspiciatis
+          nobis, ad tempora culpa porro labore. Repudiandae accusamus
+          obcaecati voluptatibus accusantium perspiciatis.
+        </mj-text>
+        <mj-text color="#637381" font-size="16px">
+          <ul>
+            <li style="padding-bottom: 20px">
+              <strong>Lorem ipsum dolor:</strong> Sit amet consectetur
+              adipisicing elit.
+            </li>
+            <li style="padding-bottom: 20px">
+              <strong>Quia a assumenda nulla:</strong> Repudiandae accusamus
+              obcaecati voluptatibus accusantium perspiciatis.
+            </li>
+            <li>
+              <strong>Tempora culpa porro labore:</strong> In quisquam optio
+              quibusdam fugiat perspiciatis nobis.
+            </li>
+          </ul>
+        </mj-text>
+        <mj-text color="#637381" font-size="16px" padding-bottom="30px">
+          Lorem ipsum dolor
+          <a class="text-link" href="https://google.com">sit amet consectetur</a>
+          adipisicing elit. Earum eaque sunt nulla in, id eveniet quae unde ad
+          ipsam ut, harum autem porro reiciendis minus libero illo. Vero,
+          fugiat reprehenderit.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

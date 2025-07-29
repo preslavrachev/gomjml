@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -14,9 +16,9 @@ type MJImageComponent struct {
 }
 
 // NewMJImageComponent creates a new mj-image component
-func NewMJImageComponent(node *parser.MJMLNode) *MJImageComponent {
+func NewMJImageComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJImageComponent {
 	return &MJImageComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -33,7 +35,6 @@ func (c *MJImageComponent) Render() (string, error) {
 
 	// Get attributes with defaults
 	align := getAttr("align")
-	alt := getAttr("alt")
 	border := getAttr("border")
 	borderRadius := getAttr("border-radius")
 	height := getAttr("height")
@@ -45,6 +46,12 @@ func (c *MJImageComponent) Render() (string, error) {
 	title := getAttr("title")
 	width := getAttr("width")
 
+	// Handle alt attribute specially - only include if explicitly set in MJML
+	var alt *string
+	if value, exists := c.Attrs["alt"]; exists {
+		alt = &value
+	}
+
 	if src == "" {
 		return "", fmt.Errorf("mj-image requires src attribute")
 	}
@@ -53,6 +60,12 @@ func (c *MJImageComponent) Render() (string, error) {
 	imgWidth := width
 	if strings.HasSuffix(width, "px") {
 		imgWidth = strings.TrimSuffix(width, "px")
+	}
+
+	// Parse height to remove 'px' suffix for img height attribute
+	imgHeight := height
+	if strings.HasSuffix(height, "px") {
+		imgHeight = strings.TrimSuffix(height, "px")
 	}
 
 	// Create TR element
@@ -64,6 +77,11 @@ func (c *MJImageComponent) Render() (string, error) {
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
+
+	// Add css-class if present
+	if cssClass := c.BuildClassAttribute(); cssClass != "" {
+		tdTag.AddAttribute("class", cssClass)
+	}
 
 	output.WriteString(tdTag.RenderOpen())
 
@@ -104,13 +122,14 @@ func (c *MJImageComponent) Render() (string, error) {
 
 	// Image element with styles
 	imgTag := html.NewHTMLTag("img")
+	c.AddDebugAttribute(imgTag, "image")
 
-	// Set image attributes
-	if alt != "" {
-		imgTag.AddAttribute("alt", alt)
+	// Set image attributes - only include alt if explicitly set
+	if alt != nil {
+		imgTag.AddAttribute("alt", *alt)
 	}
-	if height != "" {
-		imgTag.AddAttribute("height", height)
+	if imgHeight != "" {
+		imgTag.AddAttribute("height", imgHeight)
 	}
 	imgTag.AddAttribute("src", src)
 	if title != "" {
@@ -163,6 +182,8 @@ func (c *MJImageComponent) GetDefaultAttribute(name string) string {
 		return "0"
 	case "border-radius":
 		return ""
+	case "font-size":
+		return "13px"
 	case "height":
 		return "auto"
 	case "href":
@@ -178,8 +199,32 @@ func (c *MJImageComponent) GetDefaultAttribute(name string) string {
 	case "title":
 		return ""
 	case "width":
-		return ""
+		return c.calculateDefaultWidth()
 	default:
 		return ""
 	}
+}
+
+// calculateDefaultWidth calculates the default width for the image
+// based on the container width minus horizontal padding
+func (c *MJImageComponent) calculateDefaultWidth() string {
+	containerWidth := c.GetEffectiveWidth()
+
+	// Get padding and calculate horizontal padding
+	paddingAttr := c.GetAttribute("padding")
+	horizontalPadding := 50 // Default: 25px left + 25px right
+
+	if paddingAttr != nil {
+		if spacing, err := styles.ParseSpacing(*paddingAttr); err == nil {
+			horizontalPadding = int(spacing.Left + spacing.Right)
+		}
+	}
+
+	// Calculate available width
+	availableWidth := containerWidth - horizontalPadding
+	if availableWidth <= 0 {
+		availableWidth = containerWidth // Fallback to container width
+	}
+
+	return fmt.Sprintf("%dpx", availableWidth)
 }

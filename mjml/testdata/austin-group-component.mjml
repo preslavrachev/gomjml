@@ -1,0 +1,26 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Group Component</mj-title>
+    <mj-style inline="inline"> .footer-link { color: #888888 } </mj-style>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section padding-top="0">
+      <mj-group>
+        <mj-column width="100%" padding-right="0">
+          <mj-text
+            color="#445566"
+            font-size="11px"
+            align="center"
+            line-height="16px"
+            font-weight="bold"
+          >
+            <a class="footer-link" href="https://www.google.com">Privacy</a
+            ><a class="footer-link" href="https://www.google.com"
+              >Unsubscribe</a
+            >
+          </mj-text>
+        </mj-column>
+      </mj-group>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -1,9 +1,11 @@
 package components
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
+	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -13,9 +15,9 @@ type MJSectionComponent struct {
 }
 
 // NewMJSectionComponent creates a new mj-section component
-func NewMJSectionComponent(node *parser.MJMLNode) *MJSectionComponent {
+func NewMJSectionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSectionComponent {
 	return &MJSectionComponent{
-		BaseComponent: NewBaseComponent(node),
+		BaseComponent: NewBaseComponent(node, opts),
 	}
 }
 
@@ -35,15 +37,36 @@ func (c *MJSectionComponent) Render() (string, error) {
 	padding := getAttr("padding")
 	direction := getAttr("direction")
 	textAlign := getAttr("text-align")
+	fullWidth := getAttr("full-width")
+
+	// For full-width sections with background, add outer table wrapper (like MRML does)
+	if backgroundColor != "" && fullWidth != "" {
+		outerTable := html.NewTableTag().
+			AddAttribute("align", "center")
+
+		// Apply background styles in MRML order: background, background-color, width
+		c.ApplyBackgroundStyles(outerTable)
+		outerTable.AddStyle("width", "100%")
+
+		output.WriteString(outerTable.RenderOpen())
+		output.WriteString("<tbody><tr><td>")
+	}
 
 	// MSO conditional comment - table wrapper for Outlook
-	msoTable := html.NewTableTag().
-		AddAttribute("align", "center").
-		AddAttribute("width", "600").
-		AddStyle("width", "600px")
+	msoTable := html.NewTableTag()
 
+	// Add attributes in MRML order: bgcolor, align, width
 	if backgroundColor != "" {
 		msoTable.AddAttribute("bgcolor", backgroundColor)
+	}
+
+	msoTable.AddAttribute("align", "center").
+		AddAttribute("width", fmt.Sprintf("%d", c.GetEffectiveWidth())).
+		AddStyle("width", c.GetEffectiveWidthString())
+
+	// Add css-class-outlook if present
+	if cssClass := c.GetCSSClass(); cssClass != "" {
+		msoTable.AddAttribute("class", cssClass+"-outlook")
 	}
 
 	msoTd := html.NewHTMLTag("td").
@@ -56,13 +79,21 @@ func (c *MJSectionComponent) Render() (string, error) {
 
 	// Main section div with styles
 	sectionDiv := html.NewHTMLTag("div")
+	c.AddDebugAttribute(sectionDiv, "section")
 
-	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(sectionDiv)
+	// Add css-class if present
+	if cssClass := c.BuildClassAttribute(); cssClass != "" {
+		sectionDiv.AddAttribute("class", cssClass)
+	}
 
-	// Then add layout styles
+	// For non-full-width background sections, apply background to the div (like MRML)
+	if backgroundColor != "" && fullWidth == "" {
+		c.ApplyBackgroundStyles(sectionDiv)
+	}
+
+	// Add layout styles
 	sectionDiv.AddStyle("margin", "0px auto").
-		AddStyle("max-width", "600px")
+		AddStyle("max-width", c.GetEffectiveWidthString())
 
 	output.WriteString(sectionDiv.RenderOpen())
 
@@ -70,8 +101,12 @@ func (c *MJSectionComponent) Render() (string, error) {
 	innerTable := html.NewTableTag().
 		AddAttribute("align", "center")
 
-	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(innerTable)
+	// Apply background styles to inner table
+	// - Always for no-background sections
+	// - Also for non-full-width background sections (MRML puts background on both div and table)
+	if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
+		c.ApplyBackgroundStyles(innerTable)
+	}
 
 	// Then add width
 	innerTable.AddStyle("width", "100%")
@@ -83,24 +118,83 @@ func (c *MJSectionComponent) Render() (string, error) {
 	tdTag := html.NewHTMLTag("td").
 		AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("text-align", textAlign)
+		AddStyle("padding", padding)
+
+	// Add specific padding overrides in MRML order: left, right, top, bottom
+	if paddingLeftAttr := c.GetAttribute("padding-left"); paddingLeftAttr != nil {
+		tdTag.AddStyle("padding-left", *paddingLeftAttr)
+	}
+	if paddingRightAttr := c.GetAttribute("padding-right"); paddingRightAttr != nil {
+		tdTag.AddStyle("padding-right", *paddingRightAttr)
+	}
+	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
+		tdTag.AddStyle("padding-top", *paddingTopAttr)
+	}
+	if paddingBottomAttr := c.GetAttribute("padding-bottom"); paddingBottomAttr != nil {
+		tdTag.AddStyle("padding-bottom", *paddingBottomAttr)
+	}
+
+	tdTag.AddStyle("text-align", textAlign)
 
 	output.WriteString(tdTag.RenderOpen())
 
-	// Render child columns (section provides MSO TR, columns provide MSO TDs)
+	// Calculate sibling counts for width calculations (following MRML logic)
+	siblings := len(c.Children)
+	rawSiblings := 0
 	for _, child := range c.Children {
+		// Count raw siblings (components that don't participate in width calculations)
+		// For now, all our components are non-raw, but this matches MRML structure
+		if child.GetTagName() == "mj-raw" {
+			rawSiblings++
+		}
+	}
+
+	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
+	for _, child := range c.Children {
+		// Pass the effective width and sibling counts to the child
+		child.SetContainerWidth(c.GetEffectiveWidth())
+		child.SetSiblings(siblings)
+		child.SetRawSiblings(rawSiblings)
+
 		// Generate MSO conditional TD for each column (following MRML's render_wrapped_children pattern)
 		if columnComp, ok := child.(*MJColumnComponent); ok {
-			msoStyles := columnComp.GetMSOTDStyles()
-
 			msoTable := html.NewTableTag()
 
 			msoTr := html.NewHTMLTag("tr")
 
 			msoTd := html.NewHTMLTag("td")
-			for property, value := range msoStyles {
-				msoTd.AddStyle(property, value)
+			// Add styles in MRML insertion order: vertical-align first, then width
+			getAttr := func(name string) string {
+				if attr := columnComp.GetAttribute(name); attr != nil {
+					return *attr
+				}
+				return columnComp.GetDefaultAttribute(name)
+			}
+			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
+			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
+
+			output.WriteString(html.RenderMSOConditional(
+				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))
+		} else if groupComp, ok := child.(*MJGroupComponent); ok {
+			// Groups also need MSO conditionals like columns
+			groupComp.SetContainerWidth(c.GetEffectiveWidth())
+
+			msoTable := html.NewTableTag()
+			msoTr := html.NewHTMLTag("tr")
+			msoTd := html.NewHTMLTag("td")
+
+			// Use group's specific width if it has one, otherwise use section's effective width
+			groupWidth := "100%" // default
+			if groupComp.GetAttribute("width") != nil {
+				groupWidth = *groupComp.GetAttribute("width")
+			}
+
+			if strings.HasSuffix(groupWidth, "px") {
+				// Use the group's pixel width directly
+				msoTd.AddStyle("width", groupWidth)
+			} else {
+				// Use section's effective width for percentage-based groups
+				msoTd.AddStyle("width", fmt.Sprintf("%dpx", c.GetEffectiveWidth()))
 			}
 
 			output.WriteString(html.RenderMSOConditional(
@@ -113,8 +207,10 @@ func (c *MJSectionComponent) Render() (string, error) {
 		}
 		output.WriteString(childHTML)
 
-		// Close MSO conditional TD/TR/TABLE for columns
+		// Close MSO conditional TD/TR/TABLE for columns and groups
 		if _, ok := child.(*MJColumnComponent); ok {
+			output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
+		} else if _, ok := child.(*MJGroupComponent); ok {
 			output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
 		}
 	}
@@ -127,6 +223,11 @@ func (c *MJSectionComponent) Render() (string, error) {
 	// Close MSO conditional
 	output.WriteString(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))
 
+	// Close outer table if we added one for full-width background
+	if backgroundColor != "" && fullWidth != "" {
+		output.WriteString("</td></tr></tbody></table>")
+	}
+
 	return output.String(), nil
 }
 
@@ -136,6 +237,8 @@ func (c *MJSectionComponent) GetTagName() string {
 
 func (c *MJSectionComponent) GetDefaultAttribute(name string) string {
 	switch name {
+	case "background-position":
+		return "top center"
 	case "background-repeat":
 		return "repeat"
 	case "background-size":
@@ -146,6 +249,8 @@ func (c *MJSectionComponent) GetDefaultAttribute(name string) string {
 		return "20px 0"
 	case "text-align":
 		return "center"
+	case "text-padding":
+		return "4px 4px 4px 0"
 	default:
 		return ""
 	}

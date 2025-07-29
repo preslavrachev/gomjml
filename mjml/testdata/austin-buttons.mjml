@@ -1,0 +1,33 @@
+<mjml>
+  <mj-head>
+    <mj-title>Austin Buttons</mj-title>
+  </mj-head>
+  <mj-body background-color="#E7E7E7" width="600px">
+    <mj-section background-color="#ffffff" padding="15px">
+      <mj-column width="100%">
+        <mj-button
+          background-color="#5e6ebf"
+          align="center"
+          color="#ffffff"
+          font-size="17px"
+          font-weight="bold"
+          href="https://google.com"
+          width="300px"
+        >
+          RSVP Today
+        </mj-button>
+        <mj-button
+          background-color="#5e6ebf"
+          align="center"
+          color="#ffffff"
+          font-size="17px"
+          font-weight="bold"
+          href="https://google.com"
+          width="300px"
+        >
+          Book an Appointment
+        </mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

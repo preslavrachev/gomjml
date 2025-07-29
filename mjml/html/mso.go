@@ -41,15 +41,17 @@ func CreateMSOTable(width, bgcolor string) *HTMLTag {
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation").
-		AddAttribute("align", "center")
+		AddAttribute("role", "presentation")
+
+	// Add attributes in MRML order: bgcolor, align, width
+	if bgcolor != "" {
+		tag.AddAttribute("bgcolor", bgcolor)
+	}
+
+	tag.AddAttribute("align", "center")
 
 	if width != "" {
 		tag.AddAttribute("width", width)
-	}
-
-	if bgcolor != "" {
-		tag.AddAttribute("bgcolor", bgcolor)
 	}
 
 	return tag
