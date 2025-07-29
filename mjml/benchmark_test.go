@@ -70,8 +70,8 @@ func generateMJMLTemplate(sections int) string {
 	return builder.String()
 }
 
-// BenchmarkMJMLRender_Small benchmarks rendering with 10 sections
-func BenchmarkMJMLRender_Small(b *testing.B) {
+// BenchmarkMJMLRender_10_Sections benchmarks rendering with 10 sections
+func BenchmarkMJMLRender_10_Sections(b *testing.B) {
 	template := generateMJMLTemplate(10)
 
 	b.ResetTimer()
@@ -83,8 +83,8 @@ func BenchmarkMJMLRender_Small(b *testing.B) {
 	}
 }
 
-// BenchmarkMJMLRender_Medium benchmarks rendering with 100 sections
-func BenchmarkMJMLRender_Medium(b *testing.B) {
+// BenchmarkMJMLRender_100_Sections benchmarks rendering with 100 sections
+func BenchmarkMJMLRender_100_Sections(b *testing.B) {
 	template := generateMJMLTemplate(100)
 
 	b.ResetTimer()
@@ -96,8 +96,8 @@ func BenchmarkMJMLRender_Medium(b *testing.B) {
 	}
 }
 
-// BenchmarkMJMLRender_Large benchmarks rendering with 1000 sections
-func BenchmarkMJMLRender_Large(b *testing.B) {
+// BenchmarkMJMLRender_1000_Sections benchmarks rendering with 1000 sections
+func BenchmarkMJMLRender_1000_Sections(b *testing.B) {
 	template := generateMJMLTemplate(1000)
 
 	b.ResetTimer()
@@ -109,8 +109,8 @@ func BenchmarkMJMLRender_Large(b *testing.B) {
 	}
 }
 
-// BenchmarkMJMLRender_SmallMemory benchmarks memory allocations with 10 sections
-func BenchmarkMJMLRender_SmallMemory(b *testing.B) {
+// BenchmarkMJMLRender_Memory benchmarks memory allocations with 10 sections
+func BenchmarkMJMLRender_10_Sections_Memory(b *testing.B) {
 	template := generateMJMLTemplate(10)
 
 	b.ReportAllocs()
@@ -123,8 +123,8 @@ func BenchmarkMJMLRender_SmallMemory(b *testing.B) {
 	}
 }
 
-// BenchmarkMJMLRender_MediumMemory benchmarks memory allocations with 100 sections
-func BenchmarkMJMLRender_MediumMemory(b *testing.B) {
+// BenchmarkMJMLRender_100_Sections_Memory benchmarks memory allocations with 100 sections
+func BenchmarkMJMLRender_100_Sections_Memory(b *testing.B) {
 	template := generateMJMLTemplate(100)
 
 	b.ReportAllocs()
@@ -137,8 +137,8 @@ func BenchmarkMJMLRender_MediumMemory(b *testing.B) {
 	}
 }
 
-// BenchmarkMJMLRender_LargeMemory benchmarks memory allocations with 1000 sections
-func BenchmarkMJMLRender_LargeMemory(b *testing.B) {
+// BenchmarkMJMLRender_1000_Sections_Memory benchmarks memory allocations with 1000 sections
+func BenchmarkMJMLRender_1000_Sections_Memory(b *testing.B) {
 	template := generateMJMLTemplate(1000)
 
 	b.ReportAllocs()

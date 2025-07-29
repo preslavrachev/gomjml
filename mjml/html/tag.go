@@ -44,9 +44,9 @@ type StyleProperty struct {
 func NewHTMLTag(name string) *HTMLTag {
 	return &HTMLTag{
 		name:       name,
-		attributes: make([]AttributeProperty, 0),
+		attributes: make([]AttributeProperty, 0, 4),
 		classes:    make([]string, 0),
-		styles:     make([]StyleProperty, 0),
+		styles:     make([]StyleProperty, 0, 4),
 	}
 }
 
