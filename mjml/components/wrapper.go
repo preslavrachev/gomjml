@@ -194,13 +194,8 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 	output.WriteString(innerTable.RenderClose())
 	output.WriteString(innerDiv.RenderClose())
 
-	// Close MSO conditional - use strings.Builder for efficiency
-	var msoClose strings.Builder
-	msoClose.Grow(64) // Pre-allocate for MSO close tags
-	msoClose.WriteString(msoTd.RenderClose())
-	msoClose.WriteString("</tr>")
-	msoClose.WriteString(msoTable.RenderClose())
-	output.WriteString(html.RenderMSOConditional(msoClose.String()))
+	// Close MSO conditional
+	output.WriteString(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))
 
 	// Close outer table
 	output.WriteString("</td></tr></tbody>")
@@ -337,13 +332,8 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	output.WriteString(innerTable.RenderClose())
 	output.WriteString(wrapperDiv.RenderClose())
 
-	// Close MSO conditional - use strings.Builder for efficiency
-	var msoClose strings.Builder
-	msoClose.Grow(64) // Pre-allocate for MSO close tags
-	msoClose.WriteString(msoTd.RenderClose())
-	msoClose.WriteString("</tr>")
-	msoClose.WriteString(msoTable.RenderClose())
-	output.WriteString(html.RenderMSOConditional(msoClose.String()))
+	// Close MSO conditional
+	output.WriteString(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))
 
 	return output.String(), nil
 }
