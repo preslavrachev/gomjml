@@ -11,47 +11,6 @@ fi
 echo "🚀 Starting MJML benchmarks..."
 echo "📊 Running comprehensive performance tests..."
 
-# Create temp file for results
-TEMP_FILE=$(mktemp)
-
-# Run benchmarks with progress indicators
-{
-    echo "⏱️  Running template generation benchmark..."
-    go test ./mjml -bench=BenchmarkMJMLTemplateGeneration -benchmem -run='^$' 2>/dev/null
-
-    echo "📝 Running parsing benchmarks..."
-    go test ./mjml -bench=BenchmarkMJMLParsing_Only -benchmem -run='^$' 2>/dev/null
-
-    echo "🔧 Running component creation benchmark..."
-    go test ./mjml -bench=BenchmarkMJMLComponentCreation -benchmem -run='^$' 2>/dev/null
-
-    echo "🔄 Running full pipeline benchmark..."
-    go test ./mjml -bench=BenchmarkMJMLFullPipeline -benchmem -run='^$' 2>/dev/null
-
-    echo "📧 Running small template benchmarks (10 sections)..."
-    go test ./mjml -bench=BenchmarkMJMLRender_Small -benchmem -run='^$' 2>/dev/null
-
-    echo "📧 Running medium template benchmarks (100 sections)..."
-    go test ./mjml -bench=BenchmarkMJMLRender_Medium -benchmem -run='^$' 2>/dev/null
-
-    echo "📧 Running large template benchmarks (1000 sections)..."
-    go test ./mjml -bench=BenchmarkMJMLRender_Large -benchmem -run='^$' 2>/dev/null
-
-    echo "✅ All benchmarks completed!"
-    echo ""
-} > "$TEMP_FILE" 2>&1 &
-
-# Show progress while benchmarks run
-BENCH_PID=$!
-while kill -0 $BENCH_PID 2>/dev/null; do
-    echo -n "."
-    sleep 0.5
-done
-wait $BENCH_PID
-
-echo ""
-echo "📈 Processing results..."
-
 # Process benchmark results
 go test ./mjml -bench=. -benchmem -run='^$' 2>/dev/null | awk -v markdown="$MARKDOWN" '
 /^Benchmark/ {
@@ -92,8 +51,6 @@ BEGIN {
     }
 }' | if [[ "$MARKDOWN" == "false" ]]; then column -t; else cat; fi
 
-# Clean up
-rm -f "$TEMP_FILE"
 
 if [[ "$MARKDOWN" == "true" ]]; then
     echo ""
