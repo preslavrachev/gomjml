@@ -195,10 +195,9 @@ func processSectionChildren(section *components.MJSectionComponent, opts *option
 }
 
 // RenderComponentString renders the given Component to a string.
-// It returns the rendered output as a string, or an error if rendering fails.
-
-// RenderComponentString is a helper function that creates a strings.Builder writer and passes it to the Component's Render method.
-// Where possible, it is always recommended to use the component's Render function directly for better performance and flexibility.
+// It creates a strings.Builder writer and passes it to the Component's Render method.
+// This function returns the rendered output as a string, or an error if rendering fails.
+// Where possible, it is recommended to use the component's Render function directly for better performance and flexibility.
 func RenderComponentString(c Component) (string, error) {
 	var output strings.Builder
 	if err := c.Render(&output); err != nil {

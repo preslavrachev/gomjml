@@ -372,12 +372,10 @@ func (c *MJColumnComponent) renderColumnWithStyles(includeStyles bool) string {
 
 	// Render column content (child components)
 	for _, child := range c.Children {
-		var childOutput strings.Builder
-		if err := child.Render(&childOutput); err != nil {
+		if err := child.Render(&output); err != nil {
 			output.WriteString(fmt.Sprintf("<!-- Error rendering child: %v -->", err))
 			continue
 		}
-		output.WriteString(childOutput.String())
 	}
 
 	output.WriteString("</tbody>")
