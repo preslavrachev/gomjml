@@ -69,7 +69,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 	// Render to HTML with pre-allocated buffer based on input size
 	var html strings.Builder
-	html.Grow(len(mjmlContent)) // Pre-allocate based on input length
+	html.Grow(len(mjmlContent) * 4) // Pre-allocate with a 4x multiplier to account for HTML expansion
 	err = component.Render(&html)
 	if err != nil {
 		return nil, err
