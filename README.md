@@ -133,7 +133,7 @@ func main() {
 		log.Fatal("Component creation error:", err)
 	}
 
-	html, err = component.Render()
+	html, err = mjml.RenderComponentString(component)
 	if err != nil {
 		log.Fatal("Render error:", err)
 	}
@@ -167,14 +167,8 @@ func NewMJNewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNewCo
     }
 }
 
-func (c *MJNewComponent) RenderString() (string, error) {
-    var output strings.Builder
-    err := c.Render(&output)
-    if err != nil {
-        return "", err
-    }
-    return output.String(), nil
-}
+// Note: RenderString() is no longer part of the Component interface
+// Use mjml.RenderComponentString(component) helper function instead
 
 func (c *MJNewComponent) Render(w io.Writer) error {
     // Implementation here - write HTML directly to Writer
@@ -201,26 +195,25 @@ case "mj-new":
 
 #### Component Interface Requirements
 
-All MJML components must implement the `Component` interface, which now requires both `RenderString()` and `Render()` methods:
+All MJML components must implement the `Component` interface, which requires:
 
 - **`Render(w io.Writer) error`**: Primary rendering method that writes HTML directly to a Writer for optimal performance
-- **`RenderString() (string, error)`**: Convenience method that typically delegates to `Render()` for string-based access
+- **`GetTagName() string`**: Returns the component's MJML tag name
 
-The `Render` method is the core rendering method used throughout the framework, while `RenderString` is provided for backwards compatibility and convenience.
+For string-based rendering, use the helper function `mjml.RenderComponentString(component)` instead of a component method.
 
 #### Delaying Component Implementation
 
 If you need to register a component but won't implement its functionality right away, use the `NotImplementedError` pattern:
 
 ```go
-func (c *MJNewComponent) RenderString() (string, error) {
-    // TODO: Implement mj-new component functionality
-    return "", &NotImplementedError{ComponentName: "mj-new"}
-}
-
 func (c *MJNewComponent) Render(w io.Writer) error {
     // TODO: Implement mj-new component functionality
     return &NotImplementedError{ComponentName: "mj-new"}
+}
+
+func (c *MJNewComponent) GetTagName() string {
+    return "mj-new"
 }
 ```
 

@@ -22,15 +22,6 @@ func NewMJSectionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJS
 	}
 }
 
-func (c *MJSectionComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 func (c *MJSectionComponent) GetTagName() string {
 	return "mj-section"
 }

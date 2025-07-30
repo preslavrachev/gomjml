@@ -104,7 +104,7 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 		return "", err
 	}
 
-	return component.RenderString()
+	return RenderComponentString(component)
 }
 
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)
@@ -420,16 +420,6 @@ func (c *MJMLComponent) checkChildrenForCondition(component Component, condition
 		}
 	}
 	return false
-}
-
-// RenderString implements the Component interface for MJMLComponent
-func (c *MJMLComponent) RenderString() (string, error) {
-	var html strings.Builder
-	err := c.Render(&html)
-	if err != nil {
-		return "", err
-	}
-	return html.String(), nil
 }
 
 func (c *MJMLComponent) GetTagName() string {

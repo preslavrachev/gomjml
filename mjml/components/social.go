@@ -56,15 +56,6 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-func (c *MJSocialComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.Writer) error {
 	padding := c.getAttribute("padding")
@@ -238,15 +229,6 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 // InheritFromParent sets the parent reference for attribute inheritance
 func (c *MJSocialElementComponent) InheritFromParent(parent *MJSocialComponent) {
 	c.parentSocial = parent
-}
-
-func (c *MJSocialElementComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
 }
 
 // Render implements optimized Writer-based rendering for MJSocialElementComponent

@@ -18,11 +18,6 @@ func NewMJNavbarComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNa
 	}
 }
 
-func (c *MJNavbarComponent) RenderString() (string, error) {
-	// TODO: Implement mj-navbar component functionality
-	return "", &NotImplementedError{ComponentName: "mj-navbar"}
-}
-
 func (c *MJNavbarComponent) Render(w io.Writer) error {
 	// TODO: Implement mj-navbar component functionality
 	return &NotImplementedError{ComponentName: "mj-navbar"}
@@ -70,11 +65,6 @@ func NewMJNavbarLinkComponent(node *parser.MJMLNode, opts *options.RenderOpts) *
 	return &MJNavbarLinkComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
-}
-
-func (c *MJNavbarLinkComponent) RenderString() (string, error) {
-	// TODO: Implement mj-navbar-link component functionality
-	return "", &NotImplementedError{ComponentName: "mj-navbar-link"}
 }
 
 func (c *MJNavbarLinkComponent) Render(w io.Writer) error {

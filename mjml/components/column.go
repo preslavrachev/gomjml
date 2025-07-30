@@ -29,15 +29,6 @@ func NewMJColumnComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJCo
 	}
 }
 
-func (c *MJColumnComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 func (c *MJColumnComponent) GetTagName() string {
 	return "mj-column"
 }
@@ -381,12 +372,12 @@ func (c *MJColumnComponent) renderColumnWithStyles(includeStyles bool) string {
 
 	// Render column content (child components)
 	for _, child := range c.Children {
-		childHTML, err := child.RenderString()
-		if err != nil {
+		var childOutput strings.Builder
+		if err := child.Render(&childOutput); err != nil {
 			output.WriteString(fmt.Sprintf("<!-- Error rendering child: %v -->", err))
 			continue
 		}
-		output.WriteString(childHTML)
+		output.WriteString(childOutput.String())
 	}
 
 	output.WriteString("</tbody>")

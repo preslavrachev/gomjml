@@ -3,7 +3,6 @@ package components
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -19,10 +18,6 @@ func NewMJHeadComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHead
 	return &MJHeadComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
-}
-
-func (c *MJHeadComponent) RenderString() (string, error) {
-	return "", nil // Head is handled in MJML component
 }
 
 func (c *MJHeadComponent) Render(w io.Writer) error {
@@ -49,10 +44,6 @@ func NewMJTitleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTit
 	}
 }
 
-func (c *MJTitleComponent) RenderString() (string, error) {
-	return "", nil // Title is handled in MJML component head processing
-}
-
 func (c *MJTitleComponent) Render(w io.Writer) error {
 	return nil // Title is handled in MJML component head processing
 }
@@ -75,10 +66,6 @@ func NewMJFontComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJFont
 	return &MJFontComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
-}
-
-func (c *MJFontComponent) RenderString() (string, error) {
-	return "", nil // Font is handled in MJML component head processing
 }
 
 func (c *MJFontComponent) Render(w io.Writer) error {
@@ -110,15 +97,6 @@ func NewMJPreviewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJP
 	return &MJPreviewComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
-}
-
-func (c *MJPreviewComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
 }
 
 func (c *MJPreviewComponent) Render(w io.Writer) error {
@@ -154,15 +132,6 @@ func NewMJStyleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSty
 	}
 }
 
-func (c *MJStyleComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 func (c *MJStyleComponent) Render(w io.Writer) error {
 	// Custom CSS styles - render as style tag
 	if c.Node.Text != "" {
@@ -193,10 +162,6 @@ func NewMJAttributesComponent(node *parser.MJMLNode, opts *options.RenderOpts) *
 	}
 }
 
-func (c *MJAttributesComponent) RenderString() (string, error) {
-	return "", nil // Attributes are processed during parsing, no HTML output
-}
-
 func (c *MJAttributesComponent) Render(w io.Writer) error {
 	return nil // Attributes are processed during parsing, no HTML output
 }
@@ -219,10 +184,6 @@ func NewMJAllComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJAllCo
 	return &MJAllComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
-}
-
-func (c *MJAllComponent) RenderString() (string, error) {
-	return "", nil // Global attributes are processed during parsing, no HTML output
 }
 
 func (c *MJAllComponent) Render(w io.Writer) error {

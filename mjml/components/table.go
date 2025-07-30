@@ -18,11 +18,6 @@ func NewMJTableComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTab
 	}
 }
 
-func (c *MJTableComponent) RenderString() (string, error) {
-	// TODO: Implement mj-table component functionality
-	return "", &NotImplementedError{ComponentName: "mj-table"}
-}
-
 func (c *MJTableComponent) Render(w io.Writer) error {
 	// TODO: Implement mj-table component functionality
 	return &NotImplementedError{ComponentName: "mj-table"}

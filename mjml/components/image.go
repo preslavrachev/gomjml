@@ -23,15 +23,6 @@ func NewMJImageComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJIma
 	}
 }
 
-func (c *MJImageComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 func (c *MJImageComponent) GetTagName() string {
 	return "mj-image"
 }

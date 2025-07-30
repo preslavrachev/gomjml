@@ -63,15 +63,6 @@ func (c *MJButtonComponent) calculateInnerWidth(width, innerPadding string) stri
 	return strconv.Itoa(innerWidth) + "px"
 }
 
-func (c *MJButtonComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 func (c *MJButtonComponent) GetTagName() string {
 	return "mj-button"
 }

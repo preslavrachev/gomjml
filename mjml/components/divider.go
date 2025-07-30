@@ -2,7 +2,6 @@ package components
 
 import (
 	"io"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -44,15 +43,6 @@ func (c *MJDividerComponent) GetDefaultAttribute(name string) string {
 
 func (c *MJDividerComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
-}
-
-func (c *MJDividerComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
 }
 
 // Render implements optimized Writer-based rendering for MJDividerComponent

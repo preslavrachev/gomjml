@@ -185,11 +185,9 @@ func (c *MJWrapperComponent) renderFullWidth() (string, error) {
 	// Render children with standard body width
 	for _, child := range c.Children {
 		child.SetContainerWidth(GetDefaultBodyWidthPixels())
-		childHTML, err := child.RenderString()
-		if err != nil {
+		if err := child.Render(&output); err != nil {
 			return "", err
 		}
-		output.WriteString(childHTML)
 	}
 
 	output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
@@ -327,11 +325,9 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	// Render children - pass the effective width (600px - border width)
 	for _, child := range c.Children {
 		child.SetContainerWidth(effectiveWidth)
-		childHTML, err := child.RenderString()
-		if err != nil {
+		if err := child.Render(&output); err != nil {
 			return "", err
 		}
-		output.WriteString(childHTML)
 	}
 
 	output.WriteString(html.RenderMSOConditional("</td></tr></table>"))
@@ -344,15 +340,6 @@ func (c *MJWrapperComponent) renderSimple() (string, error) {
 	// Close MSO conditional
 	output.WriteString(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))
 
-	return output.String(), nil
-}
-
-func (c *MJWrapperComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
 	return output.String(), nil
 }
 

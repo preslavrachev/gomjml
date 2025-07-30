@@ -181,32 +181,6 @@ func BenchmarkMJMLComponentCreation(b *testing.B) {
 	}
 }
 
-// BenchmarkMJMLFullPipeline benchmarks the complete rendering pipeline step by step
-func BenchmarkMJMLFullPipeline(b *testing.B) {
-	template := generateMJMLTemplate(100)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Parse MJML to AST
-		ast, err := ParseMJML(template)
-		if err != nil {
-			b.Fatalf("ParseMJML failed: %v", err)
-		}
-
-		// Convert AST to component tree
-		component, err := NewFromAST(ast)
-		if err != nil {
-			b.Fatalf("NewFromAST failed: %v", err)
-		}
-
-		// Render to HTML
-		_, err = component.RenderString()
-		if err != nil {
-			b.Fatalf("Render failed: %v", err)
-		}
-	}
-}
-
 // BenchmarkMJMLTemplateGeneration benchmarks the template generation itself
 func BenchmarkMJMLTemplateGeneration(b *testing.B) {
 	b.ResetTimer()

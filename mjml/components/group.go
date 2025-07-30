@@ -59,15 +59,6 @@ func (c *MJGroupComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-func (c *MJGroupComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 func (c *MJGroupComponent) GetTagName() string {
 	return "mj-group"
 }

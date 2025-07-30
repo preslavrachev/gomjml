@@ -24,7 +24,6 @@ func (e *NotImplementedError) Error() string {
 // Component represents a renderable MJML component
 type Component interface {
 	Render(w io.Writer) error
-	RenderString() (string, error)
 	GetTagName() string
 	GetDefaultAttribute(name string) string
 	SetContainerWidth(widthPx int)

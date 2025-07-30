@@ -2,7 +2,6 @@ package components
 
 import (
 	"io"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -28,15 +27,6 @@ func NewMJBodyComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJBody
 	return &MJBodyComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
-}
-
-func (c *MJBodyComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
 }
 
 func (c *MJBodyComponent) GetTagName() string {

@@ -2,7 +2,6 @@ package components
 
 import (
 	"io"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -29,16 +28,6 @@ func (c *MJRawComponent) GetTagName() string {
 func (c *MJRawComponent) GetDefaultAttribute(name string) string {
 	// mj-raw has no default attributes
 	return ""
-}
-
-// RenderString renders the mj-raw component to HTML
-func (c *MJRawComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
 }
 
 // Render implements optimized Writer-based rendering for MJRawComponent

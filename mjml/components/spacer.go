@@ -18,11 +18,6 @@ func NewMJSpacerComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSp
 	}
 }
 
-func (c *MJSpacerComponent) RenderString() (string, error) {
-	// TODO: Implement mj-spacer component functionality
-	return "", &NotImplementedError{ComponentName: "mj-spacer"}
-}
-
 func (c *MJSpacerComponent) Render(w io.Writer) error {
 	// TODO: Implement mj-spacer component functionality
 	return &NotImplementedError{ComponentName: "mj-spacer"}

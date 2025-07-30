@@ -21,15 +21,6 @@ func NewMJTextComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJText
 	}
 }
 
-func (c *MJTextComponent) RenderString() (string, error) {
-	var output strings.Builder
-	err := c.Render(&output)
-	if err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
 func (c *MJTextComponent) GetTagName() string {
 	return "mj-text"
 }
