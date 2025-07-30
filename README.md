@@ -271,20 +271,14 @@ The following benchmarks were run on a Mac Mini M1 with 16GB RAM and Go 1.21.4. 
 ```bash
 ./bench.sh  # You can also add --markdown for a markdown table output
 ```
-
 | Benchmark                                  |  Time   | Memory  | Allocs |
 | :----------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8          | 0.42ms  | 0.64MB  |  7.7K  |
-| BenchmarkMJMLRender_100_Sections-8         | 4.83ms  | 6.92MB  | 74.7K  |
-| BenchmarkMJMLRender_1000_Sections-8        | 46.11ms | 66.38MB | 744.4K |
-| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.43ms  | 0.64MB  |  7.7K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.94ms  | 6.92MB  | 74.7K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8 | 45.56ms | 66.38MB | 744.4K |
-| BenchmarkMJMLParsing_Only-8                | 1.80ms  | 0.71MB  | 19.3K  |
-| BenchmarkMJMLComponentCreation-8           | 0.17ms  | 0.38MB  |  4.6K  |
-| BenchmarkMJMLFullPipeline-8                | 4.94ms  | 6.99MB  | 74.7K  |
-| BenchmarkMJMLTemplateGeneration-8          | 0.12ms  | 0.59MB  |  0.1K  |
-| BenchmarkMJMLRender_100_Sections_Writer-8  | 2.86ms  | 5.90MB  | 50.7K  |
+| BenchmarkMJMLRender_10_Sections-8          | 0.42ms  | 0.58MB  |  7.7K  |
+| BenchmarkMJMLRender_100_Sections-8         | 4.90ms  | 5.50MB  | 74.7K  |
+| BenchmarkMJMLRender_1000_Sections-8        | 43.80ms | 54.87MB | 744.3K |
+| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.42ms  | 0.58MB  |  7.7K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.92ms  | 5.50MB  | 74.7K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8 | 43.38ms | 54.87MB | 744.3K |
 
 ## 🏗️ Architecture
 
