@@ -1,6 +1,8 @@
 package components
 
 import (
+	"io"
+
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -28,11 +30,15 @@ func (c *MJRawComponent) GetDefaultAttribute(name string) string {
 	return ""
 }
 
-// Render renders the mj-raw component to HTML
-func (c *MJRawComponent) Render() (string, error) {
+// Render implements optimized Writer-based rendering for MJRawComponent
+func (c *MJRawComponent) Render(w io.Writer) error {
 	// mj-raw simply outputs its content as-is, without any wrapping HTML
 	// The content includes both text and child nodes as raw HTML
-	return c.getRawContent(), nil
+	content := c.getRawContent()
+	if _, err := w.Write([]byte(content)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // getRawContent returns the raw content of the mj-raw component

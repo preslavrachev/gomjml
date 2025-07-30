@@ -133,7 +133,7 @@ func main() {
 		log.Fatal("Component creation error:", err)
 	}
 
-	html, err = component.Render()
+	html, err = mjml.RenderComponentString(component)
 	if err != nil {
 		log.Fatal("Render error:", err)
 	}
@@ -150,6 +150,9 @@ While it is not recommended to do so, because it will break the compatibility wi
 package components
 
 import (
+    "io"
+    "strings"
+    
     "github.com/preslavrachev/gomjml/mjml/options"
     "github.com/preslavrachev/gomjml/parser"
 )
@@ -164,10 +167,18 @@ func NewMJNewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNewCo
     }
 }
 
-func (c *MJNewComponent) Render() (string, error) {
-    // Implementation here
+// Note: RenderString() is no longer part of the Component interface
+// Use mjml.RenderComponentString(component) helper function instead
+
+func (c *MJNewComponent) Render(w io.Writer) error {
+    // Implementation here - write HTML directly to Writer
     // Use c.AddDebugAttribute(tag, "new") for debug traceability
-    return "", nil
+    
+    // Example implementation:
+    // if _, err := w.Write([]byte("<div>Hello World</div>")); err != nil {
+    //     return err
+    // }
+    return nil
 }
 
 func (c *MJNewComponent) GetTagName() string {
@@ -182,14 +193,27 @@ case "mj-new":
 // 4. Update README.md documentation
 ```
 
+#### Component Interface Requirements
+
+All MJML components must implement the `Component` interface, which requires:
+
+- **`Render(w io.Writer) error`**: Primary rendering method that writes HTML directly to a Writer for optimal performance
+- **`GetTagName() string`**: Returns the component's MJML tag name
+
+For string-based rendering, use the helper function `mjml.RenderComponentString(component)` instead of a component method.
+
 #### Delaying Component Implementation
 
 If you need to register a component but won't implement its functionality right away, use the `NotImplementedError` pattern:
 
 ```go
-func (c *MJNewComponent) Render() (string, error) {
+func (c *MJNewComponent) Render(w io.Writer) error {
     // TODO: Implement mj-new component functionality
-    return "", &NotImplementedError{ComponentName: "mj-new"}
+    return &NotImplementedError{ComponentName: "mj-new"}
+}
+
+func (c *MJNewComponent) GetTagName() string {
+    return "mj-new"
 }
 ```
 
@@ -249,16 +273,12 @@ The following benchmarks were run on a Mac Mini M1 with 16GB RAM and Go 1.21.4. 
 ```
 | Benchmark                                  |  Time   | Memory  | Allocs |
 | :----------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8          | 0.46ms  | 0.94MB  |  7.3K  |
-| BenchmarkMJMLRender_100_Sections-8         | 5.73ms  | 9.79MB  | 70.5K  |
-| BenchmarkMJMLRender_1000_Sections-8        | 51.84ms | 98.88MB | 702.4K |
-| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.47ms  | 0.94MB  |  7.3K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8  | 5.72ms  | 9.79MB  | 70.5K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8 | 51.42ms | 98.88MB | 702.4K |
-| BenchmarkMJMLParsing_Only-8                | 1.75ms  | 0.71MB  | 19.3K  |
-| BenchmarkMJMLComponentCreation-8           | 0.17ms  | 0.38MB  |  4.6K  |
-| BenchmarkMJMLFullPipeline-8                | 5.70ms  | 9.79MB  | 70.5K  |
-| BenchmarkMJMLTemplateGeneration-8          | 0.12ms  | 0.59MB  |  0.1K  |
+| BenchmarkMJMLRender_10_Sections-8          | 0.42ms  | 0.58MB  |  7.7K  |
+| BenchmarkMJMLRender_100_Sections-8         | 4.90ms  | 5.50MB  | 74.7K  |
+| BenchmarkMJMLRender_1000_Sections-8        | 43.80ms | 54.87MB | 744.3K |
+| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.42ms  | 0.58MB  |  7.7K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.92ms  | 5.50MB  | 74.7K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8 | 43.38ms | 54.87MB | 744.3K |
 
 ## 🏗️ Architecture
 

@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/globals"
@@ -22,7 +23,7 @@ func (e *NotImplementedError) Error() string {
 
 // Component represents a renderable MJML component
 type Component interface {
-	Render() (string, error)
+	Render(w io.Writer) error
 	GetTagName() string
 	GetDefaultAttribute(name string) string
 	SetContainerWidth(widthPx int)
@@ -274,7 +275,17 @@ func (bc *BaseComponent) ApplyFontStyles(tag *html.HTMLTag) *html.HTMLTag {
 	textAlign := bc.GetAttribute("text-align")
 	textDecoration := bc.GetAttribute("text-decoration")
 
-	return styles.ApplyFontStyles(tag, fontFamily, fontSize, fontWeight, fontStyle, color, lineHeight, textAlign, textDecoration)
+	return styles.ApplyFontStyles(
+		tag,
+		fontFamily,
+		fontSize,
+		fontWeight,
+		fontStyle,
+		color,
+		lineHeight,
+		textAlign,
+		textDecoration,
+	)
 }
 
 // ApplyDimensionStyles applies width/height CSS styles to an HTML tag

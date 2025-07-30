@@ -2,6 +2,7 @@ package mjml
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
@@ -66,14 +67,17 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		return nil, err
 	}
 
-	// Render to HTML
-	html, err := component.Render()
+	// Render to HTML with pre-allocated buffer based on input size
+	var html strings.Builder
+	html.Grow(len(mjmlContent) * 4) // Pre-allocate with a 4x multiplier to account for HTML expansion
+	err = component.Render(&html)
 	if err != nil {
 		return nil, err
 	}
+	htmlOutput := html.String()
 
 	return &RenderResult{
-		HTML: html,
+		HTML: htmlOutput,
 		AST:  ast,
 	}, nil
 }
@@ -100,7 +104,7 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 		return "", err
 	}
 
-	return component.Render()
+	return RenderComponentString(component)
 }
 
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)
@@ -418,10 +422,12 @@ func (c *MJMLComponent) checkChildrenForCondition(component Component, condition
 	return false
 }
 
-// Render implements the Component interface for MJMLComponent
-func (c *MJMLComponent) Render() (string, error) {
-	var html strings.Builder
+func (c *MJMLComponent) GetTagName() string {
+	return "mjml"
+}
 
+// Render implements optimized Writer-based rendering for MJMLComponent
+func (c *MJMLComponent) Render(w io.Writer) error {
 	// First, prepare the body to establish sibling relationships without full rendering
 	if c.Body != nil {
 		c.prepareBodySiblings(c.Body)
@@ -431,9 +437,9 @@ func (c *MJMLComponent) Render() (string, error) {
 	c.collectColumnClasses()
 
 	// DOCTYPE and HTML opening
-	html.WriteString(
-		`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`,
-	)
+	if _, err := w.Write([]byte(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`)); err != nil {
+		return err
+	}
 
 	// Head section - extract title from head components
 	title := ""
@@ -462,62 +468,87 @@ func (c *MJMLComponent) Render() (string, error) {
 		}
 	}
 
-	html.WriteString(`<head><title>` + title + `</title>`)
-	html.WriteString(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`)
-	html.WriteString(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`)
-	html.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`)
+	if _, err := w.Write([]byte(`<head><title>` + title + `</title>`)); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`)); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`)); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(`<meta name="viewport" content="width=device-width, initial-scale=1">`)); err != nil {
+		return err
+	}
 
 	// Base CSS
-	html.WriteString("\n<style type=\"text/css\">\n")
-	html.WriteString("#outlook a { padding: 0; }\n")
-	html.WriteString("body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }\n")
-	html.WriteString("table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }\n")
-	html.WriteString(
-		"img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }\n",
-	)
-	html.WriteString("p { display: block; margin: 13px 0; }\n")
-	html.WriteString("</style>\n")
+	baseCSSText := "\n<style type=\"text/css\">\n" +
+		"#outlook a { padding: 0; }\n" +
+		"body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }\n" +
+		"table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }\n" +
+		"img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }\n" +
+		"p { display: block; margin: 13px 0; }\n" +
+		"</style>\n"
+	if _, err := w.Write([]byte(baseCSSText)); err != nil {
+		return err
+	}
 
 	// MSO conditionals
-	html.WriteString(
-		"<!--[if mso]>\n<noscript>\n<xml>\n<o:OfficeDocumentSettings>\n  <o:AllowPNG/>\n  <o:PixelsPerInch>96</o:PixelsPerInch>\n</o:OfficeDocumentSettings>\n</xml>\n</noscript>\n<![endif]-->\n",
-	)
-	html.WriteString(
-		"<!--[if lte mso 11]>\n<style type=\"text/css\">\n.mj-outlook-group-fix { width:100% !important; }\n</style>\n<![endif]-->\n",
-	)
+	msoText := "<!--[if mso]>\n<noscript>\n<xml>\n<o:OfficeDocumentSettings>\n  <o:AllowPNG/>\n  <o:PixelsPerInch>96</o:PixelsPerInch>\n</o:OfficeDocumentSettings>\n</xml>\n</noscript>\n<![endif]-->\n" +
+		"<!--[if lte mso 11]>\n<style type=\"text/css\">\n.mj-outlook-group-fix { width:100% !important; }\n</style>\n<![endif]-->\n"
+	if _, err := w.Write([]byte(msoText)); err != nil {
+		return err
+	}
 
 	// Font imports - check if we need Ubuntu fallback or custom fonts
 	if c.hasTextComponents() {
 		if len(customFonts) > 0 {
 			for _, fontHref := range customFonts {
-				html.WriteString(`<!--[if !mso]><!--><link href="` + fontHref + `" rel="stylesheet" type="text/css">`)
-				html.WriteString(`<style type="text/css">@import url(` + fontHref + `);</style><!--<![endif]-->`)
+				fontText := `<!--[if !mso]><!--><link href="` + fontHref + `" rel="stylesheet" type="text/css">` +
+					`<style type="text/css">@import url(` + fontHref + `);</style><!--<![endif]-->`
+				if _, err := w.Write([]byte(fontText)); err != nil {
+					return err
+				}
 			}
 		} else if !c.hasCustomGlobalFonts() {
 			// Only import Ubuntu if no global fonts are specified
-			html.WriteString(`<!--[if !mso]><!--><link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700" rel="stylesheet" type="text/css">`)
-			html.WriteString(`<style type="text/css">@import url(https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700);</style><!--<![endif]-->`)
+			ubuntuText := `<!--[if !mso]><!--><link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700" rel="stylesheet" type="text/css">` +
+				`<style type="text/css">@import url(https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700);</style><!--<![endif]-->`
+			if _, err := w.Write([]byte(ubuntuText)); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Dynamic responsive CSS based on collected column classes - only if we have columns
 	if len(c.columnClasses) > 0 {
-		html.WriteString(c.generateResponsiveCSS())
+		responsiveCSS := c.generateResponsiveCSS()
+		if _, err := w.Write([]byte(responsiveCSS)); err != nil {
+			return err
+		}
 	}
 
 	// Mobile CSS - add only if components need it (following MRML pattern)
 	if c.hasMobileCSSComponents() {
-		html.WriteString(`<style type="text/css">@media only screen and (max-width:479px) {
+		mobileCSSText := `<style type="text/css">@media only screen and (max-width:479px) {
                 table.mj-full-width-mobile { width: 100% !important; }
                 td.mj-full-width-mobile { width: auto !important; }
             }
-            </style>`)
+            </style>`
+		if _, err := w.Write([]byte(mobileCSSText)); err != nil {
+			return err
+		}
 	}
 
 	// Custom styles from mj-style components (MRML lines 240-244)
-	html.WriteString(c.generateCustomStyles())
+	customStyles := c.generateCustomStyles()
+	if _, err := w.Write([]byte(customStyles)); err != nil {
+		return err
+	}
 
-	html.WriteString(`</head>`)
+	if _, err := w.Write([]byte(`</head>`)); err != nil {
+		return err
+	}
 
 	// Body with background-color support (matching MRML's get_body_tag)
 	var bodyStyles []string
@@ -531,37 +562,33 @@ func (c *MJMLComponent) Render() (string, error) {
 		}
 	}
 
+	bodyTag := `<body>`
 	if len(bodyStyles) > 0 {
-		html.WriteString(`<body style="` + strings.Join(bodyStyles, ";") + `;">`)
-	} else {
-		html.WriteString(`<body>`)
+		bodyTag = `<body style="` + strings.Join(bodyStyles, ";") + `;">`
+	}
+	if _, err := w.Write([]byte(bodyTag)); err != nil {
+		return err
 	}
 
 	// Add preview text from head components right after body tag
 	if c.Head != nil {
 		for _, child := range c.Head.Children {
 			if previewComp, ok := child.(*components.MJPreviewComponent); ok {
-				previewHTML, err := previewComp.Render()
-				if err != nil {
-					return "", err
+				if err := previewComp.Render(w); err != nil {
+					return err
 				}
-				html.WriteString(previewHTML)
 			}
 		}
 	}
 
 	if c.Body != nil {
-		bodyHTML, err := c.Body.Render()
-		if err != nil {
-			return "", err
+		if err := c.Body.Render(w); err != nil {
+			return err
 		}
-		html.WriteString(bodyHTML)
 	}
-	html.WriteString(`</body></html>`)
+	if _, err := w.Write([]byte(`</body></html>`)); err != nil {
+		return err
+	}
 
-	return html.String(), nil
-}
-
-func (c *MJMLComponent) GetTagName() string {
-	return "mjml"
+	return nil
 }

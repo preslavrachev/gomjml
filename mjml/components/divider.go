@@ -1,6 +1,8 @@
 package components
 
 import (
+	"io"
+
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -43,7 +45,8 @@ func (c *MJDividerComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-func (c *MJDividerComponent) Render() (string, error) {
+// Render implements optimized Writer-based rendering for MJDividerComponent
+func (c *MJDividerComponent) Render(w io.Writer) error {
 	padding := c.getAttribute("padding")
 	borderColor := c.getAttribute("border-color")
 	borderStyle := c.getAttribute("border-style")
@@ -61,6 +64,22 @@ func (c *MJDividerComponent) Render() (string, error) {
 		margin = "0px auto"
 	}
 
+	// Create TR element
+	if _, err := w.Write([]byte("<tr>")); err != nil {
+		return err
+	}
+
+	// Table cell with padding and center alignment
+	td := html.NewHTMLTag("td").
+		AddAttribute("align", "center").
+		AddStyle("font-size", "0px").
+		AddStyle("padding", padding).
+		AddStyle("word-break", "break-word")
+
+	if _, err := w.Write([]byte(td.RenderOpen())); err != nil {
+		return err
+	}
+
 	// Create paragraph with border styles matching MRML exact order
 	p := html.NewHTMLTag("p")
 	c.AddDebugAttribute(p, "divider")
@@ -73,18 +92,28 @@ func (c *MJDividerComponent) Render() (string, error) {
 	width := c.getAttribute("width")
 	p = p.AddStyle("width", width)
 
-	// Table cell with padding and center alignment
-	td := html.NewHTMLTag("td").
-		AddAttribute("align", "center").
-		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("word-break", "break-word")
+	// Render paragraph - must be empty, not self-closing to match MRML
+	if _, err := w.Write([]byte(p.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(p.RenderClose())); err != nil {
+		return err
+	}
 
 	// MSO conditional comment for Outlook compatibility
 	msoTable := `<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="550px" style="border-top:` + borderStyle + ` ` + borderWidth + ` ` + borderColor + `;font-size:1px;margin:0px auto;width:550px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`
+	if _, err := w.Write([]byte(msoTable)); err != nil {
+		return err
+	}
 
-	// Render complete table row - paragraph must be empty, not self-closing to match MRML
-	return "<tr>" + td.RenderOpen() + p.RenderOpen() + p.RenderClose() + msoTable + td.RenderClose() + "</tr>", nil
+	if _, err := w.Write([]byte(td.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr>")); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJDividerComponent) GetTagName() string {

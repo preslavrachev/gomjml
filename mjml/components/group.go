@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -58,9 +59,12 @@ func (c *MJGroupComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-func (c *MJGroupComponent) Render() (string, error) {
-	var output strings.Builder
+func (c *MJGroupComponent) GetTagName() string {
+	return "mj-group"
+}
 
+// Render implements optimized Writer-based rendering for MJGroupComponent
+func (c *MJGroupComponent) Render(w io.Writer) error {
 	direction := c.getAttribute("direction")
 	verticalAlign := c.getAttribute("vertical-align")
 	backgroundColor := c.getAttribute("background-color")
@@ -117,11 +121,15 @@ func (c *MJGroupComponent) Render() (string, error) {
 		rootDiv.AddStyle("background-color", backgroundColor)
 	}
 
-	output.WriteString(rootDiv.RenderOpen())
+	if _, err := w.Write([]byte(rootDiv.RenderOpen())); err != nil {
+		return err
+	}
 
 	// MSO conditional table structure
-	output.WriteString(html.RenderMSOConditional(
-		"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr>"))
+	if _, err := w.Write([]byte(html.RenderMSOConditional(
+		"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr>"))); err != nil {
+		return err
+	}
 
 	// Render each column in the group
 	for _, child := range c.Children {
@@ -151,8 +159,10 @@ func (c *MJGroupComponent) Render() (string, error) {
 			// MSO conditional TD for each column with correct width
 			msoWidth := fmt.Sprintf("%dpx", childWidthPx)
 
-			output.WriteString(html.RenderMSOConditional(
-				fmt.Sprintf("<td%s style=\"vertical-align:%s;width:%s;\">", c.GetMSOClassAttribute(), verticalAlign, msoWidth)))
+			if _, err := w.Write([]byte(html.RenderMSOConditional(
+				fmt.Sprintf("<td%s style=\"vertical-align:%s;width:%s;\">", c.GetMSOClassAttribute(), verticalAlign, msoWidth)))); err != nil {
+				return err
+			}
 
 			// Set group context for child rendering
 			childOpts := *c.RenderOpts // Copy the options
@@ -160,28 +170,26 @@ func (c *MJGroupComponent) Render() (string, error) {
 			columnComp.RenderOpts = &childOpts
 
 			// Render column content with padding support table wrapper
-			childHTML, err := child.Render()
-			if err != nil {
-				return "", err
+			if err := child.Render(w); err != nil {
+				return err
 			}
 
-			// Render column directly without extra table wrapper (MRML structure)
-			output.WriteString(childHTML)
-
 			// Close MSO conditional TD
-			output.WriteString(html.RenderMSOConditional("</td>"))
+			if _, err := w.Write([]byte(html.RenderMSOConditional("</td>"))); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Close MSO conditional table
-	output.WriteString(html.RenderMSOConditional("</tr></table>"))
+	if _, err := w.Write([]byte(html.RenderMSOConditional("</tr></table>"))); err != nil {
+		return err
+	}
 
 	// Close root div
-	output.WriteString(rootDiv.RenderClose())
+	if _, err := w.Write([]byte(rootDiv.RenderClose())); err != nil {
+		return err
+	}
 
-	return output.String(), nil
-}
-
-func (c *MJGroupComponent) GetTagName() string {
-	return "mj-group"
+	return nil
 }

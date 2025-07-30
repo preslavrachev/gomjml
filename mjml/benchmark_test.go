@@ -181,36 +181,71 @@ func BenchmarkMJMLComponentCreation(b *testing.B) {
 	}
 }
 
-// BenchmarkMJMLFullPipeline benchmarks the complete rendering pipeline step by step
-func BenchmarkMJMLFullPipeline(b *testing.B) {
-	template := generateMJMLTemplate(100)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Parse MJML to AST
-		ast, err := ParseMJML(template)
-		if err != nil {
-			b.Fatalf("ParseMJML failed: %v", err)
-		}
-
-		// Convert AST to component tree
-		component, err := NewFromAST(ast)
-		if err != nil {
-			b.Fatalf("NewFromAST failed: %v", err)
-		}
-
-		// Render to HTML
-		_, err = component.Render()
-		if err != nil {
-			b.Fatalf("Render failed: %v", err)
-		}
-	}
-}
-
 // BenchmarkMJMLTemplateGeneration benchmarks the template generation itself
 func BenchmarkMJMLTemplateGeneration(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = generateMJMLTemplate(100)
 	}
+}
+
+// BenchmarkMJMLRender_100_Sections_Writer benchmarks the new Writer-based rendering
+func BenchmarkMJMLRender_100_Sections_Writer(b *testing.B) {
+	template := generateMJMLTemplate(100)
+
+	// Parse once to get the component
+	ast, err := ParseMJML(template)
+	if err != nil {
+		b.Fatalf("Parse failed: %v", err)
+	}
+	component, err := NewFromAST(ast)
+	if err != nil {
+		b.Fatalf("Component creation failed: %v", err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var buf strings.Builder
+		err := component.Render(&buf)
+		if err != nil {
+			b.Fatalf("Render failed: %v", err)
+		}
+		_ = buf.String() // Force evaluation to match string-based benchmark
+	}
+}
+
+// BenchmarkMJMLRender_vs_RenderString_100_Sections compares Writer vs String approaches
+func BenchmarkMJMLRender_vs_RenderString_100_Sections(b *testing.B) {
+	template := generateMJMLTemplate(100)
+
+	b.Run("String-based", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_, err := Render(template)
+			if err != nil {
+				b.Fatalf("Render failed: %v", err)
+			}
+		}
+	})
+
+	b.Run("Writer-based", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			ast, err := ParseMJML(template)
+			if err != nil {
+				b.Fatalf("Parse failed: %v", err)
+			}
+			component, err := NewFromAST(ast)
+			if err != nil {
+				b.Fatalf("Component creation failed: %v", err)
+			}
+
+			var buf strings.Builder
+			err = component.Render(&buf)
+			if err != nil {
+				b.Fatalf("Render failed: %v", err)
+			}
+		}
+	})
 }

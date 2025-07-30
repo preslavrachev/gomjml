@@ -41,7 +41,7 @@ func main() {
 		log.Fatal("Component creation error:", err)
 	}
 
-	html, err = component.Render()
+	html, err = mjml.RenderComponentString(component)
 	if err != nil {
 		log.Fatal("Render error:", err)
 	}

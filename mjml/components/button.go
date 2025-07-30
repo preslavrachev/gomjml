@@ -1,6 +1,7 @@
 package components
 
 import (
+	"io"
 	"strconv"
 	"strings"
 
@@ -62,9 +63,12 @@ func (c *MJButtonComponent) calculateInnerWidth(width, innerPadding string) stri
 	return strconv.Itoa(innerWidth) + "px"
 }
 
-func (c *MJButtonComponent) Render() (string, error) {
-	var output strings.Builder
+func (c *MJButtonComponent) GetTagName() string {
+	return "mj-button"
+}
 
+// Render implements optimized Writer-based rendering for MJButtonComponent
+func (c *MJButtonComponent) Render(w io.Writer) error {
 	// Get text content
 	textContent := c.Node.Text
 	if textContent == "" {
@@ -98,7 +102,9 @@ func (c *MJButtonComponent) Render() (string, error) {
 	}
 
 	// Create TR element
-	output.WriteString("<tr>")
+	if _, err := w.Write([]byte("<tr>")); err != nil {
+		return err
+	}
 
 	// Create TD with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
@@ -113,7 +119,9 @@ func (c *MJButtonComponent) Render() (string, error) {
 		tdTag.AddAttribute("class", cssClass)
 	}
 
-	output.WriteString(tdTag.RenderOpen())
+	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Button table structure
 	tableTag := html.NewHTMLTag("table")
@@ -132,8 +140,12 @@ func (c *MJButtonComponent) Render() (string, error) {
 
 	tableTag.AddStyle("line-height", "100%")
 
-	output.WriteString(tableTag.RenderOpen())
-	output.WriteString("<tbody><tr>")
+	if _, err := w.Write([]byte(tableTag.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		return err
+	}
 
 	// Button cell with background and border styles
 	buttonTdTag := html.NewHTMLTag("td").
@@ -147,7 +159,9 @@ func (c *MJButtonComponent) Render() (string, error) {
 		AddStyle("mso-padding-alt", innerPadding).
 		AddStyle("background", backgroundColor)
 
-	output.WriteString(buttonTdTag.RenderOpen())
+	if _, err := w.Write([]byte(buttonTdTag.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Button content (a or p tag)
 	contentTag := html.NewHTMLTag(tagName)
@@ -191,21 +205,32 @@ func (c *MJButtonComponent) Render() (string, error) {
 		AddStyle("mso-padding-alt", "0px").
 		AddStyle("border-radius", borderRadius)
 
-	output.WriteString(contentTag.RenderOpen())
-	output.WriteString(textContent)
-	output.WriteString(contentTag.RenderClose())
+	if _, err := w.Write([]byte(contentTag.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(textContent)); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(contentTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(buttonTdTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(tableTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr>")); err != nil {
+		return err
+	}
 
-	output.WriteString(buttonTdTag.RenderClose())
-	output.WriteString("</tr></tbody>")
-	output.WriteString(tableTag.RenderClose())
-	output.WriteString(tdTag.RenderClose())
-	output.WriteString("</tr>")
-
-	return output.String(), nil
-}
-
-func (c *MJButtonComponent) GetTagName() string {
-	return "mj-button"
+	return nil
 }
 
 func (c *MJButtonComponent) GetDefaultAttribute(name string) string {

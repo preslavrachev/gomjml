@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -19,8 +20,8 @@ func NewMJHeadComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHead
 	}
 }
 
-func (c *MJHeadComponent) Render() (string, error) {
-	return "", nil // Head is handled in MJML component
+func (c *MJHeadComponent) Render(w io.Writer) error {
+	return nil // Head is handled in MJML component
 }
 
 func (c *MJHeadComponent) GetTagName() string {
@@ -43,8 +44,8 @@ func NewMJTitleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTit
 	}
 }
 
-func (c *MJTitleComponent) Render() (string, error) {
-	return "", nil // Title is handled in MJML component head processing
+func (c *MJTitleComponent) Render(w io.Writer) error {
+	return nil // Title is handled in MJML component head processing
 }
 
 func (c *MJTitleComponent) GetTagName() string {
@@ -67,8 +68,8 @@ func NewMJFontComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJFont
 	}
 }
 
-func (c *MJFontComponent) Render() (string, error) {
-	return "", nil // Font is handled in MJML component head processing
+func (c *MJFontComponent) Render(w io.Writer) error {
+	return nil // Font is handled in MJML component head processing
 }
 
 func (c *MJFontComponent) GetTagName() string {
@@ -98,12 +99,17 @@ func NewMJPreviewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJP
 	}
 }
 
-func (c *MJPreviewComponent) Render() (string, error) {
+func (c *MJPreviewComponent) Render(w io.Writer) error {
 	// Preview text is rendered as hidden div in body
 	if c.Node.Text != "" {
-		return fmt.Sprintf(`<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">%s</div>`, c.Node.Text), nil
+		previewHTML := fmt.Sprintf(
+			`<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">%s</div>`,
+			c.Node.Text,
+		)
+		_, err := w.Write([]byte(previewHTML))
+		return err
 	}
-	return "", nil
+	return nil
 }
 
 func (c *MJPreviewComponent) GetTagName() string {
@@ -126,12 +132,14 @@ func NewMJStyleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSty
 	}
 }
 
-func (c *MJStyleComponent) Render() (string, error) {
+func (c *MJStyleComponent) Render(w io.Writer) error {
 	// Custom CSS styles - render as style tag
 	if c.Node.Text != "" {
-		return fmt.Sprintf(`<style type="text/css">%s</style>`, c.Node.Text), nil
+		styleHTML := fmt.Sprintf(`<style type="text/css">%s</style>`, c.Node.Text)
+		_, err := w.Write([]byte(styleHTML))
+		return err
 	}
-	return "", nil
+	return nil
 }
 
 func (c *MJStyleComponent) GetTagName() string {
@@ -154,9 +162,8 @@ func NewMJAttributesComponent(node *parser.MJMLNode, opts *options.RenderOpts) *
 	}
 }
 
-func (c *MJAttributesComponent) Render() (string, error) {
-	// Attributes are processed during parsing, no HTML output
-	return "", nil
+func (c *MJAttributesComponent) Render(w io.Writer) error {
+	return nil // Attributes are processed during parsing, no HTML output
 }
 
 func (c *MJAttributesComponent) GetTagName() string {
@@ -179,9 +186,8 @@ func NewMJAllComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJAllCo
 	}
 }
 
-func (c *MJAllComponent) Render() (string, error) {
-	// Global attributes are processed during parsing, no HTML output
-	return "", nil
+func (c *MJAllComponent) Render(w io.Writer) error {
+	return nil // Global attributes are processed during parsing, no HTML output
 }
 
 func (c *MJAllComponent) GetTagName() string {

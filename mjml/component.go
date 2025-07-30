@@ -4,6 +4,7 @@ package mjml
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -191,4 +192,16 @@ func processSectionChildren(section *components.MJSectionComponent, opts *option
 			}
 		}
 	}
+}
+
+// RenderComponentString renders the given Component to a string.
+// It creates a strings.Builder writer and passes it to the Component's Render method.
+// This function returns the rendered output as a string, or an error if rendering fails.
+// Where possible, it is recommended to use the component's Render function directly for better performance and flexibility.
+func RenderComponentString(c Component) (string, error) {
+	var output strings.Builder
+	if err := c.Render(&output); err != nil {
+		return "", err
+	}
+	return output.String(), nil
 }

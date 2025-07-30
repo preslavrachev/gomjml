@@ -218,7 +218,7 @@ func TestComponentCreation(t *testing.T) {
 	}
 
 	// Render to HTML
-	html, err := component.Render()
+	html, err := RenderComponentString(component)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}

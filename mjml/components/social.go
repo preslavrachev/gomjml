@@ -1,6 +1,7 @@
 package components
 
 import (
+	"io"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -55,9 +56,8 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-func (c *MJSocialComponent) Render() (string, error) {
-	var output strings.Builder
-
+// Render implements optimized Writer-based rendering for MJSocialComponent
+func (c *MJSocialComponent) Render(w io.Writer) error {
 	padding := c.getAttribute("padding")
 
 	// Outer table cell
@@ -66,10 +66,14 @@ func (c *MJSocialComponent) Render() (string, error) {
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
 
-	output.WriteString(td.RenderOpen())
+	if _, err := w.Write([]byte(td.RenderOpen())); err != nil {
+		return err
+	}
 
 	// MSO conditional opening
-	output.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"center\"><tr><![endif]-->")
+	if _, err := w.Write([]byte("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"center\"><tr><![endif]-->")); err != nil {
+		return err
+	}
 
 	// Render social elements
 	for _, child := range c.Children {
@@ -77,19 +81,21 @@ func (c *MJSocialComponent) Render() (string, error) {
 			socialElement.SetContainerWidth(c.GetContainerWidth())
 			// Pass parent attributes to child if not explicitly set
 			socialElement.InheritFromParent(c)
-			childHTML, err := socialElement.Render()
-			if err != nil {
-				return "", err
+			if err := socialElement.Render(w); err != nil {
+				return err
 			}
-			output.WriteString(childHTML)
 		}
 	}
 
 	// MSO conditional closing
-	output.WriteString("<!--[if mso | IE]></tr></table><![endif]-->")
-	output.WriteString(td.RenderClose())
+	if _, err := w.Write([]byte("<!--[if mso | IE]></tr></table><![endif]-->")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(td.RenderClose())); err != nil {
+		return err
+	}
 
-	return output.String(), nil
+	return nil
 }
 
 func (c *MJSocialComponent) GetTagName() string {
@@ -225,9 +231,8 @@ func (c *MJSocialElementComponent) InheritFromParent(parent *MJSocialComponent) 
 	c.parentSocial = parent
 }
 
-func (c *MJSocialElementComponent) Render() (string, error) {
-	var output strings.Builder
-
+// Render implements optimized Writer-based rendering for MJSocialElementComponent
+func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	padding := c.getAttribute("padding")
 	iconSize := c.getAttribute("icon-size")
 	src := c.getAttribute("src")
@@ -239,11 +244,13 @@ func (c *MJSocialElementComponent) Render() (string, error) {
 
 	// Skip rendering if no src provided
 	if src == "" {
-		return "", nil
+		return nil
 	}
 
 	// MSO conditional for individual social element
-	output.WriteString("<!--[if mso | IE]><td><![endif]-->")
+	if _, err := w.Write([]byte("<!--[if mso | IE]><td><![endif]-->")); err != nil {
+		return err
+	}
 
 	// Outer table (inline-table display)
 	outerTable := html.NewHTMLTag("table")
@@ -257,15 +264,21 @@ func (c *MJSocialElementComponent) Render() (string, error) {
 		AddStyle("float", "none").
 		AddStyle("display", "inline-table")
 
-	output.WriteString(outerTable.RenderOpen())
-	output.WriteString("<tbody><tr>")
+	if _, err := w.Write([]byte(outerTable.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		return err
+	}
 
 	// Padding cell
 	paddingTd := html.NewHTMLTag("td").
 		AddStyle("padding", padding).
 		AddStyle("vertical-align", "middle")
 
-	output.WriteString(paddingTd.RenderOpen())
+	if _, err := w.Write([]byte(paddingTd.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Inner table with background color
 	innerTable := html.NewHTMLTag("table").
@@ -277,8 +290,12 @@ func (c *MJSocialElementComponent) Render() (string, error) {
 		AddStyle("border-radius", borderRadius).
 		AddStyle("width", iconSize)
 
-	output.WriteString(innerTable.RenderOpen())
-	output.WriteString("<tbody><tr>")
+	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		return err
+	}
 
 	// Icon cell
 	iconTd := html.NewHTMLTag("td").
@@ -287,7 +304,9 @@ func (c *MJSocialElementComponent) Render() (string, error) {
 		AddStyle("vertical-align", "middle").
 		AddStyle("width", iconSize)
 
-	output.WriteString(iconTd.RenderOpen())
+	if _, err := w.Write([]byte(iconTd.RenderOpen())); err != nil {
+		return err
+	}
 
 	// Image with optional link - remove "px" suffix from dimensions for HTML attributes
 	heightAttr := strings.TrimSuffix(iconSize, "px")
@@ -308,24 +327,46 @@ func (c *MJSocialElementComponent) Render() (string, error) {
 		link := html.NewHTMLTag("a").
 			AddAttribute("href", href).
 			AddAttribute("target", target)
-		output.WriteString(link.RenderOpen())
-		output.WriteString(img.RenderSelfClosing())
-		output.WriteString(link.RenderClose())
+		if _, err := w.Write([]byte(link.RenderOpen())); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte(img.RenderSelfClosing())); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte(link.RenderClose())); err != nil {
+			return err
+		}
 	} else {
-		output.WriteString(img.RenderSelfClosing())
+		if _, err := w.Write([]byte(img.RenderSelfClosing())); err != nil {
+			return err
+		}
 	}
 
-	output.WriteString(iconTd.RenderClose())
-	output.WriteString("</tr></tbody>")
-	output.WriteString(innerTable.RenderClose())
-	output.WriteString(paddingTd.RenderClose())
-	output.WriteString("</tr></tbody>")
-	output.WriteString(outerTable.RenderClose())
+	if _, err := w.Write([]byte(iconTd.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(paddingTd.RenderClose())); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(outerTable.RenderClose())); err != nil {
+		return err
+	}
 
 	// Close MSO conditional
-	output.WriteString("<!--[if mso | IE]></td><![endif]-->")
+	if _, err := w.Write([]byte("<!--[if mso | IE]></td><![endif]-->")); err != nil {
+		return err
+	}
 
-	return output.String(), nil
+	return nil
 }
 
 func (c *MJSocialElementComponent) GetTagName() string {
