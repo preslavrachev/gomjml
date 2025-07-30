@@ -5,7 +5,6 @@ package html
 
 import (
 	"strings"
-	"sync"
 )
 
 // HTMLTag represents an HTML element with its name, attributes, CSS classes, and inline styles.
@@ -35,16 +34,6 @@ type StyleProperty struct {
 	Value string // CSS property value (e.g., "#f0f0f0")
 }
 
-var htmlTagPool = sync.Pool{
-	New: func() interface{} {
-		return &HTMLTag{
-			attributes: make([]AttributeProperty, 0, 4),
-			classes:    make([]string, 0),
-			styles:     make([]StyleProperty, 0, 4),
-		}
-	},
-}
-
 // NewHTMLTag creates a new HTMLTag with the specified element name.
 // The tag is initialized with empty attributes, classes, and styles.
 //
@@ -53,17 +42,12 @@ var htmlTagPool = sync.Pool{
 //	tag := html.NewHTMLTag("div")
 //	tag.AddStyle("margin", "0px auto").AddAttribute("class", "wrapper")
 func NewHTMLTag(name string) *HTMLTag {
-	tag := htmlTagPool.Get().(*HTMLTag)
-	tag.name = name
-	tag.attributes = tag.attributes[:0]
-	tag.classes = tag.classes[:0]
-	tag.styles = tag.styles[:0]
-	return tag
-}
-
-// Release returns the HTMLTag to the pool for reuse
-func (t *HTMLTag) Release() {
-	htmlTagPool.Put(t)
+	return &HTMLTag{
+		name:       name,
+		attributes: make([]AttributeProperty, 0, 4),
+		classes:    make([]string, 0),
+		styles:     make([]StyleProperty, 0, 4),
+	}
 }
 
 // AddStyle adds a CSS style property to the HTML tag.
