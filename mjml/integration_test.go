@@ -72,6 +72,21 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mj-raw", "testdata/mj-raw.mjml"},
 		{"mj-raw-conditional-comment", "testdata/mj-raw-conditional-comment.mjml"},
 		{"mj-raw-go-template", "testdata/mj-raw-go-template.mjml"},
+		// MJ-SOCIAL tests
+		{"mj-social", "testdata/mj-social.mjml"},
+		{"mj-social-align", "testdata/mj-social-align.mjml"},
+		{"mj-social-border-radius", "testdata/mj-social-border-radius.mjml"},
+		{"mj-social-class", "testdata/mj-social-class.mjml"},
+		{"mj-social-color", "testdata/mj-social-color.mjml"},
+		//{"mj-social-container-background-color", "testdata/mj-social-container-background-color.mjml"},
+		// {"mj-social-element-ending", "testdata/mj-social-element-ending.mjml"},
+		// {"mj-social-font-family", "testdata/mj-social-font-family.mjml"},
+		// {"mj-social-font", "testdata/mj-social-font.mjml"},
+		// {"mj-social-icon", "testdata/mj-social-icon.mjml"},
+		// {"mj-social-link", "testdata/mj-social-link.mjml"},
+		// {"mj-social-mode", "testdata/mj-social-mode.mjml"},
+		// {"mj-social-padding", "testdata/mj-social-padding.mjml"},
+		// {"mj-social-text", "testdata/mj-social-text.mjml"},
 	}
 
 	for _, tc := range testCases {
@@ -704,7 +719,20 @@ func createDOMDiff(expected, actual string) string {
 	}
 
 	// Compare specific elements that commonly differ
-	compareTags := []string{"head", "body", "table", "td", "div", "span"}
+	// 50 most common HTML tags for comparison
+	compareTags := []string{
+		"a", "abbr", "address", "area", "article", "aside", "audio", "b", "base", "bdi",
+		"bdo", "blockquote", "body", "br", "button", "canvas", "caption", "cite", "code", "col",
+		"colgroup", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl",
+		"dt", "em", "embed", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2",
+		"h3", "h4", "h5", "h6", "head", "header", "hr", "html", "i", "iframe", "img",
+		"input", "ins", "kbd", "label", "legend", "li", "link", "main", "map", "mark",
+		"meta", "meter", "nav", "noscript", "object", "ol", "optgroup", "option", "output", "p",
+		"param", "picture", "pre", "progress", "q", "rb", "rp", "rt", "rtc", "ruby",
+		"s", "samp", "script", "section", "select", "small", "source", "span", "strong", "style",
+		"sub", "summary", "sup", "svg", "table", "tbody", "td", "template", "textarea", "tfoot",
+		"th", "thead", "time", "title", "tr", "track", "u", "ul", "var", "video",
+	}
 	for _, tag := range compareTags {
 		expectedCount := expectedDoc.Find(tag).Length()
 		actualCount := actualDoc.Find(tag).Length()

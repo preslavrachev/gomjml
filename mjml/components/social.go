@@ -1,6 +1,7 @@
 package components
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -59,10 +60,26 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.Writer) error {
 	padding := c.getAttribute("padding")
+	align := c.getAttribute("align")
 
-	// Outer table cell
-	td := html.NewHTMLTag("td").
-		AddStyle("font-size", "0px").
+	// Wrap in table row (required when inside column tbody)
+	if _, err := w.Write([]byte("<tr>")); err != nil {
+		return err
+	}
+
+	// Outer table cell with align attribute
+	td := html.NewHTMLTag("td")
+	if align != "" {
+		td.AddAttribute("align", align)
+	}
+
+	// Add CSS class if specified
+	cssClass := c.Node.GetAttribute("css-class")
+	if cssClass != "" {
+		td.AddAttribute("class", cssClass)
+	}
+
+	td.AddStyle("font-size", "0px").
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
 
@@ -70,8 +87,16 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 		return err
 	}
 
-	// MSO conditional opening
-	if _, err := w.Write([]byte("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"center\"><tr><![endif]-->")); err != nil {
+	// MSO conditional opening - use parent's align attribute
+	msoAlign := align
+	if msoAlign == "" {
+		msoAlign = "center"
+	}
+	msoTable := fmt.Sprintf(
+		"<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"%s\"><tr><![endif]-->",
+		msoAlign,
+	)
+	if _, err := w.Write([]byte(msoTable)); err != nil {
 		return err
 	}
 
@@ -92,6 +117,11 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write([]byte(td.RenderClose())); err != nil {
+		return err
+	}
+
+	// Close table row
+	if _, err := w.Write([]byte("</tr>")); err != nil {
 		return err
 	}
 
@@ -120,9 +150,6 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case "align":
 		return "left"
 	case "alt":
-		if name := c.Node.GetAttribute("name"); name != "" {
-			return name
-		}
 		return ""
 	case "border-radius":
 		return "3px"
@@ -140,6 +167,8 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 		return ""
 	case "icon-size":
 		return "20px"
+	case "icon-height":
+		return "" // No default, falls back to icon-size
 	case "line-height":
 		return "1"
 	case "name":
@@ -159,8 +188,28 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png"
 		case "google":
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/google-plus.png"
+		case "github":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/github.png"
+		case "dribbble":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/dribbble.png"
 		case "instagram":
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/instagram.png"
+		case "youtube":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/youtube.png"
+		case "pinterest":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/pinterest.png"
+		case "medium":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/medium.png"
+		case "tumblr":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/tumblr.png"
+		case "vimeo":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/vimeo.png"
+		case "web":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/web.png"
+		case "snapchat":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/snapchat.png"
+		case "soundcloud":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/soundcloud.png"
 		default:
 			return ""
 		}
@@ -178,51 +227,58 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 }
 
 func (c *MJSocialElementComponent) getAttribute(name string) string {
-	// Handle special case for href - if no href is provided, generate platform-specific sharing URL
-	if name == "href" {
-		if value := c.Node.GetAttribute(name); value != "" {
-			socialName := c.Node.GetAttribute("name")
-			baseURL := value
-
-			// Generate platform-specific sharing URLs
-			switch socialName {
-			case "facebook":
-				return "https://www.facebook.com/sharer/sharer.php?u=" + baseURL
-			case "twitter":
-				return "https://twitter.com/home?status=" + baseURL
-			case "linkedin":
-				return "https://www.linkedin.com/shareArticle?mini=true&url=" + baseURL + "&title=&summary=&source="
-			case "google":
-				return "https://plus.google.com/share?url=" + baseURL
-			default:
-				return value
-			}
-		}
-		return ""
-	}
-
-	// First check if element has the attribute explicitly set
+	// 1. Check explicit element attribute first
 	if value := c.Node.GetAttribute(name); value != "" {
 		return value
 	}
 
-	// For non-inheritable attributes like padding, go directly to defaults
-	if name == "padding" {
-		return c.GetDefaultAttribute(name)
-	}
-
-	// Check if parent has the attribute for inheritable attributes
-	inheritableAttrs := map[string]bool{
-		"icon-size": true, "font-size": true, "border-radius": true,
-	}
-
-	if c.parentSocial != nil && inheritableAttrs[name] {
-		if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
-			return parentValue
+	// 2. Check parent mj-social for inheritable attributes
+	if c.parentSocial != nil {
+		inheritableAttrs := []string{
+			"color", "font-family", "font-size", "line-height",
+			"text-decoration", "border-radius", "icon-size",
+		}
+		for _, attr := range inheritableAttrs {
+			if attr == name {
+				// First check parent's explicit attribute
+				if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
+					return parentValue
+				}
+				// Then check parent's default attribute
+				if parentDefault := c.parentSocial.GetDefaultAttribute(name); parentDefault !=
+					"" {
+					return parentDefault
+				}
+			}
 		}
 	}
 
-	// Fall back to default attributes
+	// 3. Check platform-specific defaults (for background-color)
+	if name == "background-color" {
+		socialName := c.Node.GetAttribute("name")
+		platformDefaults := map[string]string{
+			"youtube":    "#EB3323",
+			"facebook":   "#3b5998",
+			"twitter":    "#55acee",
+			"google":     "#dc4e41",
+			"github":     "#000000",
+			"dribbble":   "#D95988",
+			"instagram":  "#3f729b",
+			"linkedin":   "#0077b5",
+			"pinterest":  "#bd081c",
+			"medium":     "#000000",
+			"tumblr":     "#344356",
+			"vimeo":      "#53B4E7",
+			"web":        "#4BADE9",
+			"snapchat":   "#FFFA54",
+			"soundcloud": "#EF7F31",
+		}
+		if bgColor, exists := platformDefaults[socialName]; exists {
+			return bgColor
+		}
+	}
+
+	// 4. Fall back to component defaults
 	return c.GetDefaultAttribute(name)
 }
 
@@ -235,6 +291,10 @@ func (c *MJSocialElementComponent) InheritFromParent(parent *MJSocialComponent) 
 func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	padding := c.getAttribute("padding")
 	iconSize := c.getAttribute("icon-size")
+	iconHeight := c.getAttribute("icon-height")
+	if iconHeight == "" {
+		iconHeight = iconSize // fallback to icon-size
+	}
 	src := c.getAttribute("src")
 	href := c.getAttribute("href")
 	alt := c.getAttribute("alt")
@@ -252,7 +312,14 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 		return err
 	}
 
-	// Outer table (inline-table display)
+	// Outer table (inline-table display) - inherit align from parent
+	align := "center" // default
+	if c.parentSocial != nil {
+		if parentAlign := c.parentSocial.getAttribute("align"); parentAlign != "" {
+			align = parentAlign
+		}
+	}
+
 	outerTable := html.NewHTMLTag("table")
 	c.AddDebugAttribute(outerTable, "social-element")
 	outerTable.
@@ -260,15 +327,25 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 		AddAttribute("cellpadding", "0").
 		AddAttribute("cellspacing", "0").
 		AddAttribute("role", "presentation").
-		AddAttribute("align", "center").
+		AddAttribute("align", align).
 		AddStyle("float", "none").
 		AddStyle("display", "inline-table")
 
 	if _, err := w.Write([]byte(outerTable.RenderOpen())); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
-		return err
+
+	// Add CSS class to tr if specified on individual social element
+	cssClass := c.Node.GetAttribute("css-class")
+	if cssClass != "" {
+		trTag := fmt.Sprintf("<tbody><tr class=\"%s\">", cssClass)
+		if _, err := w.Write([]byte(trTag)); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+			return err
+		}
 	}
 
 	// Padding cell
@@ -300,7 +377,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	// Icon cell
 	iconTd := html.NewHTMLTag("td").
 		AddStyle("font-size", "0").
-		AddStyle("height", iconSize).
+		AddStyle("height", iconHeight).
 		AddStyle("vertical-align", "middle").
 		AddStyle("width", iconSize)
 
@@ -309,19 +386,21 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	}
 
 	// Image with optional link - remove "px" suffix from dimensions for HTML attributes
-	heightAttr := strings.TrimSuffix(iconSize, "px")
+	heightAttr := strings.TrimSuffix(iconHeight, "px")
 	widthAttr := strings.TrimSuffix(iconSize, "px")
 
-	img := html.NewHTMLTag("img").
-		AddAttribute("height", heightAttr).
+	img := html.NewHTMLTag("img")
+
+	// Add alt first to match MRML attribute order
+	if alt != "" {
+		img.AddAttribute("alt", alt)
+	}
+
+	img.AddAttribute("height", heightAttr).
 		AddAttribute("src", src).
 		AddAttribute("width", widthAttr).
 		AddStyle("border-radius", borderRadius).
 		AddStyle("display", "block")
-
-	if alt != "" {
-		img.AddAttribute("alt", alt)
-	}
 
 	if href != "" {
 		link := html.NewHTMLTag("a").
@@ -354,6 +433,64 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	if _, err := w.Write([]byte(paddingTd.RenderClose())); err != nil {
 		return err
 	}
+
+	// Render text content if present - INSIDE the same <tr>
+	// Preserve original whitespace like MRML does (don't trim)
+	textContent := c.Node.Text
+	if textContent != "" {
+		// Text cell with padding and styling
+		textTd := html.NewHTMLTag("td").
+			AddStyle("vertical-align", c.getAttribute("vertical-align")).
+			AddStyle("padding", c.getAttribute("text-padding"))
+
+		if _, err := w.Write([]byte(textTd.RenderOpen())); err != nil {
+			return err
+		}
+
+		// Text content with social styling - use <a> if href present, <span> otherwise
+		var textElement *html.HTMLTag
+		if href != "" {
+			// Use <a> tag when there's a link
+			textElement = html.NewHTMLTag("a").
+				AddAttribute("href", href).
+				AddAttribute("target", target)
+		} else {
+			// Use <span> tag when no link
+			textElement = html.NewHTMLTag("span")
+		}
+
+		// Add styling - maintain MRML CSS property order
+		textElement.AddStyle("color", c.getAttribute("color")).
+			AddStyle("font-size", c.getAttribute("font-size"))
+
+		// Add font-style in correct position if explicitly set
+		if fontStyle := c.Node.GetAttribute("font-style"); fontStyle != "" {
+			textElement.AddStyle("font-style", fontStyle)
+		}
+
+		// Add font-weight in correct position if explicitly set
+		if fontWeight := c.Node.GetAttribute("font-weight"); fontWeight != "" {
+			textElement.AddStyle("font-weight", fontWeight)
+		}
+
+		textElement.AddStyle("font-family", c.getAttribute("font-family")).
+			AddStyle("line-height", c.getAttribute("line-height")).
+			AddStyle("text-decoration", c.getAttribute("text-decoration"))
+
+		if _, err := w.Write([]byte(textElement.RenderOpen())); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte(textContent)); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte(textElement.RenderClose())); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte(textTd.RenderClose())); err != nil {
+			return err
+		}
+	}
+
 	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
 		return err
 	}

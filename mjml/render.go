@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
@@ -362,6 +363,30 @@ func (c *MJMLComponent) hasTextComponents() bool {
 	return c.hasTextComponentsRecursive(c.Body)
 }
 
+// hasSocialComponents checks if the MJML contains any social components
+func (c *MJMLComponent) hasSocialComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
+		switch comp.GetTagName() {
+		case "mj-social", "mj-social-element":
+			return true
+		}
+		return false
+	})
+}
+
+// hasButtonComponents checks if the MJML contains any button components
+func (c *MJMLComponent) hasButtonComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
+		return comp.GetTagName() == "mj-button"
+	})
+}
+
 // hasTextComponentsRecursive recursively checks for text components
 func (c *MJMLComponent) hasTextComponentsRecursive(component Component) bool {
 	// Check if this component is a text component
@@ -387,34 +412,41 @@ func (c *MJMLComponent) checkComponentForMobileCSS(comp Component) bool {
 
 // checkChildrenForCondition is a helper function that checks if any children of a component meet a condition
 func (c *MJMLComponent) checkChildrenForCondition(component Component, condition func(Component) bool) bool {
+	// Check all children recursively
 	switch v := component.(type) {
 	case *components.MJBodyComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJSectionComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJColumnComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJWrapperComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJGroupComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
+				return true
+			}
+		}
+	case *components.MJSocialComponent:
+		for _, child := range v.Children {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
@@ -435,6 +467,15 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 
 	// Now collect column classes after sibling relationships are established
 	c.collectColumnClasses()
+
+	// Pre-render body content to analyze fonts (similar to MJML.io approach)
+	var bodyBuffer strings.Builder
+	if c.Body != nil {
+		if err := c.Body.Render(&bodyBuffer); err != nil {
+			return err
+		}
+	}
+	bodyContent := bodyBuffer.String()
 
 	// DOCTYPE and HTML opening
 	if _, err := w.Write([]byte(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`)); err != nil {
@@ -500,23 +541,58 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		return err
 	}
 
-	// Font imports - check if we need Ubuntu fallback or custom fonts
-	if c.hasTextComponents() {
-		if len(customFonts) > 0 {
-			for _, fontHref := range customFonts {
-				fontText := `<!--[if !mso]><!--><link href="` + fontHref + `" rel="stylesheet" type="text/css">` +
-					`<style type="text/css">@import url(` + fontHref + `);</style><!--<![endif]-->`
-				if _, err := w.Write([]byte(fontText)); err != nil {
-					return err
+	// Font imports - auto-detect fonts from content and add custom fonts from mj-font
+	var allFontsToImport []string
+
+	// Add explicit custom fonts from mj-font components
+	allFontsToImport = append(allFontsToImport, customFonts...)
+
+	// Auto-detect Google Fonts from rendered content (like MJML.io buildFontsTags)
+	// But skip fonts that are already declared via mj-font components
+	detectedFonts := fonts.DetectUsedFonts(bodyContent)
+	for _, detectedFont := range detectedFonts {
+		// Only add if not already in custom fonts from mj-font
+		alreadyExists := false
+		for _, customFont := range customFonts {
+			if customFont == detectedFont {
+				alreadyExists = true
+				break
+			}
+		}
+		if !alreadyExists {
+			allFontsToImport = append(allFontsToImport, detectedFont)
+		}
+	}
+
+	// Also check for default fonts based on component presence (like MRML does)
+	// Note: MRML only imports fonts when specific conditions are met, not just any text presence
+	hasSocial := c.hasSocialComponents()
+	hasButtons := c.hasButtonComponents()
+	hasText := c.hasTextComponents()
+
+	// Only auto-import fonts for social components (confirmed from MRML behavior)
+	if hasSocial {
+		defaultFonts := fonts.DetectDefaultFonts(hasText, hasSocial, hasButtons)
+		for _, defaultFont := range defaultFonts {
+			// Only add if not already in existing fonts
+			alreadyExists := false
+			for _, existingFont := range allFontsToImport {
+				if existingFont == defaultFont {
+					alreadyExists = true
+					break
 				}
 			}
-		} else if !c.hasCustomGlobalFonts() {
-			// Only import Ubuntu if no global fonts are specified
-			ubuntuText := `<!--[if !mso]><!--><link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700" rel="stylesheet" type="text/css">` +
-				`<style type="text/css">@import url(https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700);</style><!--<![endif]-->`
-			if _, err := w.Write([]byte(ubuntuText)); err != nil {
-				return err
+			if !alreadyExists {
+				allFontsToImport = append(allFontsToImport, defaultFont)
 			}
+		}
+	}
+
+	// Generate font import HTML
+	if len(allFontsToImport) > 0 {
+		fontImportsHTML := fonts.BuildFontsTags(allFontsToImport)
+		if _, err := w.Write([]byte(fontImportsHTML)); err != nil {
+			return err
 		}
 	}
 
@@ -581,10 +657,9 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if c.Body != nil {
-		if err := c.Body.Render(w); err != nil {
-			return err
-		}
+	// Write the pre-rendered body content
+	if _, err := w.Write([]byte(bodyContent)); err != nil {
+		return err
 	}
 	if _, err := w.Write([]byte(`</body></html>`)); err != nil {
 		return err
