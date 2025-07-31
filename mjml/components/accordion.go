@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -32,7 +33,7 @@ func (c *MJAccordionComponent) GetDefaultAttribute(name string) string {
 	case "border":
 		return "2px solid black"
 	case "font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "icon-align":
 		return "middle"
 	case "icon-height":

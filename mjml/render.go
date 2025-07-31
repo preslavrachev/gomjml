@@ -169,13 +169,13 @@ func (c *MJMLComponent) RequestMobileCSS() {
 func (c *MJMLComponent) hasCustomGlobalFonts() bool {
 	// Check if global attributes have specified font-family
 	globalFontFamily := globals.GetGlobalAttribute("mj-all", "font-family")
-	if globalFontFamily != "" && globalFontFamily != "Ubuntu, Helvetica, Arial, sans-serif" {
+	if globalFontFamily != "" && globalFontFamily != fonts.DefaultFontStack {
 		return true
 	}
 
 	// Check if any text components have global font-family defined
 	textFontFamily := globals.GetGlobalAttribute("mj-text", "font-family")
-	if textFontFamily != "" && textFontFamily != "Ubuntu, Helvetica, Arial, sans-serif" {
+	if textFontFamily != "" && textFontFamily != fonts.DefaultFontStack {
 		return true
 	}
 
@@ -621,9 +621,14 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	// Only auto-import default fonts if no fonts were already detected from content
 	// This matches MRML's behavior: explicit fonts override default font imports
 	if len(detectedFonts) == 0 && hasSocial {
-		debug.DebugLogWithData("font-detection", "check-defaults", "No content fonts detected, checking defaults", map[string]interface{}{
-			"has_social": hasSocial,
-		})
+		debug.DebugLogWithData(
+			"font-detection",
+			"check-defaults",
+			"No content fonts detected, checking defaults",
+			map[string]interface{}{
+				"has_social": hasSocial,
+			},
+		)
 		defaultFonts := fonts.DetectDefaultFonts(hasText, hasSocial, hasButtons)
 		debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]interface{}{
 			"count": len(defaultFonts),

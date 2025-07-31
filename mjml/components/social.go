@@ -6,10 +6,36 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/debug"
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
+
+// stripPxSuffix removes the "px" suffix from a CSS value if present
+func stripPxSuffix(value string) string {
+	return strings.TrimSuffix(value, "px")
+}
+
+// platformDefaults defines the default background colors for social media platforms
+var platformDefaults = map[string]string{
+	"youtube":    "#EB3323",
+	"facebook":   "#3b5998",
+	"twitter":    "#55acee",
+	"google":     "#dc4e41",
+	"github":     "#000000",
+	"dribbble":   "#D95988",
+	"instagram":  "#3f729b",
+	"linkedin":   "#0077b5",
+	"pinterest":  "#bd081c",
+	"medium":     "#000000",
+	"tumblr":     "#344356",
+	"vimeo":      "#53B4E7",
+	"web":        "#4BADE9",
+	"snapchat":   "#FFFA54",
+	"soundcloud": "#EF7F31",
+	"xing":       "#296366",
+}
 
 // MJSocialComponent represents mj-social
 type MJSocialComponent struct {
@@ -32,7 +58,7 @@ func (c *MJSocialComponent) GetDefaultAttribute(name string) string {
 	case "color":
 		return "#333333"
 	case "font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "font-size":
 		return "13px"
 	case "icon-size":
@@ -208,7 +234,7 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case "color":
 		return "#000"
 	case "font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "font-size":
 		return "13px"
 	case "font-style":
@@ -345,24 +371,6 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 			baseName = strings.Split(socialName, "-")[0]
 		}
 
-		platformDefaults := map[string]string{
-			"youtube":    "#EB3323",
-			"facebook":   "#3b5998",
-			"twitter":    "#55acee",
-			"google":     "#dc4e41",
-			"github":     "#000000",
-			"dribbble":   "#D95988",
-			"instagram":  "#3f729b",
-			"linkedin":   "#0077b5",
-			"pinterest":  "#bd081c",
-			"medium":     "#000000",
-			"tumblr":     "#344356",
-			"vimeo":      "#53B4E7",
-			"web":        "#4BADE9",
-			"snapchat":   "#FFFA54",
-			"soundcloud": "#EF7F31",
-			"xing":       "#296366",
-		}
 		if bgColor, exists := platformDefaults[baseName]; exists {
 			return bgColor
 		}
@@ -455,8 +463,8 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 		}
 
 		// Image without link in vertical mode (as per MRML output)
-		heightAttr := strings.TrimSuffix(iconHeight, "px")
-		widthAttr := strings.TrimSuffix(iconSize, "px")
+		heightAttr := stripPxSuffix(iconHeight)
+		widthAttr := stripPxSuffix(iconSize)
 
 		img := html.NewHTMLTag("img")
 		if alt != "" {
@@ -629,8 +637,8 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	}
 
 	// Image with optional link - remove "px" suffix from dimensions for HTML attributes
-	heightAttr := strings.TrimSuffix(iconHeight, "px")
-	widthAttr := strings.TrimSuffix(iconSize, "px")
+	heightAttr := stripPxSuffix(iconHeight)
+	widthAttr := stripPxSuffix(iconSize)
 
 	img := html.NewHTMLTag("img")
 

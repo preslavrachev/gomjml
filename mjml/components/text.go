@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/debug"
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -161,7 +162,7 @@ func (c *MJTextComponent) GetDefaultAttribute(name string) string {
 	case "align":
 		return "left"
 	case "font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "line-height":
 		return "1"
 	case "padding":

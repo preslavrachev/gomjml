@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -246,7 +247,7 @@ func (c *MJButtonComponent) GetDefaultAttribute(name string) string {
 	case "color":
 		return "#ffffff"
 	case "font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "font-size":
 		return "13px"
 	case "font-weight":

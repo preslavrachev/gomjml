@@ -6,10 +6,14 @@ package parser
 import (
 	"encoding/xml"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/debug"
 )
+
+// Compiled regex for robust text splitting in mixed content
+var mixedContentSplitRegex = regexp.MustCompile(`\s*[\r\n]+\s*`)
 
 // MJMLNode represents a node in the MJML AST
 type MJMLNode struct {
@@ -147,7 +151,7 @@ func (n *MJMLNode) GetMixedContent() string {
 
 	// For mixed content, we need to reconstruct the original structure
 	// The parser splits text at child elements, so we need to interleave them
-	textParts := strings.Split(n.Text, "\n")
+	textParts := mixedContentSplitRegex.Split(n.Text, -1)
 	cleanTextParts := make([]string, 0, len(textParts))
 
 	// Clean up text parts (remove excessive whitespace but preserve structure)

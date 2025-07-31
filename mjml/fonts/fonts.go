@@ -12,6 +12,11 @@ var (
 	inlineRegex = regexp.MustCompile(`"[^"]*font-family:[^"]*([^";}]+)[^"]*"`)
 )
 
+const (
+	// DefaultFontStack is the default font family used by MJML components
+	DefaultFontStack = "Ubuntu, Helvetica, Arial, sans-serif"
+)
+
 // GoogleFontsMapping maps font family names to their Google Fonts URLs
 var GoogleFontsMapping = map[string]string{
 	"Ubuntu":     "https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700",
@@ -63,7 +68,7 @@ func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonCompone
 	// This matches MRML's behavior - it imports fonts based on component presence, not content scanning
 	if hasTextComponents || hasSocialComponents || hasButtonComponents {
 		// Check if Ubuntu font should be imported (default font for most text-based components)
-		if url := getGoogleFontURL("Ubuntu, Helvetica, Arial, sans-serif"); url != "" {
+		if url := getGoogleFontURL(DefaultFontStack); url != "" {
 			fontsToImport = append(fontsToImport, url)
 		}
 	}

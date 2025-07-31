@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -38,7 +39,7 @@ func (c *MJNavbarComponent) GetDefaultAttribute(name string) string {
 	case "ico-color":
 		return "#000000"
 	case "ico-font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "ico-font-size":
 		return "30px"
 	case "ico-line-height":
@@ -81,7 +82,7 @@ func (c *MJNavbarLinkComponent) GetDefaultAttribute(name string) string {
 	case "color":
 		return "#000000"
 	case "font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "font-size":
 		return "13px"
 	case "font-weight":
