@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -118,16 +119,31 @@ func (bc *BaseComponent) GetAttributeWithGlobal(name, tagName string) *string {
 func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) string {
 	// 1. Check element attributes first
 	if value, exists := bc.Attrs[name]; exists && value != "" {
+		debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]interface{}{
+			"attr_name":  name,
+			"attr_value": value,
+		})
 		return value
 	}
 
 	// 2. Check global attributes if available (we'll get this via external function)
 	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
+		debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]interface{}{
+			"attr_name":  name,
+			"attr_value": globalValue,
+		})
 		return globalValue
 	}
 
 	// 3. Check component defaults via interface method (properly calls overridden method)
-	return comp.GetDefaultAttribute(name)
+	defaultValue := comp.GetDefaultAttribute(name)
+	if defaultValue != "" {
+		debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]interface{}{
+			"attr_name":  name,
+			"attr_value": defaultValue,
+		})
+	}
+	return defaultValue
 }
 
 // getGlobalAttribute gets a global attribute value from the global store

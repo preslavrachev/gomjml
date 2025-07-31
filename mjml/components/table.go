@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -40,7 +41,7 @@ func (c *MJTableComponent) GetDefaultAttribute(name string) string {
 	case "color":
 		return "#000000"
 	case "font-family":
-		return "Ubuntu, Helvetica, Arial, sans-serif"
+		return fonts.DefaultFontStack
 	case "font-size":
 		return "13px"
 	case "line-height":

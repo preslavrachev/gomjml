@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/debug"
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
@@ -39,16 +42,26 @@ type RenderResult struct {
 
 // RenderWithAST provides the internal MJML to HTML conversion function that returns both HTML and AST
 func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, error) {
+	startTime := time.Now()
+	debug.DebugLogWithData("mjml", "render-start", "Starting MJML rendering", map[string]interface{}{
+		"content_length": len(mjmlContent),
+		"has_debug":      len(opts) > 0,
+	})
+
 	// Apply render options
 	renderOpts := &RenderOpts{}
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
+
 	// Parse MJML using the parser package
+	debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
 	ast, err := ParseMJML(mjmlContent)
 	if err != nil {
+		debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
 		return nil, err
 	}
+	debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
 
 	// Initialize global attributes
 	globalAttrs := globals.NewGlobalAttributes()
@@ -62,19 +75,39 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	globals.SetGlobalAttributes(globalAttrs)
 
 	// Create component tree
+	debug.DebugLog("mjml", "component-tree-start", "Creating component tree from AST")
 	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
+		debug.DebugLogError("mjml", "component-tree-error", "Failed to create component tree", err)
 		return nil, err
 	}
+	debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
 
 	// Render to HTML with pre-allocated buffer based on input size
+	bufferSize := len(mjmlContent) * 4
+	debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
+		"buffer_size": bufferSize,
+	})
 	var html strings.Builder
-	html.Grow(len(mjmlContent) * 4) // Pre-allocate with a 4x multiplier to account for HTML expansion
+	html.Grow(bufferSize) // Pre-allocate with a 4x multiplier to account for HTML expansion
+
+	renderStart := time.Now()
 	err = component.Render(&html)
 	if err != nil {
+		debug.DebugLogError("mjml", "render-html-error", "Failed to render HTML", err)
 		return nil, err
 	}
+	renderDuration := time.Since(renderStart).Milliseconds()
+
 	htmlOutput := html.String()
+	totalDuration := time.Since(startTime).Milliseconds()
+
+	debug.DebugLogWithData("mjml", "render-complete", "MJML rendering completed", map[string]interface{}{
+		"output_length":    len(htmlOutput),
+		"render_time_ms":   renderDuration,
+		"total_time_ms":    totalDuration,
+		"expansion_factor": float64(len(htmlOutput)) / float64(len(mjmlContent)),
+	})
 
 	return &RenderResult{
 		HTML: htmlOutput,
@@ -136,13 +169,13 @@ func (c *MJMLComponent) RequestMobileCSS() {
 func (c *MJMLComponent) hasCustomGlobalFonts() bool {
 	// Check if global attributes have specified font-family
 	globalFontFamily := globals.GetGlobalAttribute("mj-all", "font-family")
-	if globalFontFamily != "" && globalFontFamily != "Ubuntu, Helvetica, Arial, sans-serif" {
+	if globalFontFamily != "" && globalFontFamily != fonts.DefaultFontStack {
 		return true
 	}
 
 	// Check if any text components have global font-family defined
 	textFontFamily := globals.GetGlobalAttribute("mj-text", "font-family")
-	if textFontFamily != "" && textFontFamily != "Ubuntu, Helvetica, Arial, sans-serif" {
+	if textFontFamily != "" && textFontFamily != fonts.DefaultFontStack {
 		return true
 	}
 
@@ -362,6 +395,30 @@ func (c *MJMLComponent) hasTextComponents() bool {
 	return c.hasTextComponentsRecursive(c.Body)
 }
 
+// hasSocialComponents checks if the MJML contains any social components
+func (c *MJMLComponent) hasSocialComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
+		switch comp.GetTagName() {
+		case "mj-social", "mj-social-element":
+			return true
+		}
+		return false
+	})
+}
+
+// hasButtonComponents checks if the MJML contains any button components
+func (c *MJMLComponent) hasButtonComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
+		return comp.GetTagName() == "mj-button"
+	})
+}
+
 // hasTextComponentsRecursive recursively checks for text components
 func (c *MJMLComponent) hasTextComponentsRecursive(component Component) bool {
 	// Check if this component is a text component
@@ -387,34 +444,41 @@ func (c *MJMLComponent) checkComponentForMobileCSS(comp Component) bool {
 
 // checkChildrenForCondition is a helper function that checks if any children of a component meet a condition
 func (c *MJMLComponent) checkChildrenForCondition(component Component, condition func(Component) bool) bool {
+	// Check all children recursively
 	switch v := component.(type) {
 	case *components.MJBodyComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJSectionComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJColumnComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJWrapperComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
 	case *components.MJGroupComponent:
 		for _, child := range v.Children {
-			if condition(child) {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
+				return true
+			}
+		}
+	case *components.MJSocialComponent:
+		for _, child := range v.Children {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
 			}
 		}
@@ -428,13 +492,34 @@ func (c *MJMLComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJMLComponent
 func (c *MJMLComponent) Render(w io.Writer) error {
+	debug.DebugLog("mjml-root", "render-start", "Starting root MJML component rendering")
+
 	// First, prepare the body to establish sibling relationships without full rendering
+	debug.DebugLog("mjml-root", "prepare-siblings", "Preparing body sibling relationships")
 	if c.Body != nil {
 		c.prepareBodySiblings(c.Body)
 	}
 
 	// Now collect column classes after sibling relationships are established
+	debug.DebugLog("mjml-root", "collect-column-classes", "Collecting column classes for responsive CSS")
 	c.collectColumnClasses()
+	debug.DebugLogWithData("mjml-root", "column-classes-collected", "Column classes collected", map[string]interface{}{
+		"class_count": len(c.columnClasses),
+	})
+
+	// Generate body content once for both font detection and final output
+	debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
+	var bodyBuffer strings.Builder
+	if c.Body != nil {
+		if err := c.Body.Render(&bodyBuffer); err != nil {
+			debug.DebugLogError("mjml-root", "render-body-error", "Failed to render body", err)
+			return err
+		}
+	}
+	bodyContent := bodyBuffer.String()
+	debug.DebugLogWithData("mjml-root", "render-complete", "Body rendering completed", map[string]interface{}{
+		"body_length": len(bodyContent),
+	})
 
 	// DOCTYPE and HTML opening
 	if _, err := w.Write([]byte(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`)); err != nil {
@@ -500,23 +585,84 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		return err
 	}
 
-	// Font imports - check if we need Ubuntu fallback or custom fonts
-	if c.hasTextComponents() {
-		if len(customFonts) > 0 {
-			for _, fontHref := range customFonts {
-				fontText := `<!--[if !mso]><!--><link href="` + fontHref + `" rel="stylesheet" type="text/css">` +
-					`<style type="text/css">@import url(` + fontHref + `);</style><!--<![endif]-->`
-				if _, err := w.Write([]byte(fontText)); err != nil {
-					return err
+	// Font imports - auto-detect fonts from content and add custom fonts from mj-font
+	var allFontsToImport []string
+
+	// Add explicit custom fonts from mj-font components
+	allFontsToImport = append(allFontsToImport, customFonts...)
+
+	// Auto-detect Google Fonts from rendered content (like MJML.io buildFontsTags)
+	// But skip fonts that are already declared via mj-font components
+	detectedFonts := fonts.DetectUsedFonts(bodyContent)
+	debug.DebugLogWithData("font-detection", "content-scan", "Fonts detected from content", map[string]interface{}{
+		"count": len(detectedFonts),
+		"fonts": strings.Join(detectedFonts, ","),
+	})
+	for _, detectedFont := range detectedFonts {
+		// Only add if not already in custom fonts from mj-font
+		alreadyExists := false
+		for _, customFont := range customFonts {
+			if customFont == detectedFont {
+				alreadyExists = true
+				break
+			}
+		}
+		if !alreadyExists {
+			allFontsToImport = append(allFontsToImport, detectedFont)
+		}
+	}
+
+	// Also check for default fonts based on component presence (like MRML does)
+	// Note: MRML only imports fonts when specific conditions are met, not just any text presence
+	hasSocial := c.hasSocialComponents()
+	hasButtons := c.hasButtonComponents()
+	hasText := c.hasTextComponents()
+
+	// Only auto-import default fonts if no fonts were already detected from content
+	// This matches MRML's behavior: explicit fonts override default font imports
+	if len(detectedFonts) == 0 && hasSocial {
+		debug.DebugLogWithData(
+			"font-detection",
+			"check-defaults",
+			"No content fonts detected, checking defaults",
+			map[string]interface{}{
+				"has_social": hasSocial,
+			},
+		)
+		defaultFonts := fonts.DetectDefaultFonts(hasText, hasSocial, hasButtons)
+		debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]interface{}{
+			"count": len(defaultFonts),
+			"fonts": strings.Join(defaultFonts, ","),
+		})
+		for _, defaultFont := range defaultFonts {
+			// Only add if not already in existing fonts
+			alreadyExists := false
+			for _, existingFont := range allFontsToImport {
+				if existingFont == defaultFont {
+					alreadyExists = true
+					break
 				}
 			}
-		} else if !c.hasCustomGlobalFonts() {
-			// Only import Ubuntu if no global fonts are specified
-			ubuntuText := `<!--[if !mso]><!--><link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700" rel="stylesheet" type="text/css">` +
-				`<style type="text/css">@import url(https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700);</style><!--<![endif]-->`
-			if _, err := w.Write([]byte(ubuntuText)); err != nil {
-				return err
+			if !alreadyExists {
+				allFontsToImport = append(allFontsToImport, defaultFont)
 			}
+		}
+	} else {
+		debug.DebugLogWithData("font-detection", "skip-defaults", "Skipping default fonts", map[string]interface{}{
+			"detected_count": len(detectedFonts),
+			"has_social":     hasSocial,
+		})
+	}
+
+	// Generate font import HTML
+	debug.DebugLogWithData("font-detection", "final-list", "Final fonts to import", map[string]interface{}{
+		"total_count": len(allFontsToImport),
+		"fonts":       strings.Join(allFontsToImport, ","),
+	})
+	if len(allFontsToImport) > 0 {
+		fontImportsHTML := fonts.BuildFontsTags(allFontsToImport)
+		if _, err := w.Write([]byte(fontImportsHTML)); err != nil {
+			return err
 		}
 	}
 
@@ -581,10 +727,9 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if c.Body != nil {
-		if err := c.Body.Render(w); err != nil {
-			return err
-		}
+	// Write the body content (already rendered once above)
+	if _, err := w.Write([]byte(bodyContent)); err != nil {
+		return err
 	}
 	if _, err := w.Write([]byte(`</body></html>`)); err != nil {
 		return err
