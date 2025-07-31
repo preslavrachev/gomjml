@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -17,6 +18,13 @@ type Component = components.Component
 // CreateComponent creates a component from an MJML AST node
 func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component, error) {
 	tagName := node.GetTagName()
+
+	// Log component creation
+	debug.DebugLogWithData("component", "create", "Creating component", map[string]interface{}{
+		"tag_name":     tagName,
+		"has_children": len(node.Children) > 0,
+		"attr_count":   len(node.Attrs),
+	})
 
 	switch tagName {
 	case "mjml":
@@ -80,6 +88,7 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 	case "mj-raw":
 		return components.NewMJRawComponent(node, opts), nil
 	default:
+		debug.DebugLogError("component", "create-error", "Unknown component type", fmt.Errorf("unknown component: %s", tagName))
 		return nil, fmt.Errorf("unknown component: %s", tagName)
 	}
 }

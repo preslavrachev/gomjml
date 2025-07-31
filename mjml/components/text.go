@@ -4,6 +4,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -27,8 +28,14 @@ func (c *MJTextComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJTextComponent
 func (c *MJTextComponent) Render(w io.Writer) error {
+	debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
+
 	// Get raw inner HTML content (preserve HTML tags and formatting)
 	textContent := c.getRawInnerHTML()
+	debug.DebugLogWithData("mj-text", "content", "Processing text content", map[string]interface{}{
+		"content_length":  len(textContent),
+		"container_width": c.GetContainerWidth(),
+	})
 
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {

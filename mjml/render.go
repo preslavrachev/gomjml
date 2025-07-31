@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -40,16 +42,26 @@ type RenderResult struct {
 
 // RenderWithAST provides the internal MJML to HTML conversion function that returns both HTML and AST
 func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, error) {
+	startTime := time.Now()
+	debug.DebugLogWithData("mjml", "render-start", "Starting MJML rendering", map[string]interface{}{
+		"content_length": len(mjmlContent),
+		"has_debug":      len(opts) > 0,
+	})
+
 	// Apply render options
 	renderOpts := &RenderOpts{}
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
+
 	// Parse MJML using the parser package
+	debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
 	ast, err := ParseMJML(mjmlContent)
 	if err != nil {
+		debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
 		return nil, err
 	}
+	debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
 
 	// Initialize global attributes
 	globalAttrs := globals.NewGlobalAttributes()
@@ -63,19 +75,39 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	globals.SetGlobalAttributes(globalAttrs)
 
 	// Create component tree
+	debug.DebugLog("mjml", "component-tree-start", "Creating component tree from AST")
 	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
+		debug.DebugLogError("mjml", "component-tree-error", "Failed to create component tree", err)
 		return nil, err
 	}
+	debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
 
 	// Render to HTML with pre-allocated buffer based on input size
+	bufferSize := len(mjmlContent) * 4
+	debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
+		"buffer_size": bufferSize,
+	})
 	var html strings.Builder
-	html.Grow(len(mjmlContent) * 4) // Pre-allocate with a 4x multiplier to account for HTML expansion
+	html.Grow(bufferSize) // Pre-allocate with a 4x multiplier to account for HTML expansion
+
+	renderStart := time.Now()
 	err = component.Render(&html)
 	if err != nil {
+		debug.DebugLogError("mjml", "render-html-error", "Failed to render HTML", err)
 		return nil, err
 	}
+	renderDuration := time.Since(renderStart).Milliseconds()
+
 	htmlOutput := html.String()
+	totalDuration := time.Since(startTime).Milliseconds()
+
+	debug.DebugLogWithData("mjml", "render-complete", "MJML rendering completed", map[string]interface{}{
+		"output_length":    len(htmlOutput),
+		"render_time_ms":   renderDuration,
+		"total_time_ms":    totalDuration,
+		"expansion_factor": float64(len(htmlOutput)) / float64(len(mjmlContent)),
+	})
 
 	return &RenderResult{
 		HTML: htmlOutput,
@@ -460,22 +492,34 @@ func (c *MJMLComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJMLComponent
 func (c *MJMLComponent) Render(w io.Writer) error {
+	debug.DebugLog("mjml-root", "render-start", "Starting root MJML component rendering")
+
 	// First, prepare the body to establish sibling relationships without full rendering
+	debug.DebugLog("mjml-root", "prepare-siblings", "Preparing body sibling relationships")
 	if c.Body != nil {
 		c.prepareBodySiblings(c.Body)
 	}
 
 	// Now collect column classes after sibling relationships are established
+	debug.DebugLog("mjml-root", "collect-column-classes", "Collecting column classes for responsive CSS")
 	c.collectColumnClasses()
+	debug.DebugLogWithData("mjml-root", "column-classes-collected", "Column classes collected", map[string]interface{}{
+		"class_count": len(c.columnClasses),
+	})
 
 	// Pre-render body content to analyze fonts (similar to MJML.io approach)
+	debug.DebugLog("mjml-root", "pre-render-body", "Pre-rendering body content for font analysis")
 	var bodyBuffer strings.Builder
 	if c.Body != nil {
 		if err := c.Body.Render(&bodyBuffer); err != nil {
+			debug.DebugLogError("mjml-root", "pre-render-error", "Failed to pre-render body", err)
 			return err
 		}
 	}
 	bodyContent := bodyBuffer.String()
+	debug.DebugLogWithData("mjml-root", "pre-render-complete", "Body pre-rendering completed", map[string]interface{}{
+		"body_length": len(bodyContent),
+	})
 
 	// DOCTYPE and HTML opening
 	if _, err := w.Write([]byte(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`)); err != nil {
