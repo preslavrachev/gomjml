@@ -305,21 +305,30 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 			if attr == name {
 				// First check parent's explicit attribute
 				if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
-					debug.DebugLogWithData("social-attr", "parent-explicit", "Using parent explicit attribute", map[string]interface{}{
-						"attr":    name,
-						"value":   parentValue,
-						"element": c.Node.GetAttribute("name"),
-					})
+					debug.DebugLogWithData(
+						"social-attr",
+						"parent-explicit",
+						"Using parent explicit attribute",
+						map[string]interface{}{
+							"attr":    name,
+							"value":   parentValue,
+							"element": c.Node.GetAttribute("name"),
+						},
+					)
 					return parentValue
 				}
 				// Then check parent's default attribute
-				if parentDefault := c.parentSocial.GetDefaultAttribute(name); parentDefault !=
-					"" {
-					debug.DebugLogWithData("social-attr", "parent-default", "Using parent default attribute", map[string]interface{}{
-						"attr":    name,
-						"value":   parentDefault,
-						"element": c.Node.GetAttribute("name"),
-					})
+				if parentDefault := c.parentSocial.GetDefaultAttribute(name); parentDefault != "" {
+					debug.DebugLogWithData(
+						"social-attr",
+						"parent-default",
+						"Using parent default attribute",
+						map[string]interface{}{
+							"attr":    name,
+							"value":   parentDefault,
+							"element": c.Node.GetAttribute("name"),
+						},
+					)
 					return parentDefault
 				}
 			}
@@ -678,13 +687,18 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	// Render text content if present - INSIDE the same <tr>
 	// Use GetMixedContent to preserve HTML tags like <b>, <i>, etc. within text
 	textContent := c.Node.GetMixedContent()
-	debug.DebugLogWithData("social-element", "content-selection", "Selected text content source", map[string]interface{}{
-		"element_name":   c.Node.GetAttribute("name"),
-		"plain_text":     c.Node.Text,
-		"mixed_content":  textContent,
-		"has_children":   len(c.Node.Children) > 0,
-		"content_length": len(textContent),
-	})
+	debug.DebugLogWithData(
+		"social-element",
+		"content-selection",
+		"Selected text content source",
+		map[string]interface{}{
+			"element_name":   c.Node.GetAttribute("name"),
+			"plain_text":     c.Node.Text,
+			"mixed_content":  textContent,
+			"has_children":   len(c.Node.Children) > 0,
+			"content_length": len(textContent),
+		},
+	)
 	if textContent != "" {
 		// Text cell with padding and styling
 		textTd := html.NewHTMLTag("td").

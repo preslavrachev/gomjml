@@ -507,17 +507,17 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		"class_count": len(c.columnClasses),
 	})
 
-	// Pre-render body content to analyze fonts (similar to MJML.io approach)
-	debug.DebugLog("mjml-root", "pre-render-body", "Pre-rendering body content for font analysis")
+	// Generate body content once for both font detection and final output
+	debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
 	var bodyBuffer strings.Builder
 	if c.Body != nil {
 		if err := c.Body.Render(&bodyBuffer); err != nil {
-			debug.DebugLogError("mjml-root", "pre-render-error", "Failed to pre-render body", err)
+			debug.DebugLogError("mjml-root", "render-body-error", "Failed to render body", err)
 			return err
 		}
 	}
 	bodyContent := bodyBuffer.String()
-	debug.DebugLogWithData("mjml-root", "pre-render-complete", "Body pre-rendering completed", map[string]interface{}{
+	debug.DebugLogWithData("mjml-root", "render-complete", "Body rendering completed", map[string]interface{}{
 		"body_length": len(bodyContent),
 	})
 
@@ -722,7 +722,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		}
 	}
 
-	// Write the pre-rendered body content
+	// Write the body content (already rendered once above)
 	if _, err := w.Write([]byte(bodyContent)); err != nil {
 		return err
 	}

@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+var (
+	// Compiled regex patterns for font detection
+	styleRegex  = regexp.MustCompile(`font-family:\s*([^;"'}]+)`)
+	inlineRegex = regexp.MustCompile(`"[^"]*font-family:[^"]*([^";}]+)[^"]*"`)
+)
+
 // GoogleFontsMapping maps font family names to their Google Fonts URLs
 var GoogleFontsMapping = map[string]string{
 	"Ubuntu":     "https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700",
@@ -18,13 +24,6 @@ var GoogleFontsMapping = map[string]string{
 // DetectUsedFonts scans HTML content for font-family usage and returns Google Fonts URLs to import
 func DetectUsedFonts(htmlContent string) []string {
 	var fontsToImport []string
-
-	// Create regex patterns to find font-family references (like MJML.io buildFontsTags does)
-	// Pattern 1: CSS style attributes - "font-family: Ubuntu, ..."
-	styleRegex := regexp.MustCompile(`font-family:\s*([^;"'}]+)`)
-
-	// Pattern 2: Inline styles within quoted attributes - "font-family:Ubuntu,..."
-	inlineRegex := regexp.MustCompile(`"[^"]*font-family:[^"]*([^";}]+)[^"]*"`)
 
 	// Find all font-family matches in style attributes
 	styleMatches := styleRegex.FindAllStringSubmatch(htmlContent, -1)
