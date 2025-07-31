@@ -594,6 +594,10 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	// Auto-detect Google Fonts from rendered content (like MJML.io buildFontsTags)
 	// But skip fonts that are already declared via mj-font components
 	detectedFonts := fonts.DetectUsedFonts(bodyContent)
+	debug.DebugLogWithData("font-detection", "content-scan", "Fonts detected from content", map[string]interface{}{
+		"count": len(detectedFonts),
+		"fonts": strings.Join(detectedFonts, ","),
+	})
 	for _, detectedFont := range detectedFonts {
 		// Only add if not already in custom fonts from mj-font
 		alreadyExists := false
@@ -614,9 +618,17 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	hasButtons := c.hasButtonComponents()
 	hasText := c.hasTextComponents()
 
-	// Only auto-import fonts for social components (confirmed from MRML behavior)
-	if hasSocial {
+	// Only auto-import default fonts if no fonts were already detected from content
+	// This matches MRML's behavior: explicit fonts override default font imports
+	if len(detectedFonts) == 0 && hasSocial {
+		debug.DebugLogWithData("font-detection", "check-defaults", "No content fonts detected, checking defaults", map[string]interface{}{
+			"has_social": hasSocial,
+		})
 		defaultFonts := fonts.DetectDefaultFonts(hasText, hasSocial, hasButtons)
+		debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]interface{}{
+			"count": len(defaultFonts),
+			"fonts": strings.Join(defaultFonts, ","),
+		})
 		for _, defaultFont := range defaultFonts {
 			// Only add if not already in existing fonts
 			alreadyExists := false
@@ -630,9 +642,18 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 				allFontsToImport = append(allFontsToImport, defaultFont)
 			}
 		}
+	} else {
+		debug.DebugLogWithData("font-detection", "skip-defaults", "Skipping default fonts", map[string]interface{}{
+			"detected_count": len(detectedFonts),
+			"has_social":     hasSocial,
+		})
 	}
 
 	// Generate font import HTML
+	debug.DebugLogWithData("font-detection", "final-list", "Final fonts to import", map[string]interface{}{
+		"total_count": len(allFontsToImport),
+		"fonts":       strings.Join(allFontsToImport, ","),
+	})
 	if len(allFontsToImport) > 0 {
 		fontImportsHTML := fonts.BuildFontsTags(allFontsToImport)
 		if _, err := w.Write([]byte(fontImportsHTML)); err != nil {

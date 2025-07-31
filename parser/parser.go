@@ -7,6 +7,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"strings"
+
+	"github.com/preslavrachev/gomjml/mjml/debug"
 )
 
 // MJMLNode represents a node in the MJML AST
@@ -121,6 +123,84 @@ func (n *MJMLNode) GetTagName() string {
 // GetTextContent returns the trimmed text content
 func (n *MJMLNode) GetTextContent() string {
 	return strings.TrimSpace(n.Text)
+}
+
+// GetMixedContent returns the full mixed content including HTML child elements
+// This reconstructs the original content like "Share <b>test</b> hi" from the AST
+func (n *MJMLNode) GetMixedContent() string {
+	debug.DebugLogWithData("parser", "mixed-content", "Processing mixed content", map[string]interface{}{
+		"tag_name":       n.XMLName.Local,
+		"plain_text":     n.Text,
+		"children_count": len(n.Children),
+		"has_children":   len(n.Children) > 0,
+	})
+
+	if len(n.Children) == 0 {
+		result := strings.TrimSpace(n.Text)
+		debug.DebugLogWithData("parser", "text-only", "Returning plain text content", map[string]interface{}{
+			"content": result,
+		})
+		return result
+	}
+
+	var result strings.Builder
+
+	// For mixed content, we need to reconstruct the original structure
+	// The parser splits text at child elements, so we need to interleave them
+	textParts := strings.Split(n.Text, "\n")
+	cleanTextParts := make([]string, 0, len(textParts))
+
+	// Clean up text parts (remove excessive whitespace but preserve structure)
+	for _, part := range textParts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			cleanTextParts = append(cleanTextParts, trimmed)
+		}
+	}
+
+	// Write content with children interspersed
+	// Note: This assumes children are inline elements within the text flow
+	if len(cleanTextParts) > 0 {
+		result.WriteString(cleanTextParts[0])
+	}
+
+	// Add child elements with remaining text parts
+	for i, child := range n.Children {
+		// Render child element as HTML
+		result.WriteString("<")
+		result.WriteString(child.XMLName.Local)
+
+		// Add attributes if any
+		for _, attr := range child.Attrs {
+			result.WriteString(" ")
+			result.WriteString(attr.Name.Local)
+			result.WriteString("=\"")
+			result.WriteString(attr.Value)
+			result.WriteString("\"")
+		}
+		result.WriteString(">")
+
+		// Add child's content (recursively handle mixed content)
+		result.WriteString(child.GetMixedContent())
+
+		// Close tag
+		result.WriteString("</")
+		result.WriteString(child.XMLName.Local)
+		result.WriteString(">")
+
+		// Add remaining text part if available
+		if i+1 < len(cleanTextParts) {
+			result.WriteString(cleanTextParts[i+1])
+		}
+	}
+
+	finalResult := strings.TrimSpace(result.String())
+	debug.DebugLogWithData("parser", "mixed-complete", "Mixed content reconstructed", map[string]interface{}{
+		"original_text":     n.Text,
+		"final_content":     finalResult,
+		"children_rendered": len(n.Children),
+	})
+	return finalResult
 }
 
 // FindFirstChild finds the first child with the given tag name
