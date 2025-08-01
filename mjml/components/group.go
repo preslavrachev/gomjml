@@ -121,13 +121,13 @@ func (c *MJGroupComponent) Render(w io.Writer) error {
 		rootDiv.AddStyle("background-color", backgroundColor)
 	}
 
-	if _, err := w.Write([]byte(rootDiv.RenderOpen())); err != nil {
+	if err := rootDiv.RenderOpen(w); err != nil {
 		return err
 	}
 
 	// MSO conditional table structure
-	if _, err := w.Write([]byte(html.RenderMSOConditional(
-		"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr>"))); err != nil {
+	if err := html.RenderMSOConditional(w,
+		"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr>"); err != nil {
 		return err
 	}
 
@@ -159,8 +159,7 @@ func (c *MJGroupComponent) Render(w io.Writer) error {
 			// MSO conditional TD for each column with correct width
 			msoWidth := fmt.Sprintf("%dpx", childWidthPx)
 
-			if _, err := w.Write([]byte(html.RenderMSOConditional(
-				fmt.Sprintf("<td%s style=\"vertical-align:%s;width:%s;\">", c.GetMSOClassAttribute(), verticalAlign, msoWidth)))); err != nil {
+			if err := html.RenderMSOGroupTDOpen(w, c.GetMSOClassAttribute(), verticalAlign, msoWidth); err != nil {
 				return err
 			}
 
@@ -175,19 +174,19 @@ func (c *MJGroupComponent) Render(w io.Writer) error {
 			}
 
 			// Close MSO conditional TD
-			if _, err := w.Write([]byte(html.RenderMSOConditional("</td>"))); err != nil {
+			if err := html.RenderMSOGroupTDClose(w); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Close MSO conditional table
-	if _, err := w.Write([]byte(html.RenderMSOConditional("</tr></table>"))); err != nil {
+	if err := html.RenderMSOGroupTableClose(w); err != nil {
 		return err
 	}
 
 	// Close root div
-	if _, err := w.Write([]byte(rootDiv.RenderClose())); err != nil {
+	if err := rootDiv.RenderClose(w); err != nil {
 		return err
 	}
 

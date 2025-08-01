@@ -14,6 +14,18 @@ import (
 	"github.com/preslavrachev/gomjml/parser"
 )
 
+// Common width strings to avoid allocations
+var (
+	width600px = "600px"
+	width100px = "100px"
+	width200px = "200px"
+	width300px = "300px"
+	width400px = "400px"
+	width500px = "500px"
+	width150px = "150px"
+	width50px  = "50px"
+)
+
 // NotImplementedError indicates a component is not yet implemented
 type NotImplementedError struct {
 	ComponentName string

@@ -83,7 +83,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 
 	tdTag.AddStyle("word-break", "break-word")
 
-	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+	if err := tdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -135,16 +135,16 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 		divTag.AddStyle("text-decoration", textDecoration)
 	}
 
-	if _, err := w.Write([]byte(divTag.RenderOpen())); err != nil {
+	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte(textContent)); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(divTag.RenderClose())); err != nil {
+	if err := divTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("</tr>")); err != nil {

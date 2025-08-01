@@ -120,7 +120,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 		tdTag.AddAttribute("class", cssClass)
 	}
 
-	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+	if err := tdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -141,7 +141,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 
 	tableTag.AddStyle("line-height", "100%")
 
-	if _, err := w.Write([]byte(tableTag.RenderOpen())); err != nil {
+	if err := tableTag.RenderOpen(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
@@ -160,7 +160,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 		AddStyle("mso-padding-alt", innerPadding).
 		AddStyle("background", backgroundColor)
 
-	if _, err := w.Write([]byte(buttonTdTag.RenderOpen())); err != nil {
+	if err := buttonTdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -206,25 +206,25 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 		AddStyle("mso-padding-alt", "0px").
 		AddStyle("border-radius", borderRadius)
 
-	if _, err := w.Write([]byte(contentTag.RenderOpen())); err != nil {
+	if err := contentTag.RenderOpen(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte(textContent)); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(contentTag.RenderClose())); err != nil {
+	if err := contentTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(buttonTdTag.RenderClose())); err != nil {
+	if err := buttonTdTag.RenderClose(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(tableTag.RenderClose())); err != nil {
+	if err := tableTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("</tr>")); err != nil {

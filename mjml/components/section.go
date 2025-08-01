@@ -52,7 +52,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 		c.ApplyBackgroundStyles(outerTable)
 		outerTable.AddStyle("width", "100%")
 
-		if _, err := w.Write([]byte(outerTable.RenderOpen())); err != nil {
+		if err := outerTable.RenderOpen(w); err != nil {
 			return err
 		}
 		if _, err := w.Write([]byte("<tbody><tr><td>")); err != nil {
@@ -82,8 +82,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	if _, err := w.Write([]byte(html.RenderMSOConditional(
-		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))); err != nil {
+	if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
 		return err
 	}
 
@@ -105,7 +104,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 	sectionDiv.AddStyle("margin", "0px auto").
 		AddStyle("max-width", c.GetEffectiveWidthString())
 
-	if _, err := w.Write([]byte(sectionDiv.RenderOpen())); err != nil {
+	if err := sectionDiv.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -123,7 +122,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 	// Then add width
 	innerTable.AddStyle("width", "100%")
 
-	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
@@ -152,7 +151,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 
 	tdTag.AddStyle("text-align", textAlign)
 
-	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+	if err := tdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -191,8 +190,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
 			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
 
-			if _, err := w.Write([]byte(html.RenderMSOConditional(
-				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))); err != nil {
+			if err := html.RenderMSOTableTrOpenConditional(w, msoTable, msoTr, msoTd); err != nil {
 				return err
 			}
 		} else if groupComp, ok := child.(*MJGroupComponent); ok {
@@ -214,11 +212,10 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 				msoTd.AddStyle("width", groupWidth)
 			} else {
 				// Use section's effective width for percentage-based groups
-				msoTd.AddStyle("width", fmt.Sprintf("%dpx", c.GetEffectiveWidth()))
+				msoTd.AddStyle("width", c.GetEffectiveWidthString())
 			}
 
-			if _, err := w.Write([]byte(html.RenderMSOConditional(
-				msoTable.RenderOpen() + msoTr.RenderOpen() + msoTd.RenderOpen()))); err != nil {
+			if err := html.RenderMSOTableTrOpenConditional(w, msoTable, msoTr, msoTd); err != nil {
 				return err
 			}
 		}
@@ -230,31 +227,31 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 
 		// Close MSO conditional TD/TR/TABLE for columns and groups
 		if _, ok := child.(*MJColumnComponent); ok {
-			if _, err := w.Write([]byte(html.RenderMSOConditional("</td></tr></table>"))); err != nil {
+			if err := html.RenderMSOGroupTableClose(w); err != nil {
 				return err
 			}
 		} else if _, ok := child.(*MJGroupComponent); ok {
-			if _, err := w.Write([]byte(html.RenderMSOConditional("</td></tr></table>"))); err != nil {
+			if err := html.RenderMSOGroupTableClose(w); err != nil {
 				return err
 			}
 		}
 	}
 
-	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+	if err := innerTable.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(sectionDiv.RenderClose())); err != nil {
+	if err := sectionDiv.RenderClose(w); err != nil {
 		return err
 	}
 
 	// Close MSO conditional
-	if _, err := w.Write([]byte(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))); err != nil {
+	if err := html.RenderMSOTableCloseConditional(w, msoTd, msoTable); err != nil {
 		return err
 	}
 

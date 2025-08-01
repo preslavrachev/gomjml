@@ -70,14 +70,13 @@ func (c *MJColumnComponent) Render(w io.Writer) error {
 	c.ApplyBackgroundStyles(columnDiv)
 	c.ApplyBorderStyles(columnDiv)
 
-	if _, err := w.Write([]byte(columnDiv.RenderOpen())); err != nil {
+	if err := columnDiv.RenderOpen(w); err != nil {
 		return err
 	}
 
 	// Check if we need gutter table for padding (following MJML JS pattern)
 	if c.hasGutter() {
-		gutterHTML := c.renderGutter()
-		if _, err := w.Write([]byte(gutterHTML)); err != nil {
+		if err := c.renderGutter(w); err != nil {
 			return err
 		}
 	} else {
@@ -86,7 +85,7 @@ func (c *MJColumnComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write([]byte(columnDiv.RenderClose())); err != nil {
+	if err := columnDiv.RenderClose(w); err != nil {
 		return err
 	}
 
@@ -115,7 +114,7 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeS
 		innerTable.AddStyle("vertical-align", verticalAlign)
 	}
 
-	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("<tbody>")); err != nil {
@@ -132,7 +131,7 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeS
 	if _, err := w.Write([]byte("</tbody>")); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+	if err := innerTable.RenderClose(w); err != nil {
 		return err
 	}
 
@@ -287,9 +286,7 @@ func (c *MJColumnComponent) hasGutter() bool {
 }
 
 // renderGutter creates the gutter table wrapper when padding is present
-func (c *MJColumnComponent) renderGutter() string {
-	var output strings.Builder
-
+func (c *MJColumnComponent) renderGutter(w io.Writer) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -302,8 +299,12 @@ func (c *MJColumnComponent) renderGutter() string {
 
 	// Outer gutter table
 	gutterTable := html.NewTableTag().AddAttribute("width", "100%")
-	output.WriteString(gutterTable.RenderOpen())
-	output.WriteString("<tbody><tr>")
+	if err := gutterTable.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		return err
+	}
 
 	// TD with padding styles (this is where the padding gets applied)
 	gutterTd := html.NewHTMLTag("td")
@@ -326,60 +327,20 @@ func (c *MJColumnComponent) renderGutter() string {
 		gutterTd.AddStyle("padding-left", *paddingLeft)
 	}
 
-	output.WriteString(gutterTd.RenderOpen())
+	if err := gutterTd.RenderOpen(w); err != nil {
+		return err
+	}
 
 	// Inner column table (without styles since gutter TD handles them)
-	output.WriteString(c.renderColumnForGutter())
-
-	output.WriteString(gutterTd.RenderClose())
-	output.WriteString("</tr></tbody>")
-	output.WriteString(gutterTable.RenderClose())
-
-	return output.String()
-}
-
-// renderColumn creates the inner column table for content
-func (c *MJColumnComponent) renderColumn() string {
-	return c.renderColumnWithStyles(true)
-}
-
-// renderColumnForGutter creates the inner column table for content without styles (used inside gutter)
-func (c *MJColumnComponent) renderColumnForGutter() string {
-	return c.renderColumnWithStyles(false)
-}
-
-// renderColumnWithStyles creates the inner column table with optional styles
-func (c *MJColumnComponent) renderColumnWithStyles(includeStyles bool) string {
-	var output strings.Builder
-
-	// Inner table for column content
-	innerTable := html.NewTableTag().AddAttribute("width", "100%")
-
-	// Only add vertical-align when not inside a gutter (gutter TD handles vertical-align)
-	if includeStyles {
-		getAttr := func(name string) string {
-			if attr := c.GetAttribute(name); attr != nil {
-				return *attr
-			}
-			return c.GetDefaultAttribute(name)
-		}
-		verticalAlign := getAttr("vertical-align")
-		innerTable.AddStyle("vertical-align", verticalAlign)
+	if err := c.renderColumnWithStylesToWriter(w, false); err != nil {
+		return err
 	}
 
-	output.WriteString(innerTable.RenderOpen())
-	output.WriteString("<tbody>")
-
-	// Render column content (child components)
-	for _, child := range c.Children {
-		if err := child.Render(&output); err != nil {
-			output.WriteString(fmt.Sprintf("<!-- Error rendering child: %v -->", err))
-			continue
-		}
+	if err := gutterTd.RenderClose(w); err != nil {
+		return err
 	}
-
-	output.WriteString("</tbody>")
-	output.WriteString(innerTable.RenderClose())
-
-	return output.String()
+	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+		return err
+	}
+	return gutterTable.RenderClose(w)
 }

@@ -76,7 +76,7 @@ func (c *MJDividerComponent) Render(w io.Writer) error {
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
 
-	if _, err := w.Write([]byte(td.RenderOpen())); err != nil {
+	if err := td.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -93,10 +93,10 @@ func (c *MJDividerComponent) Render(w io.Writer) error {
 	p = p.AddStyle("width", width)
 
 	// Render paragraph - must be empty, not self-closing to match MRML
-	if _, err := w.Write([]byte(p.RenderOpen())); err != nil {
+	if err := p.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(p.RenderClose())); err != nil {
+	if err := p.RenderClose(w); err != nil {
 		return err
 	}
 
@@ -106,7 +106,7 @@ func (c *MJDividerComponent) Render(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write([]byte(td.RenderClose())); err != nil {
+	if err := td.RenderClose(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("</tr>")); err != nil {

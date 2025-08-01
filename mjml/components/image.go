@@ -89,7 +89,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		tdTag.AddAttribute("class", cssClass)
 	}
 
-	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+	if err := tdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -102,7 +102,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		AddStyle("border-collapse", "collapse").
 		AddStyle("border-spacing", "0px")
 
-	if _, err := w.Write([]byte(tableTag.RenderOpen())); err != nil {
+	if err := tableTag.RenderOpen(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
@@ -115,7 +115,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		imageTdTag.AddStyle("width", width)
 	}
 
-	if _, err := w.Write([]byte(imageTdTag.RenderOpen())); err != nil {
+	if err := imageTdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -131,7 +131,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 			linkTag.AddAttribute("target", target)
 		}
 
-		if _, err := w.Write([]byte(linkTag.RenderOpen())); err != nil {
+		if err := linkTag.RenderOpen(w); err != nil {
 			return err
 		}
 	}
@@ -168,7 +168,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		imgTag.AddStyle("border-radius", borderRadius)
 	}
 
-	if _, err := w.Write([]byte(imgTag.RenderSelfClosing())); err != nil {
+	if err := imgTag.RenderSelfClosing(w); err != nil {
 		return err
 	}
 
@@ -179,16 +179,16 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write([]byte(imageTdTag.RenderClose())); err != nil {
+	if err := imageTdTag.RenderClose(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(tableTag.RenderClose())); err != nil {
+	if err := tableTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("</tr>")); err != nil {
