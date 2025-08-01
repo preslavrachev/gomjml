@@ -84,7 +84,7 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 	value := c.GetAttributeWithDefault(c, name)
 	// Ensure font families are tracked
 	if name == "font-family" && value != "" {
-		c.TrackFontFamily(&value)
+		c.TrackFontFamily(value)
 	}
 	return value
 }
@@ -323,7 +323,7 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 	if value := c.Node.GetAttribute(name); value != "" {
 		// Track font families
 		if name == "font-family" {
-			c.TrackFontFamily(&value)
+			c.TrackFontFamily(value)
 		}
 		return value
 	}
@@ -352,7 +352,7 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 					)
 					// Track font families
 					if name == "font-family" {
-						c.TrackFontFamily(&parentValue)
+						c.TrackFontFamily(parentValue)
 					}
 					return parentValue
 				}
@@ -370,7 +370,7 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 					)
 					// Track font families
 					if name == "font-family" {
-						c.TrackFontFamily(&parentDefault)
+						c.TrackFontFamily(parentDefault)
 					}
 					return parentDefault
 				}

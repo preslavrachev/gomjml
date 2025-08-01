@@ -125,7 +125,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		})
 		// Track font families
 		if name == "font-family" {
-			bc.TrackFontFamily(&value)
+			bc.TrackFontFamily(value)
 		}
 		return value
 	}
@@ -138,7 +138,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		})
 		// Track font families
 		if name == "font-family" {
-			bc.TrackFontFamily(&globalValue)
+			bc.TrackFontFamily(globalValue)
 		}
 		return globalValue
 	}
@@ -152,7 +152,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		})
 		// Track font families
 		if name == "font-family" {
-			bc.TrackFontFamily(&defaultValue)
+			bc.TrackFontFamily(defaultValue)
 		}
 	}
 	return defaultValue
@@ -293,9 +293,9 @@ func (bc *BaseComponent) ApplyMarginStyles(tag *html.HTMLTag) *html.HTMLTag {
 }
 
 // TrackFontFamily tracks a font family in the render options font tracker
-func (bc *BaseComponent) TrackFontFamily(fontFamily *string) {
-	if fontFamily != nil && *fontFamily != "" && bc.RenderOpts != nil && bc.RenderOpts.FontTracker != nil {
-		bc.RenderOpts.FontTracker.AddFont(*fontFamily)
+func (bc *BaseComponent) TrackFontFamily(fontFamily string) {
+	if fontFamily != "" && bc.RenderOpts != nil && bc.RenderOpts.FontTracker != nil {
+		bc.RenderOpts.FontTracker.AddFont(fontFamily)
 	}
 }
 
@@ -311,7 +311,7 @@ func (bc *BaseComponent) ApplyFontStyles(tag *html.HTMLTag) *html.HTMLTag {
 	textDecoration := bc.GetAttribute("text-decoration")
 
 	// Track font family usage
-	bc.TrackFontFamily(fontFamily)
+	bc.TrackFontFamily(*fontFamily)
 
 	return styles.ApplyFontStyles(
 		tag,
