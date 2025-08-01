@@ -14,7 +14,7 @@ import (
 	"github.com/preslavrachev/gomjml/parser"
 )
 
-// Common width strings to avoid allocations
+// Common width strings to avoid fmt.Sprintf allocations
 var (
 	width600px = "600px"
 	width100px = "100px"
@@ -259,9 +259,34 @@ func (bc *BaseComponent) GetEffectiveWidth() int {
 // GetEffectiveWidthString returns the effective width as a string with px units
 func (bc *BaseComponent) GetEffectiveWidthString() string {
 	if bc.ContainerWidth > 0 {
-		return fmt.Sprintf("%dpx", bc.ContainerWidth)
+		return getPixelWidthString(bc.ContainerWidth)
 	}
 	return GetDefaultBodyWidth()
+}
+
+// getPixelWidthString returns pixel width string, using cached values for common widths to avoid allocations
+func getPixelWidthString(widthPx int) string {
+	switch widthPx {
+	case 600:
+		return width600px
+	case 500:
+		return width500px
+	case 400:
+		return width400px
+	case 300:
+		return width300px
+	case 200:
+		return width200px
+	case 150:
+		return width150px
+	case 100:
+		return width100px
+	case 50:
+		return width50px
+	default:
+		// Fallback to fmt.Sprintf for uncommon widths
+		return fmt.Sprintf("%dpx", widthPx)
+	}
 }
 
 // Style Mixin Methods - Common styling patterns that components can use

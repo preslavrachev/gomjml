@@ -252,5 +252,5 @@ func (c *MJImageComponent) calculateDefaultWidth() string {
 		availableWidth = containerWidth // Fallback to container width
 	}
 
-	return fmt.Sprintf("%dpx", availableWidth)
+	return getPixelWidthString(availableWidth)
 }

@@ -1,8 +1,8 @@
 package components
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -127,7 +127,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
 		AddStyle("width", GetDefaultBodyWidth())
 
 	// Add css-class support for MSO table (MRML adds -outlook suffix)
@@ -261,7 +261,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	}
 
 	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
 		AddStyle("width", GetDefaultBodyWidth())
 
 	// Add css-class support for MSO table (MRML adds -outlook suffix)

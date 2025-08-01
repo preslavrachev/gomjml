@@ -1,8 +1,8 @@
 package html
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -396,7 +396,7 @@ func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int) error {
 	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\""); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(fmt.Sprintf("%d", widthPx)); err != nil {
+	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
 		return err
 	}
 	if _, err := w.WriteString("px\"><![endif]-->"); err != nil {

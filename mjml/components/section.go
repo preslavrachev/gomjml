@@ -1,8 +1,8 @@
 package components
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -69,7 +69,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", fmt.Sprintf("%d", c.GetEffectiveWidth())).
+		AddAttribute("width", strconv.Itoa(c.GetEffectiveWidth())).
 		AddStyle("width", c.GetEffectiveWidthString())
 
 	// Add css-class-outlook if present

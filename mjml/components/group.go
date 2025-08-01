@@ -138,7 +138,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			if columnComp.GetAttribute("width") == nil {
 				if strings.HasSuffix(groupWidth, "px") {
 					// For pixel-based groups, set pixel width for each column
-					columnComp.Attrs["width"] = fmt.Sprintf("%dpx", childWidthPx)
+					columnComp.Attrs["width"] = getPixelWidthString(childWidthPx)
 				} else {
 					// For percentage-based groups, calculate percentage per column
 					percentagePerColumn := 100.0 / float64(columnCount)
@@ -157,7 +157,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			columnComp.Attrs["mobile-width"] = "mobile-width"
 
 			// MSO conditional TD for each column with correct width
-			msoWidth := fmt.Sprintf("%dpx", childWidthPx)
+			msoWidth := getPixelWidthString(childWidthPx)
 
 			if err := html.RenderMSOGroupTDOpen(w, c.GetMSOClassAttribute(), verticalAlign, msoWidth); err != nil {
 				return err
