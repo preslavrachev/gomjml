@@ -35,7 +35,7 @@ func DetectUsedFonts(htmlContent string) []string {
 	for _, match := range styleMatches {
 		if len(match) > 1 {
 			fontFamily := strings.TrimSpace(match[1])
-			if url := getGoogleFontURL(fontFamily); url != "" {
+			if url := GetGoogleFontURL(fontFamily); url != "" {
 				if !contains(fontsToImport, url) {
 					fontsToImport = append(fontsToImport, url)
 				}
@@ -48,7 +48,7 @@ func DetectUsedFonts(htmlContent string) []string {
 	for _, match := range inlineMatches {
 		if len(match) > 1 {
 			fontFamily := strings.TrimSpace(match[1])
-			if url := getGoogleFontURL(fontFamily); url != "" {
+			if url := GetGoogleFontURL(fontFamily); url != "" {
 				if !contains(fontsToImport, url) {
 					fontsToImport = append(fontsToImport, url)
 				}
@@ -68,7 +68,7 @@ func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonCompone
 	// This matches MRML's behavior - it imports fonts based on component presence, not content scanning
 	if hasTextComponents || hasSocialComponents || hasButtonComponents {
 		// Check if Ubuntu font should be imported (default font for most text-based components)
-		if url := getGoogleFontURL(DefaultFontStack); url != "" {
+		if url := GetGoogleFontURL(DefaultFontStack); url != "" {
 			fontsToImport = append(fontsToImport, url)
 		}
 	}
@@ -76,8 +76,8 @@ func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonCompone
 	return fontsToImport
 }
 
-// getGoogleFontURL checks if a font family corresponds to a Google Font and returns its URL
-func getGoogleFontURL(fontFamily string) string {
+// GetGoogleFontURL checks if a font family corresponds to a Google Font and returns its URL
+func GetGoogleFontURL(fontFamily string) string {
 	// Clean up the font family string - remove quotes and extra whitespace
 	fontFamily = strings.Trim(fontFamily, `"' `)
 
@@ -90,6 +90,23 @@ func getGoogleFontURL(fontFamily string) string {
 	}
 
 	return ""
+}
+
+// ConvertFontFamiliesToURLs converts a slice of font families to Google Font URLs
+func ConvertFontFamiliesToURLs(fontFamilies []string) []string {
+	var urls []string
+	seen := make(map[string]bool)
+
+	for _, fontFamily := range fontFamilies {
+		if url := GetGoogleFontURL(fontFamily); url != "" {
+			if !seen[url] {
+				urls = append(urls, url)
+				seen[url] = true
+			}
+		}
+	}
+
+	return urls
 }
 
 // BuildFontsTags generates HTML for font imports (similar to MJML.io's buildFontsTags)

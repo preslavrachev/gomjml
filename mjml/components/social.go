@@ -81,7 +81,12 @@ func (c *MJSocialComponent) GetDefaultAttribute(name string) string {
 }
 
 func (c *MJSocialComponent) getAttribute(name string) string {
-	return c.GetAttributeWithDefault(c, name)
+	value := c.GetAttributeWithDefault(c, name)
+	// Ensure font families are tracked
+	if name == "font-family" && value != "" {
+		c.TrackFontFamily(&value)
+	}
+	return value
 }
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
@@ -316,6 +321,10 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 func (c *MJSocialElementComponent) getAttribute(name string) string {
 	// 1. Check explicit element attribute first
 	if value := c.Node.GetAttribute(name); value != "" {
+		// Track font families
+		if name == "font-family" {
+			c.TrackFontFamily(&value)
+		}
 		return value
 	}
 
@@ -341,6 +350,10 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 							"element": c.Node.GetAttribute("name"),
 						},
 					)
+					// Track font families
+					if name == "font-family" {
+						c.TrackFontFamily(&parentValue)
+					}
 					return parentValue
 				}
 				// Then check parent's default attribute
@@ -355,6 +368,10 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 							"element": c.Node.GetAttribute("name"),
 						},
 					)
+					// Track font families
+					if name == "font-family" {
+						c.TrackFontFamily(&parentDefault)
+					}
 					return parentDefault
 				}
 			}
