@@ -39,11 +39,11 @@ func (c *MJBodyComponent) Render(w io.Writer) error {
 	backgroundColor := c.GetAttribute("background-color")
 
 	if backgroundColor != nil && *backgroundColor != "" {
-		if _, err := w.Write([]byte(`<div style="background-color:` + *backgroundColor + `;">`)); err != nil {
+		if _, err := io.WriteString(w, `<div style="background-color:`+*backgroundColor+`;">`); err != nil {
 			return err
 		}
 	} else {
-		if _, err := w.Write([]byte(`<div>`)); err != nil {
+		if _, err := io.WriteString(w, `<div>`); err != nil {
 			return err
 		}
 	}
@@ -54,7 +54,7 @@ func (c *MJBodyComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write([]byte(`</div>`)); err != nil {
+	if _, err := io.WriteString(w, `</div>`); err != nil {
 		return err
 	}
 

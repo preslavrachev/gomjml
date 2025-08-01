@@ -150,16 +150,16 @@ func (t *HTMLTag) AddClass(class string) *HTMLTag {
 //
 //	<div class="wrapper" style="background-color:#f0f0f0;margin:0px auto;" bgcolor="#f0f0f0">
 func (t *HTMLTag) RenderOpen(w io.Writer) error {
-	if _, err := w.Write([]byte("<")); err != nil {
+	if _, err := io.WriteString(w, "<"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(t.name)); err != nil {
+	if _, err := io.WriteString(w, t.name); err != nil {
 		return err
 	}
 	if err := t.renderAttributes(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(">")); err != nil {
+	if _, err := io.WriteString(w, ">"); err != nil {
 		return err
 	}
 	return nil
@@ -171,13 +171,13 @@ func (t *HTMLTag) RenderOpen(w io.Writer) error {
 //
 //	</div>
 func (t *HTMLTag) RenderClose(w io.Writer) error {
-	if _, err := w.Write([]byte("</")); err != nil {
+	if _, err := io.WriteString(w, "</"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(t.name)); err != nil {
+	if _, err := io.WriteString(w, t.name); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(">")); err != nil {
+	if _, err := io.WriteString(w, ">"); err != nil {
 		return err
 	}
 	return nil
@@ -190,16 +190,16 @@ func (t *HTMLTag) RenderClose(w io.Writer) error {
 //
 //	<img src="image.jpg" style="width:100%;" />
 func (t *HTMLTag) RenderSelfClosing(w io.Writer) error {
-	if _, err := w.Write([]byte("<")); err != nil {
+	if _, err := io.WriteString(w, "<"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(t.name)); err != nil {
+	if _, err := io.WriteString(w, t.name); err != nil {
 		return err
 	}
 	if err := t.renderAttributes(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(" />")); err != nil {
+	if _, err := io.WriteString(w, " />"); err != nil {
 		return err
 	}
 	return nil
@@ -209,56 +209,56 @@ func (t *HTMLTag) RenderSelfClosing(w io.Writer) error {
 func (t *HTMLTag) renderAttributes(w io.Writer) error {
 	// Add HTML attributes in order
 	for _, attr := range t.attributes {
-		if _, err := w.Write([]byte(" ")); err != nil {
+		if _, err := io.WriteString(w, " "); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(attr.Name)); err != nil {
+		if _, err := io.WriteString(w, attr.Name); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(`="`)); err != nil {
+		if _, err := io.WriteString(w, `="`); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(attr.Value)); err != nil {
+		if _, err := io.WriteString(w, attr.Value); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(`"`)); err != nil {
+		if _, err := io.WriteString(w, `"`); err != nil {
 			return err
 		}
 	}
 
 	// Add CSS classes
 	if len(t.classes) > 0 {
-		if _, err := w.Write([]byte(` class="`)); err != nil {
+		if _, err := io.WriteString(w, ` class="`); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(strings.Join(t.classes, " "))); err != nil {
+		if _, err := io.WriteString(w, strings.Join(t.classes, " ")); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(`"`)); err != nil {
+		if _, err := io.WriteString(w, `"`); err != nil {
 			return err
 		}
 	}
 
 	// Add inline styles
 	if len(t.styles) > 0 {
-		if _, err := w.Write([]byte(` style="`)); err != nil {
+		if _, err := io.WriteString(w, ` style="`); err != nil {
 			return err
 		}
 		for _, style := range t.styles {
-			if _, err := w.Write([]byte(style.Name)); err != nil {
+			if _, err := io.WriteString(w, style.Name); err != nil {
 				return err
 			}
-			if _, err := w.Write([]byte(":")); err != nil {
+			if _, err := io.WriteString(w, ":"); err != nil {
 				return err
 			}
-			if _, err := w.Write([]byte(style.Value)); err != nil {
+			if _, err := io.WriteString(w, style.Value); err != nil {
 				return err
 			}
-			if _, err := w.Write([]byte(";")); err != nil {
+			if _, err := io.WriteString(w, ";"); err != nil {
 				return err
 			}
 		}
-		if _, err := w.Write([]byte(`"`)); err != nil {
+		if _, err := io.WriteString(w, `"`); err != nil {
 			return err
 		}
 	}

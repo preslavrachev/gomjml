@@ -52,7 +52,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	padding := getAttr(constants.MJMLPadding)
 
 	// Create TR element
-	if _, err := w.Write([]byte("<tr>")); err != nil {
+	if _, err := io.WriteString(w, "<tr>"); err != nil {
 		return err
 	}
 
@@ -138,7 +138,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(textContent)); err != nil {
+	if _, err := io.WriteString(w, textContent); err != nil {
 		return err
 	}
 	if err := divTag.RenderClose(w); err != nil {
@@ -147,7 +147,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr>")); err != nil {
+	if _, err := io.WriteString(w, "</tr>"); err != nil {
 		return err
 	}
 

@@ -35,7 +35,7 @@ func (c *MJRawComponent) Render(w io.Writer) error {
 	// mj-raw simply outputs its content as-is, without any wrapping HTML
 	// The content includes both text and child nodes as raw HTML
 	content := c.getRawContent()
-	if _, err := w.Write([]byte(content)); err != nil {
+	if _, err := io.WriteString(w, content); err != nil {
 		return err
 	}
 	return nil

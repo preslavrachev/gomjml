@@ -117,7 +117,7 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeS
 	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody>")); err != nil {
+	if _, err := io.WriteString(w, "<tbody>"); err != nil {
 		return err
 	}
 
@@ -128,7 +128,7 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeS
 		}
 	}
 
-	if _, err := w.Write([]byte("</tbody>")); err != nil {
+	if _, err := io.WriteString(w, "</tbody>"); err != nil {
 		return err
 	}
 	if err := innerTable.RenderClose(w); err != nil {
@@ -302,7 +302,7 @@ func (c *MJColumnComponent) renderGutter(w io.Writer) error {
 	if err := gutterTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -339,7 +339,7 @@ func (c *MJColumnComponent) renderGutter(w io.Writer) error {
 	if err := gutterTd.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
 		return err
 	}
 	return gutterTable.RenderClose(w)

@@ -106,7 +106,7 @@ func (c *MJPreviewComponent) Render(w io.Writer) error {
 			`<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">%s</div>`,
 			c.Node.Text,
 		)
-		_, err := w.Write([]byte(previewHTML))
+		_, err := io.WriteString(w, previewHTML)
 		return err
 	}
 	return nil
@@ -136,7 +136,7 @@ func (c *MJStyleComponent) Render(w io.Writer) error {
 	// Custom CSS styles - render as style tag
 	if c.Node.Text != "" {
 		styleHTML := fmt.Sprintf(`<style type="text/css">%s</style>`, c.Node.Text)
-		_, err := w.Write([]byte(styleHTML))
+		_, err := io.WriteString(w, styleHTML)
 		return err
 	}
 	return nil

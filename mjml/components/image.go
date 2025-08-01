@@ -73,7 +73,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	}
 
 	// Create TR element
-	if _, err := w.Write([]byte("<tr>")); err != nil {
+	if _, err := io.WriteString(w, "<tr>"); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -174,7 +174,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 
 	// Close optional link wrapper
 	if href != "" {
-		if _, err := w.Write([]byte("</a>")); err != nil {
+		if _, err := io.WriteString(w, "</a>"); err != nil {
 			return err
 		}
 	}
@@ -182,7 +182,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	if err := imageTdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
 		return err
 	}
 	if err := tableTag.RenderClose(w); err != nil {
@@ -191,7 +191,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr>")); err != nil {
+	if _, err := io.WriteString(w, "</tr>"); err != nil {
 		return err
 	}
 
