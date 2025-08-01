@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -124,7 +125,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 			"attr_value": value,
 		})
 		// Track font families
-		if name == "font-family" {
+		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(value)
 		}
 		return value
@@ -137,7 +138,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 			"attr_value": globalValue,
 		})
 		// Track font families
-		if name == "font-family" {
+		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(globalValue)
 		}
 		return globalValue
@@ -151,7 +152,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 			"attr_value": defaultValue,
 		})
 		// Track font families
-		if name == "font-family" {
+		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(defaultValue)
 		}
 	}

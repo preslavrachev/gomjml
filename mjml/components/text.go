@@ -4,6 +4,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -47,8 +48,8 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	}
 
 	// Get attributes
-	align := getAttr("align")
-	padding := getAttr("padding")
+	align := getAttr(constants.MJMLAlign)
+	padding := getAttr(constants.MJMLPadding)
 
 	// Create TR element
 	if _, err := w.Write([]byte("<tr>")); err != nil {
@@ -57,9 +58,9 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 
 	// Create TD with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
-		AddAttribute("align", align).
-		AddStyle("font-size", "0px").
-		AddStyle("padding", padding)
+		AddAttribute(constants.AttrAlign, align).
+		AddStyle(constants.CSSFontSize, "0px").
+		AddStyle(constants.CSSPadding, padding)
 
 	// Add css-class if present
 	if cssClass := c.BuildClassAttribute(); cssClass != "" {
@@ -91,20 +92,20 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	c.AddDebugAttribute(divTag, "text")
 
 	// Apply font styles using the proper interface method
-	fontFamily := c.GetAttributeWithDefault(c, "font-family")
+	fontFamily := c.GetAttributeWithDefault(c, constants.MJMLFontFamily)
 	fontSize := c.GetAttributeWithDefault(c, "font-size")
 	fontWeight := c.GetAttributeWithDefault(c, "font-weight")
 	fontStyle := c.GetAttributeWithDefault(c, "font-style")
-	color := c.GetAttributeWithDefault(c, "color")
+	color := c.GetAttributeWithDefault(c, constants.MJMLColor)
 	lineHeight := c.GetAttributeWithDefault(c, "line-height")
-	textAlign := c.GetAttributeWithDefault(c, "align")
+	textAlign := c.GetAttributeWithDefault(c, constants.MJMLAlign)
 	textDecoration := c.GetAttributeWithDefault(c, "text-decoration")
 	textTransform := c.GetAttributeWithDefault(c, "text-transform")
 	letterSpacing := c.GetAttributeWithDefault(c, "letter-spacing")
 
 	// Apply styles in the order expected by MRML
 	if fontFamily != "" {
-		divTag.AddStyle("font-family", fontFamily)
+		divTag.AddStyle(constants.CSSFontFamily, fontFamily)
 	}
 	if fontSize != "" {
 		divTag.AddStyle("font-size", fontSize)
@@ -125,7 +126,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 		divTag.AddStyle("text-transform", textTransform)
 	}
 	if color != "" {
-		divTag.AddStyle("color", color)
+		divTag.AddStyle(constants.CSSColor, color)
 	}
 	if fontStyle != "" {
 		divTag.AddStyle("font-style", fontStyle)
@@ -155,17 +156,17 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 
 func (c *MJTextComponent) GetDefaultAttribute(name string) string {
 	switch name {
-	case "font-size":
+	case constants.MJMLFontSize:
 		return "13px"
-	case "color":
+	case constants.MJMLColor:
 		return "#000000"
-	case "align":
-		return "left"
-	case "font-family":
+	case constants.MJMLAlign:
+		return constants.AlignLeft
+	case constants.MJMLFontFamily:
 		return fonts.DefaultFontStack
-	case "line-height":
+	case constants.MJMLLineHeight:
 		return "1"
-	case "padding":
+	case constants.MJMLPadding:
 		return "10px 25px"
 	default:
 		return ""
