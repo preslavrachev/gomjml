@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -51,44 +52,49 @@ func NewMJSocialComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSo
 
 func (c *MJSocialComponent) GetDefaultAttribute(name string) string {
 	switch name {
-	case "align":
-		return "center"
-	case "border-radius":
+	case constants.MJMLAlign:
+		return constants.AlignCenter
+	case constants.MJMLBorderRadius:
 		return "3px"
-	case "color":
+	case constants.MJMLColor:
 		return "#333333"
-	case "font-family":
+	case constants.MJMLFontFamily:
 		return fonts.DefaultFontStack
-	case "font-size":
+	case constants.MJMLFontSize:
 		return "13px"
-	case "icon-size":
+	case constants.MJMLIconSize:
 		return "20px"
-	case "inner-padding":
+	case constants.MJMLInnerPadding:
 		return "4px"
-	case "line-height":
+	case constants.MJMLLineHeight:
 		return "22px"
-	case "mode":
+	case constants.MJMLMode:
 		return "horizontal"
-	case "padding":
+	case constants.MJMLPadding:
 		return "10px 25px"
-	case "table-layout":
+	case constants.MJMLTableLayout:
 		return "auto"
-	case "text-decoration":
-		return "none"
+	case constants.MJMLTextDecoration:
+		return constants.TextDecorationNone
 	default:
 		return ""
 	}
 }
 
 func (c *MJSocialComponent) getAttribute(name string) string {
-	return c.GetAttributeWithDefault(c, name)
+	value := c.GetAttributeWithDefault(c, name)
+	// Ensure font families are tracked
+	if name == constants.MJMLFontFamily && value != "" {
+		c.TrackFontFamily(value)
+	}
+	return value
 }
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.Writer) error {
-	padding := c.getAttribute("padding")
-	align := c.getAttribute("align")
-	mode := c.getAttribute("mode")
+	padding := c.getAttribute(constants.MJMLPadding)
+	align := c.getAttribute(constants.MJMLAlign)
+	mode := c.getAttribute(constants.MJMLMode)
 
 	// Wrap in table row (required when inside column tbody)
 	if _, err := w.Write([]byte("<tr>")); err != nil {
@@ -102,24 +108,24 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 	}
 
 	// Add CSS class if specified
-	cssClass := c.Node.GetAttribute("css-class")
+	cssClass := c.Node.GetAttribute(constants.MJMLCSSClass)
 	if cssClass != "" {
-		td.AddAttribute("class", cssClass)
+		td.AddAttribute(constants.AttrClass, cssClass)
 	}
 
 	// Add container background color if specified
 	containerBg := c.Node.GetAttribute("container-background-color")
 	if containerBg != "" {
-		td.AddStyle("background", containerBg)
+		td.AddStyle(constants.CSSBackground, containerBg)
 	}
 
-	td.AddStyle("font-size", "0px").
-		AddStyle("padding", padding)
+	td.AddStyle(constants.CSSFontSize, "0px").
+		AddStyle(constants.CSSPadding, padding)
 
 	// Handle padding-left separately if specified
-	paddingLeft := c.Node.GetAttribute("padding-left")
+	paddingLeft := c.Node.GetAttribute(constants.MJMLPaddingLeft)
 	if paddingLeft != "" {
-		td.AddStyle("padding-left", paddingLeft)
+		td.AddStyle(constants.CSSPaddingLeft, paddingLeft)
 	}
 
 	td.AddStyle("word-break", "break-word")
@@ -225,33 +231,33 @@ func NewMJSocialElementComponent(node *parser.MJMLNode, opts *options.RenderOpts
 
 func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	switch name {
-	case "align":
-		return "left"
-	case "alt":
+	case constants.MJMLAlign:
+		return constants.AlignLeft
+	case constants.MJMLAlt:
 		return ""
-	case "border-radius":
+	case constants.MJMLBorderRadius:
 		return "3px"
-	case "color":
+	case constants.MJMLColor:
 		return "#000"
-	case "font-family":
+	case constants.MJMLFontFamily:
 		return fonts.DefaultFontStack
-	case "font-size":
+	case constants.MJMLFontSize:
 		return "13px"
-	case "font-style":
-		return "normal"
-	case "font-weight":
-		return "normal"
-	case "href":
+	case constants.MJMLFontStyle:
+		return constants.FontStyleNormal
+	case constants.MJMLFontWeight:
+		return constants.FontWeightNormal
+	case constants.MJMLHref:
 		return ""
-	case "icon-size":
+	case constants.MJMLIconSize:
 		return "20px"
-	case "icon-height":
+	case constants.MJMLIconHeight:
 		return "" // No default, falls back to icon-size
-	case "line-height":
+	case constants.MJMLLineHeight:
 		return "1"
-	case "name":
+	case constants.MJMLName:
 		return ""
-	case "padding":
+	case constants.MJMLPadding:
 		return "4px"
 	case "src":
 		// Default social icons from MJML standard locations
@@ -300,14 +306,14 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 		default:
 			return ""
 		}
-	case "target":
-		return "_blank"
-	case "text-decoration":
-		return "none"
-	case "text-padding":
+	case constants.MJMLTarget:
+		return constants.TargetBlank
+	case constants.MJMLTextDecoration:
+		return constants.TextDecorationNone
+	case constants.MJMLTextPadding:
 		return "4px 4px 4px 0"
-	case "vertical-align":
-		return "middle"
+	case constants.MJMLVerticalAlign:
+		return constants.VAlignMiddle
 	default:
 		return ""
 	}
@@ -316,6 +322,10 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 func (c *MJSocialElementComponent) getAttribute(name string) string {
 	// 1. Check explicit element attribute first
 	if value := c.Node.GetAttribute(name); value != "" {
+		// Track font families
+		if name == constants.MJMLFontFamily {
+			c.TrackFontFamily(value)
+		}
 		return value
 	}
 
@@ -341,6 +351,10 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 							"element": c.Node.GetAttribute("name"),
 						},
 					)
+					// Track font families
+					if name == constants.MJMLFontFamily {
+						c.TrackFontFamily(parentValue)
+					}
 					return parentValue
 				}
 				// Then check parent's default attribute
@@ -355,6 +369,10 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 							"element": c.Node.GetAttribute("name"),
 						},
 					)
+					// Track font families
+					if name == constants.MJMLFontFamily {
+						c.TrackFontFamily(parentDefault)
+					}
 					return parentDefault
 				}
 			}
@@ -362,7 +380,7 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 	}
 
 	// 3. Check platform-specific defaults (for background-color)
-	if name == "background-color" {
+	if name == constants.MJMLBackgroundColor {
 		socialName := c.Node.GetAttribute("name")
 
 		// Handle variants like "facebook-noshare" by extracting base platform name

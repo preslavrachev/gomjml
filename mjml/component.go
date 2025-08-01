@@ -17,6 +17,15 @@ type Component = components.Component
 
 // CreateComponent creates a component from an MJML AST node
 func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component, error) {
+	// Ensure opts is not nil and has FontTracker initialized
+	if opts == nil {
+		opts = &options.RenderOpts{
+			FontTracker: options.NewFontTracker(),
+		}
+	} else if opts.FontTracker == nil {
+		opts.FontTracker = options.NewFontTracker()
+	}
+
 	tagName := node.GetTagName()
 
 	// Log component creation

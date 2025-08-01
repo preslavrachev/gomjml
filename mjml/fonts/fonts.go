@@ -2,14 +2,7 @@ package fonts
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
-)
-
-var (
-	// Compiled regex patterns for font detection
-	styleRegex  = regexp.MustCompile(`font-family:\s*([^;"'}]+)`)
-	inlineRegex = regexp.MustCompile(`"[^"]*font-family:[^"]*([^";}]+)[^"]*"`)
 )
 
 const (
@@ -26,39 +19,6 @@ var GoogleFontsMapping = map[string]string{
 	"Montserrat": "https://fonts.googleapis.com/css?family=Montserrat:300,400,500,700",
 }
 
-// DetectUsedFonts scans HTML content for font-family usage and returns Google Fonts URLs to import
-func DetectUsedFonts(htmlContent string) []string {
-	var fontsToImport []string
-
-	// Find all font-family matches in style attributes
-	styleMatches := styleRegex.FindAllStringSubmatch(htmlContent, -1)
-	for _, match := range styleMatches {
-		if len(match) > 1 {
-			fontFamily := strings.TrimSpace(match[1])
-			if url := getGoogleFontURL(fontFamily); url != "" {
-				if !contains(fontsToImport, url) {
-					fontsToImport = append(fontsToImport, url)
-				}
-			}
-		}
-	}
-
-	// Find all font-family matches in inline styles
-	inlineMatches := inlineRegex.FindAllStringSubmatch(htmlContent, -1)
-	for _, match := range inlineMatches {
-		if len(match) > 1 {
-			fontFamily := strings.TrimSpace(match[1])
-			if url := getGoogleFontURL(fontFamily); url != "" {
-				if !contains(fontsToImport, url) {
-					fontsToImport = append(fontsToImport, url)
-				}
-			}
-		}
-	}
-
-	return fontsToImport
-}
-
 // DetectDefaultFonts checks if components use default fonts that need importing
 // This handles MJML's behavior of importing fonts based on component defaults, not just rendered text
 func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonComponents bool) []string {
@@ -68,7 +28,7 @@ func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonCompone
 	// This matches MRML's behavior - it imports fonts based on component presence, not content scanning
 	if hasTextComponents || hasSocialComponents || hasButtonComponents {
 		// Check if Ubuntu font should be imported (default font for most text-based components)
-		if url := getGoogleFontURL(DefaultFontStack); url != "" {
+		if url := GetGoogleFontURL(DefaultFontStack); url != "" {
 			fontsToImport = append(fontsToImport, url)
 		}
 	}
@@ -76,8 +36,8 @@ func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonCompone
 	return fontsToImport
 }
 
-// getGoogleFontURL checks if a font family corresponds to a Google Font and returns its URL
-func getGoogleFontURL(fontFamily string) string {
+// GetGoogleFontURL checks if a font family corresponds to a Google Font and returns its URL
+func GetGoogleFontURL(fontFamily string) string {
 	// Clean up the font family string - remove quotes and extra whitespace
 	fontFamily = strings.Trim(fontFamily, `"' `)
 
@@ -90,6 +50,23 @@ func getGoogleFontURL(fontFamily string) string {
 	}
 
 	return ""
+}
+
+// ConvertFontFamiliesToURLs converts a slice of font families to Google Font URLs
+func ConvertFontFamiliesToURLs(fontFamilies []string) []string {
+	var urls []string
+	seen := make(map[string]bool)
+
+	for _, fontFamily := range fontFamilies {
+		if url := GetGoogleFontURL(fontFamily); url != "" {
+			if !seen[url] {
+				urls = append(urls, url)
+				seen[url] = true
+			}
+		}
+	}
+
+	return urls
 }
 
 // BuildFontsTags generates HTML for font imports (similar to MJML.io's buildFontsTags)
@@ -118,14 +95,4 @@ func BuildFontsTags(fontsToImport []string) string {
 	result.WriteString("<!--<![endif]-->")
 
 	return result.String()
-}
-
-// contains checks if a slice contains a specific string
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -123,6 +124,10 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 			"attr_name":  name,
 			"attr_value": value,
 		})
+		// Track font families
+		if name == constants.MJMLFontFamily {
+			bc.TrackFontFamily(value)
+		}
 		return value
 	}
 
@@ -132,6 +137,10 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 			"attr_name":  name,
 			"attr_value": globalValue,
 		})
+		// Track font families
+		if name == constants.MJMLFontFamily {
+			bc.TrackFontFamily(globalValue)
+		}
 		return globalValue
 	}
 
@@ -142,6 +151,10 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 			"attr_name":  name,
 			"attr_value": defaultValue,
 		})
+		// Track font families
+		if name == constants.MJMLFontFamily {
+			bc.TrackFontFamily(defaultValue)
+		}
 	}
 	return defaultValue
 }
@@ -280,6 +293,13 @@ func (bc *BaseComponent) ApplyMarginStyles(tag *html.HTMLTag) *html.HTMLTag {
 	return tag
 }
 
+// TrackFontFamily tracks a font family in the render options font tracker
+func (bc *BaseComponent) TrackFontFamily(fontFamily string) {
+	if fontFamily != "" && bc.RenderOpts != nil && bc.RenderOpts.FontTracker != nil {
+		bc.RenderOpts.FontTracker.AddFont(fontFamily)
+	}
+}
+
 // ApplyFontStyles applies font-related CSS styles to an HTML tag
 func (bc *BaseComponent) ApplyFontStyles(tag *html.HTMLTag) *html.HTMLTag {
 	fontFamily := bc.GetAttribute("font-family")
@@ -290,6 +310,9 @@ func (bc *BaseComponent) ApplyFontStyles(tag *html.HTMLTag) *html.HTMLTag {
 	lineHeight := bc.GetAttribute("line-height")
 	textAlign := bc.GetAttribute("text-align")
 	textDecoration := bc.GetAttribute("text-decoration")
+
+	// Track font family usage
+	bc.TrackFontFamily(*fontFamily)
 
 	return styles.ApplyFontStyles(
 		tag,
