@@ -72,10 +72,6 @@ The CLI provides a structured command system with individual commands:
 
 - `-o, --output string`: Output file path
 - `-s, --stdout`: Output to stdout  
-- `-w, --watch`: Watch file for changes (placeholder)
-- `--beautify`: Beautify HTML output (default: true)
-- `--minify`: Minify HTML output (default: false)
-- `--validation-level string`: Validation level - strict, soft, or skip (default: "soft")
 - `--debug`: Include debug attributes for component traceability (default: false)
 
 ### Go Package API
@@ -219,45 +215,45 @@ func (c *MJNewComponent) GetTagName() string {
 
 ## 📋 Component Implementation Status
 
-| Component | Status | Description | Notes |
-|-----------|--------|-------------|-------|
-| **Core Layout** | | | |
-| `mjml` | ✅ **Implemented** | Root document container with DOCTYPE and HTML structure | |
-| `mj-head` | ✅ **Implemented** | Document metadata container | |
-| `mj-body` | ✅ **Implemented** | Email body container with responsive layout | |
-| `mj-section` | ✅ **Implemented** | Layout sections with background support | |
-| `mj-column` | ✅ **Implemented** | Responsive columns with automatic width calculation | |
-| `mj-wrapper` | ✅ **Implemented** | Wrapper component with border, background-color, and padding support | |
-| `mj-group` | ✅ **Implemented** | Group multiple columns in a section | |
-| **Content Components** | | | |
-| `mj-text` | ✅ **Implemented** | Text content with full styling support | |
-| `mj-button` | ✅ **Implemented** | Email-safe buttons with customizable styling and links | |
-| `mj-image` | ✅ **Implemented** | Responsive images with link wrapping and alt text | |
-| `mj-divider` | ✅ **Implemented** | Visual separators and spacing elements | |
-| `mj-social` | ✅ **Implemented** | Social media icons container | |
-| `mj-social-element` | ✅ **Implemented** | Individual social media icons | |
-| `mj-raw` | ✅ **Implemented** | Raw HTML content insertion | |
-| **Head Components** | | | |
-| `mj-title` | ✅ **Implemented** | Document title for email clients | |
-| `mj-font` | ✅ **Implemented** | Custom font imports with Google Fonts support | |
-| `mj-preview` | ✅ **Implemented** | Preview text for email clients | |
-| `mj-style` | ✅ **Implemented** | Custom CSS styles | |
-| `mj-attributes` | ✅ **Implemented** | Global attribute definitions | |
-| `mj-all` | ✅ **Implemented** | Global attributes for all components | |
-| **Interactive Components** | | | |
-| `mj-accordion` | ❌ **Not Implemented** | Collapsible content sections | |
-| `mj-accordion-text` | ❌ **Not Implemented** | Text content within accordion | |
-| `mj-accordion-title` | ❌ **Not Implemented** | Title for accordion sections | |
-| `mj-carousel` | ❌ **Not Implemented** | Image carousel component | |
-| `mj-carousel-image` | ❌ **Not Implemented** | Images within carousel | |
-| `mj-hero` | ❌ **Not Implemented** | Header/banner sections with background images | |
-| `mj-navbar` | ❌ **Not Implemented** | Navigation bar component | |
-| `mj-navbar-link` | ❌ **Not Implemented** | Navigation links within navbar | |
-| `mj-spacer` | ❌ **Not Implemented** | Layout spacing control | |
-| `mj-table` | ❌ **Not Implemented** | Email-safe table component | |
+| Component | Status | Description |
+|-----------|--------|-------------|
+| **Core Layout** | | |
+| `mjml` | ✅ **Implemented** | Root document container with DOCTYPE and HTML structure |
+| `mj-head` | ✅ **Implemented** | Document metadata container |
+| `mj-body` | ✅ **Implemented** | Email body container with responsive layout |
+| `mj-section` | ✅ **Implemented** | Layout sections with background support |
+| `mj-column` | ✅ **Implemented** | Responsive columns with automatic width calculation |
+| `mj-wrapper` | ✅ **Implemented** | Wrapper component with border, background-color, and padding support |
+| `mj-group` | ✅ **Implemented** | Group multiple columns in a section |
+| **Content Components** | | |
+| `mj-text` | ✅ **Implemented** | Text content with full styling support |
+| `mj-button` | ✅ **Implemented** | Email-safe buttons with customizable styling and links |
+| `mj-image` | ✅ **Implemented** | Responsive images with link wrapping and alt text |
+| `mj-divider` | ✅ **Implemented** | Visual separators and spacing elements |
+| `mj-social` | ✅ **Implemented** | Social media icons container |
+| `mj-social-element` | ✅ **Implemented** | Individual social media icons |
+| `mj-raw` | ✅ **Implemented** | Raw HTML content insertion |
+| **Head Components** | | |
+| `mj-title` | ✅ **Implemented** | Document title for email clients |
+| `mj-font` | ✅ **Implemented** | Custom font imports with Google Fonts support |
+| `mj-preview` | ✅ **Implemented** | Preview text for email clients |
+| `mj-style` | ✅ **Implemented** | Custom CSS styles |
+| `mj-attributes` | ✅ **Implemented** | Global attribute definitions |
+| `mj-all` | ✅ **Implemented** | Global attributes for all components |
+| **Not Implemented** | | |
+| `mj-accordion` | ❌ **Not Implemented** | Collapsible content sections |
+| `mj-accordion-text` | ❌ **Not Implemented** | Text content within accordion |
+| `mj-accordion-title` | ❌ **Not Implemented** | Title for accordion sections |
+| `mj-carousel` | ❌ **Not Implemented** | Image carousel component |
+| `mj-carousel-image` | ❌ **Not Implemented** | Images within carousel |
+| `mj-hero` | ❌ **Not Implemented** | Header/banner sections with background images |
+| `mj-navbar` | ❌ **Not Implemented** | Navigation bar component |
+| `mj-navbar-link` | ❌ **Not Implemented** | Navigation links within navbar |
+| `mj-spacer` | ❌ **Not Implemented** | Layout spacing control |
+| `mj-table` | ❌ **Not Implemented** | Email-safe table component |
 
 ### Implementation Summary
-- **✅ Implemented: 16 components** - Core layout, content, and head components are fully functional
+- **✅ Implemented: 16 components** - All essential layout, content, and head components work
 - **❌ Not Implemented: 10 components** - Advanced interactive components return `NotImplementedError`
 - **Total MJML Components: 26** - Covers all major MJML specification components
 
