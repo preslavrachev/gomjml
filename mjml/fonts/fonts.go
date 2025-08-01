@@ -2,14 +2,7 @@ package fonts
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
-)
-
-var (
-	// Compiled regex patterns for font detection
-	styleRegex  = regexp.MustCompile(`font-family:\s*([^;"'}]+)`)
-	inlineRegex = regexp.MustCompile(`"[^"]*font-family:[^"]*([^";}]+)[^"]*"`)
 )
 
 const (
@@ -24,39 +17,6 @@ var GoogleFontsMapping = map[string]string{
 	"Roboto":     "https://fonts.googleapis.com/css?family=Roboto:300,400,500,700",
 	"Lato":       "https://fonts.googleapis.com/css?family=Lato:300,400,500,700",
 	"Montserrat": "https://fonts.googleapis.com/css?family=Montserrat:300,400,500,700",
-}
-
-// DetectUsedFonts scans HTML content for font-family usage and returns Google Fonts URLs to import
-func DetectUsedFonts(htmlContent string) []string {
-	var fontsToImport []string
-
-	// Find all font-family matches in style attributes
-	styleMatches := styleRegex.FindAllStringSubmatch(htmlContent, -1)
-	for _, match := range styleMatches {
-		if len(match) > 1 {
-			fontFamily := strings.TrimSpace(match[1])
-			if url := GetGoogleFontURL(fontFamily); url != "" {
-				if !contains(fontsToImport, url) {
-					fontsToImport = append(fontsToImport, url)
-				}
-			}
-		}
-	}
-
-	// Find all font-family matches in inline styles
-	inlineMatches := inlineRegex.FindAllStringSubmatch(htmlContent, -1)
-	for _, match := range inlineMatches {
-		if len(match) > 1 {
-			fontFamily := strings.TrimSpace(match[1])
-			if url := GetGoogleFontURL(fontFamily); url != "" {
-				if !contains(fontsToImport, url) {
-					fontsToImport = append(fontsToImport, url)
-				}
-			}
-		}
-	}
-
-	return fontsToImport
 }
 
 // DetectDefaultFonts checks if components use default fonts that need importing
@@ -135,14 +95,4 @@ func BuildFontsTags(fontsToImport []string) string {
 	result.WriteString("<!--<![endif]-->")
 
 	return result.String()
-}
-
-// contains checks if a slice contains a specific string
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }

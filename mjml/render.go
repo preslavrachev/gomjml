@@ -145,7 +145,9 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)
 func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
 	// Apply render options
-	renderOpts := &RenderOpts{}
+	renderOpts := &RenderOpts{
+		FontTracker: options.NewFontTracker(),
+	}
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
@@ -593,25 +595,14 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	// Add explicit custom fonts from mj-font components
 	allFontsToImport = append(allFontsToImport, customFonts...)
 
-	// Get fonts tracked during component rendering (replaces regex-based detection)
-	var detectedFonts []string
-	if c.RenderOpts != nil && c.RenderOpts.FontTracker != nil {
-		trackedFonts := c.RenderOpts.FontTracker.GetFonts()
-		detectedFonts = fonts.ConvertFontFamiliesToURLs(trackedFonts)
-		debug.DebugLogWithData("font-detection", "component-tracking", "Fonts tracked from components", map[string]interface{}{
-			"tracked_count": len(trackedFonts),
-			"url_count":     len(detectedFonts),
-			"fonts":         strings.Join(trackedFonts, ","),
-		})
-	} else {
-		debug.DebugLog("font-detection", "no-tracker", "No font tracker available, using fallback detection")
-		// Fallback to regex-based detection if font tracker is not available
-		detectedFonts = fonts.DetectUsedFonts(bodyContent)
-		debug.DebugLogWithData("font-detection", "content-scan-fallback", "Fonts detected from content (fallback)", map[string]interface{}{
-			"count": len(detectedFonts),
-			"fonts": strings.Join(detectedFonts, ","),
-		})
-	}
+	// Get fonts tracked during component rendering
+	trackedFonts := c.RenderOpts.FontTracker.GetFonts()
+	detectedFonts := fonts.ConvertFontFamiliesToURLs(trackedFonts)
+	debug.DebugLogWithData("font-detection", "component-tracking", "Fonts tracked from components", map[string]interface{}{
+		"tracked_count": len(trackedFonts),
+		"url_count":     len(detectedFonts),
+		"fonts":         strings.Join(trackedFonts, ","),
+	})
 
 	for _, detectedFont := range detectedFonts {
 		// Only add if not already in custom fonts from mj-font
