@@ -495,7 +495,7 @@ func (c *MJMLComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJMLComponent
-func (c *MJMLComponent) Render(w io.Writer) error {
+func (c *MJMLComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mjml-root", "render-start", "Starting root MJML component rendering")
 
 	// First, prepare the body to establish sibling relationships without full rendering
@@ -526,7 +526,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	})
 
 	// DOCTYPE and HTML opening
-	if _, err := io.WriteString(w, `<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`); err != nil {
+	if _, err := w.WriteString(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`); err != nil {
 		return err
 	}
 
@@ -557,16 +557,16 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if _, err := io.WriteString(w, `<head><title>`+title+`</title>`); err != nil {
+	if _, err := w.WriteString(`<head><title>` + title + `</title>`); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, `<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`); err != nil {
+	if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, `<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`); err != nil {
+	if _, err := w.WriteString(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, `<meta name="viewport" content="width=device-width, initial-scale=1">`); err != nil {
+	if _, err := w.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`); err != nil {
 		return err
 	}
 
@@ -578,14 +578,14 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		"img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }\n" +
 		"p { display: block; margin: 13px 0; }\n" +
 		"</style>\n"
-	if _, err := io.WriteString(w, baseCSSText); err != nil {
+	if _, err := w.WriteString(baseCSSText); err != nil {
 		return err
 	}
 
 	// MSO conditionals
 	msoText := "<!--[if mso]>\n<noscript>\n<xml>\n<o:OfficeDocumentSettings>\n  <o:AllowPNG/>\n  <o:PixelsPerInch>96</o:PixelsPerInch>\n</o:OfficeDocumentSettings>\n</xml>\n</noscript>\n<![endif]-->\n" +
 		"<!--[if lte mso 11]>\n<style type=\"text/css\">\n.mj-outlook-group-fix { width:100% !important; }\n</style>\n<![endif]-->\n"
-	if _, err := io.WriteString(w, msoText); err != nil {
+	if _, err := w.WriteString(msoText); err != nil {
 		return err
 	}
 
@@ -672,7 +672,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	})
 	if len(allFontsToImport) > 0 {
 		fontImportsHTML := fonts.BuildFontsTags(allFontsToImport)
-		if _, err := io.WriteString(w, fontImportsHTML); err != nil {
+		if _, err := w.WriteString(fontImportsHTML); err != nil {
 			return err
 		}
 	}
@@ -680,7 +680,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	// Dynamic responsive CSS based on collected column classes - only if we have columns
 	if len(c.columnClasses) > 0 {
 		responsiveCSS := c.generateResponsiveCSS()
-		if _, err := io.WriteString(w, responsiveCSS); err != nil {
+		if _, err := w.WriteString(responsiveCSS); err != nil {
 			return err
 		}
 	}
@@ -692,18 +692,18 @@ func (c *MJMLComponent) Render(w io.Writer) error {
                 td.mj-full-width-mobile { width: auto !important; }
             }
             </style>`
-		if _, err := io.WriteString(w, mobileCSSText); err != nil {
+		if _, err := w.WriteString(mobileCSSText); err != nil {
 			return err
 		}
 	}
 
 	// Custom styles from mj-style components (MRML lines 240-244)
 	customStyles := c.generateCustomStyles()
-	if _, err := io.WriteString(w, customStyles); err != nil {
+	if _, err := w.WriteString(customStyles); err != nil {
 		return err
 	}
 
-	if _, err := io.WriteString(w, `</head>`); err != nil {
+	if _, err := w.WriteString(`</head>`); err != nil {
 		return err
 	}
 
@@ -723,7 +723,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	if len(bodyStyles) > 0 {
 		bodyTag = `<body style="` + strings.Join(bodyStyles, ";") + `;">`
 	}
-	if _, err := io.WriteString(w, bodyTag); err != nil {
+	if _, err := w.WriteString(bodyTag); err != nil {
 		return err
 	}
 
@@ -739,10 +739,10 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	}
 
 	// Write the body content (already rendered once above)
-	if _, err := io.WriteString(w, bodyContent); err != nil {
+	if _, err := w.WriteString(bodyContent); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, `</body></html>`); err != nil {
+	if _, err := w.WriteString(`</body></html>`); err != nil {
 		return err
 	}
 

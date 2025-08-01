@@ -34,7 +34,7 @@ func (c *MJColumnComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJColumnComponent
-func (c *MJColumnComponent) Render(w io.Writer) error {
+func (c *MJColumnComponent) Render(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -93,12 +93,12 @@ func (c *MJColumnComponent) Render(w io.Writer) error {
 }
 
 // renderColumnToWriter renders the column content directly to Writer
-func (c *MJColumnComponent) renderColumnToWriter(w io.Writer) error {
+func (c *MJColumnComponent) renderColumnToWriter(w io.StringWriter) error {
 	return c.renderColumnWithStylesToWriter(w, true)
 }
 
 // renderColumnWithStylesToWriter creates the inner column table with optional styles and writes to Writer
-func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeStyles bool) error {
+func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, includeStyles bool) error {
 	// Inner table for column content
 	innerTable := html.NewTableTag().AddAttribute("width", "100%")
 
@@ -117,7 +117,7 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeS
 	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody>"); err != nil {
+	if _, err := w.WriteString("<tbody>"); err != nil {
 		return err
 	}
 
@@ -128,7 +128,7 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.Writer, includeS
 		}
 	}
 
-	if _, err := io.WriteString(w, "</tbody>"); err != nil {
+	if _, err := w.WriteString("</tbody>"); err != nil {
 		return err
 	}
 	if err := innerTable.RenderClose(w); err != nil {
@@ -286,7 +286,7 @@ func (c *MJColumnComponent) hasGutter() bool {
 }
 
 // renderGutter creates the gutter table wrapper when padding is present
-func (c *MJColumnComponent) renderGutter(w io.Writer) error {
+func (c *MJColumnComponent) renderGutter(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -302,7 +302,7 @@ func (c *MJColumnComponent) renderGutter(w io.Writer) error {
 	if err := gutterTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -339,7 +339,7 @@ func (c *MJColumnComponent) renderGutter(w io.Writer) error {
 	if err := gutterTd.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
 	return gutterTable.RenderClose(w)

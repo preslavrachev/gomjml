@@ -69,7 +69,7 @@ func (c *MJButtonComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJButtonComponent
-func (c *MJButtonComponent) Render(w io.Writer) error {
+func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	// Get text content
 	textContent := c.Node.Text
 	if textContent == "" {
@@ -103,7 +103,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 	}
 
 	// Create TR element
-	if _, err := io.WriteString(w, "<tr>"); err != nil {
+	if _, err := w.WriteString("<tr>"); err != nil {
 		return err
 	}
 
@@ -144,7 +144,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -209,7 +209,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 	if err := contentTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, textContent); err != nil {
+	if _, err := w.WriteString(textContent); err != nil {
 		return err
 	}
 	if err := contentTag.RenderClose(w); err != nil {
@@ -218,7 +218,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 	if err := buttonTdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
 	if err := tableTag.RenderClose(w); err != nil {
@@ -227,7 +227,7 @@ func (c *MJButtonComponent) Render(w io.Writer) error {
 	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr>"); err != nil {
+	if _, err := w.WriteString("</tr>"); err != nil {
 		return err
 	}
 

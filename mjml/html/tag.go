@@ -149,17 +149,17 @@ func (t *HTMLTag) AddClass(class string) *HTMLTag {
 // Example output:
 //
 //	<div class="wrapper" style="background-color:#f0f0f0;margin:0px auto;" bgcolor="#f0f0f0">
-func (t *HTMLTag) RenderOpen(w io.Writer) error {
-	if _, err := io.WriteString(w, "<"); err != nil {
+func (t *HTMLTag) RenderOpen(w io.StringWriter) error {
+	if _, err := w.WriteString("<"); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, t.name); err != nil {
+	if _, err := w.WriteString(t.name); err != nil {
 		return err
 	}
 	if err := t.renderAttributes(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, ">"); err != nil {
+	if _, err := w.WriteString(">"); err != nil {
 		return err
 	}
 	return nil
@@ -170,14 +170,14 @@ func (t *HTMLTag) RenderOpen(w io.Writer) error {
 // Example output:
 //
 //	</div>
-func (t *HTMLTag) RenderClose(w io.Writer) error {
-	if _, err := io.WriteString(w, "</"); err != nil {
+func (t *HTMLTag) RenderClose(w io.StringWriter) error {
+	if _, err := w.WriteString("</"); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, t.name); err != nil {
+	if _, err := w.WriteString(t.name); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, ">"); err != nil {
+	if _, err := w.WriteString(">"); err != nil {
 		return err
 	}
 	return nil
@@ -189,76 +189,76 @@ func (t *HTMLTag) RenderClose(w io.Writer) error {
 // Example output:
 //
 //	<img src="image.jpg" style="width:100%;" />
-func (t *HTMLTag) RenderSelfClosing(w io.Writer) error {
-	if _, err := io.WriteString(w, "<"); err != nil {
+func (t *HTMLTag) RenderSelfClosing(w io.StringWriter) error {
+	if _, err := w.WriteString("<"); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, t.name); err != nil {
+	if _, err := w.WriteString(t.name); err != nil {
 		return err
 	}
 	if err := t.renderAttributes(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, " />"); err != nil {
+	if _, err := w.WriteString(" />"); err != nil {
 		return err
 	}
 	return nil
 }
 
 // renderAttributes renders the common HTML attributes, CSS classes, and inline styles to the provided Writer
-func (t *HTMLTag) renderAttributes(w io.Writer) error {
+func (t *HTMLTag) renderAttributes(w io.StringWriter) error {
 	// Add HTML attributes in order
 	for _, attr := range t.attributes {
-		if _, err := io.WriteString(w, " "); err != nil {
+		if _, err := w.WriteString(" "); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, attr.Name); err != nil {
+		if _, err := w.WriteString(attr.Name); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, `="`); err != nil {
+		if _, err := w.WriteString(`="`); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, attr.Value); err != nil {
+		if _, err := w.WriteString(attr.Value); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, `"`); err != nil {
+		if _, err := w.WriteString(`"`); err != nil {
 			return err
 		}
 	}
 
 	// Add CSS classes
 	if len(t.classes) > 0 {
-		if _, err := io.WriteString(w, ` class="`); err != nil {
+		if _, err := w.WriteString(` class="`); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, strings.Join(t.classes, " ")); err != nil {
+		if _, err := w.WriteString(strings.Join(t.classes, " ")); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, `"`); err != nil {
+		if _, err := w.WriteString(`"`); err != nil {
 			return err
 		}
 	}
 
 	// Add inline styles
 	if len(t.styles) > 0 {
-		if _, err := io.WriteString(w, ` style="`); err != nil {
+		if _, err := w.WriteString(` style="`); err != nil {
 			return err
 		}
 		for _, style := range t.styles {
-			if _, err := io.WriteString(w, style.Name); err != nil {
+			if _, err := w.WriteString(style.Name); err != nil {
 				return err
 			}
-			if _, err := io.WriteString(w, ":"); err != nil {
+			if _, err := w.WriteString(":"); err != nil {
 				return err
 			}
-			if _, err := io.WriteString(w, style.Value); err != nil {
+			if _, err := w.WriteString(style.Value); err != nil {
 				return err
 			}
-			if _, err := io.WriteString(w, ";"); err != nil {
+			if _, err := w.WriteString(";"); err != nil {
 				return err
 			}
 		}
-		if _, err := io.WriteString(w, `"`); err != nil {
+		if _, err := w.WriteString(`"`); err != nil {
 			return err
 		}
 	}

@@ -81,7 +81,7 @@ func (c *MJWrapperComponent) isFullWidth() bool {
 }
 
 // Render implements optimized Writer-based rendering for MJWrapperComponent
-func (c *MJWrapperComponent) Render(w io.Writer) error {
+func (c *MJWrapperComponent) Render(w io.StringWriter) error {
 	if c.isFullWidth() {
 		return c.renderFullWidthToWriter(w)
 	}
@@ -89,7 +89,7 @@ func (c *MJWrapperComponent) Render(w io.Writer) error {
 }
 
 // renderFullWidthToWriter writes full-width wrapper directly to Writer
-func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
+func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	// Get wrapper attributes
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
@@ -110,7 +110,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 	if err := outerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody><tr><td>"); err != nil {
+	if _, err := w.WriteString("<tbody><tr><td>"); err != nil {
 		return err
 	}
 
@@ -170,7 +170,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -214,7 +214,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 	if err := innerTd.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
 	if err := innerTable.RenderClose(w); err != nil {
@@ -230,7 +230,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 	}
 
 	// Close outer table
-	if _, err := io.WriteString(w, "</td></tr></tbody>"); err != nil {
+	if _, err := w.WriteString("</td></tr></tbody>"); err != nil {
 		return err
 	}
 	if err := outerTable.RenderClose(w); err != nil {
@@ -241,7 +241,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 }
 
 // renderSimpleToWriter writes simple wrapper directly to Writer
-func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
+func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Get wrapper attributes
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
@@ -324,7 +324,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -375,7 +375,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 	if err := mainTd.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
 	if err := innerTable.RenderClose(w); err != nil {

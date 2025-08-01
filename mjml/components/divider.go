@@ -46,7 +46,7 @@ func (c *MJDividerComponent) getAttribute(name string) string {
 }
 
 // Render implements optimized Writer-based rendering for MJDividerComponent
-func (c *MJDividerComponent) Render(w io.Writer) error {
+func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	borderColor := c.getAttribute("border-color")
 	borderStyle := c.getAttribute("border-style")
@@ -65,7 +65,7 @@ func (c *MJDividerComponent) Render(w io.Writer) error {
 	}
 
 	// Create TR element
-	if _, err := io.WriteString(w, "<tr>"); err != nil {
+	if _, err := w.WriteString("<tr>"); err != nil {
 		return err
 	}
 
@@ -102,14 +102,14 @@ func (c *MJDividerComponent) Render(w io.Writer) error {
 
 	// MSO conditional comment for Outlook compatibility
 	msoTable := `<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="550px" style="border-top:` + borderStyle + ` ` + borderWidth + ` ` + borderColor + `;font-size:1px;margin:0px auto;width:550px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`
-	if _, err := io.WriteString(w, msoTable); err != nil {
+	if _, err := w.WriteString(msoTable); err != nil {
 		return err
 	}
 
 	if err := td.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr>"); err != nil {
+	if _, err := w.WriteString("</tr>"); err != nil {
 		return err
 	}
 

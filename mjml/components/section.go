@@ -27,7 +27,7 @@ func (c *MJSectionComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJSectionComponent
-func (c *MJSectionComponent) Render(w io.Writer) error {
+func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -55,7 +55,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 		if err := outerTable.RenderOpen(w); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, "<tbody><tr><td>"); err != nil {
+		if _, err := w.WriteString("<tbody><tr><td>"); err != nil {
 			return err
 		}
 	}
@@ -125,7 +125,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -240,7 +240,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
 	if err := innerTable.RenderClose(w); err != nil {
@@ -257,7 +257,7 @@ func (c *MJSectionComponent) Render(w io.Writer) error {
 
 	// Close outer table if we added one for full-width background
 	if backgroundColor != "" && fullWidth != "" {
-		if _, err := io.WriteString(w, "</td></tr></tbody></table>"); err != nil {
+		if _, err := w.WriteString("</td></tr></tbody></table>"); err != nil {
 			return err
 		}
 	}

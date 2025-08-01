@@ -28,7 +28,7 @@ func (c *MJImageComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJImageComponent
-func (c *MJImageComponent) Render(w io.Writer) error {
+func (c *MJImageComponent) Render(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -73,7 +73,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	}
 
 	// Create TR element
-	if _, err := io.WriteString(w, "<tr>"); err != nil {
+	if _, err := w.WriteString("<tr>"); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "<tbody><tr>"); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -174,7 +174,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 
 	// Close optional link wrapper
 	if href != "" {
-		if _, err := io.WriteString(w, "</a>"); err != nil {
+		if _, err := w.WriteString("</a>"); err != nil {
 			return err
 		}
 	}
@@ -182,7 +182,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	if err := imageTdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr></tbody>"); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
 	if err := tableTag.RenderClose(w); err != nil {
@@ -191,7 +191,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr>"); err != nil {
+	if _, err := w.WriteString("</tr>"); err != nil {
 		return err
 	}
 

@@ -29,7 +29,7 @@ func (c *MJTextComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJTextComponent
-func (c *MJTextComponent) Render(w io.Writer) error {
+func (c *MJTextComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
 
 	// Get raw inner HTML content (preserve HTML tags and formatting)
@@ -52,7 +52,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	padding := getAttr(constants.MJMLPadding)
 
 	// Create TR element
-	if _, err := io.WriteString(w, "<tr>"); err != nil {
+	if _, err := w.WriteString("<tr>"); err != nil {
 		return err
 	}
 
@@ -138,7 +138,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, textContent); err != nil {
+	if _, err := w.WriteString(textContent); err != nil {
 		return err
 	}
 	if err := divTag.RenderClose(w); err != nil {
@@ -147,7 +147,7 @@ func (c *MJTextComponent) Render(w io.Writer) error {
 	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, "</tr>"); err != nil {
+	if _, err := w.WriteString("</tr>"); err != nil {
 		return err
 	}
 

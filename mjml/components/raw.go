@@ -31,11 +31,11 @@ func (c *MJRawComponent) GetDefaultAttribute(name string) string {
 }
 
 // Render implements optimized Writer-based rendering for MJRawComponent
-func (c *MJRawComponent) Render(w io.Writer) error {
+func (c *MJRawComponent) Render(w io.StringWriter) error {
 	// mj-raw simply outputs its content as-is, without any wrapping HTML
 	// The content includes both text and child nodes as raw HTML
 	content := c.getRawContent()
-	if _, err := io.WriteString(w, content); err != nil {
+	if _, err := w.WriteString(content); err != nil {
 		return err
 	}
 	return nil

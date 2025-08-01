@@ -64,7 +64,7 @@ func (c *MJGroupComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJGroupComponent
-func (c *MJGroupComponent) Render(w io.Writer) error {
+func (c *MJGroupComponent) Render(w io.StringWriter) error {
 	direction := c.getAttribute("direction")
 	verticalAlign := c.getAttribute("vertical-align")
 	backgroundColor := c.getAttribute("background-color")
