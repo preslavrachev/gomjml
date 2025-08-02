@@ -91,13 +91,13 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 }
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
-func (c *MJSocialComponent) Render(w io.Writer) error {
+func (c *MJSocialComponent) Render(w io.StringWriter) error {
 	padding := c.getAttribute(constants.MJMLPadding)
 	align := c.getAttribute(constants.MJMLAlign)
 	mode := c.getAttribute(constants.MJMLMode)
 
 	// Wrap in table row (required when inside column tbody)
-	if _, err := w.Write([]byte("<tr>")); err != nil {
+	if _, err := w.WriteString("<tr>"); err != nil {
 		return err
 	}
 
@@ -130,7 +130,7 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 
 	td.AddStyle("word-break", "break-word")
 
-	if _, err := w.Write([]byte(td.RenderOpen())); err != nil {
+	if err := td.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -143,10 +143,10 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 			AddAttribute("role", "presentation").
 			AddStyle("margin", "0px")
 
-		if _, err := w.Write([]byte(table.RenderOpen())); err != nil {
+		if err := table.RenderOpen(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("<tbody>")); err != nil {
+		if _, err := w.WriteString("<tbody>"); err != nil {
 			return err
 		}
 
@@ -162,10 +162,10 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 			}
 		}
 
-		if _, err := w.Write([]byte("</tbody>")); err != nil {
+		if _, err := w.WriteString("</tbody>"); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(table.RenderClose())); err != nil {
+		if err := table.RenderClose(w); err != nil {
 			return err
 		}
 	} else {
@@ -178,7 +178,7 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 			"<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"%s\"><tr><![endif]-->",
 			msoAlign,
 		)
-		if _, err := w.Write([]byte(msoTable)); err != nil {
+		if _, err := w.WriteString(msoTable); err != nil {
 			return err
 		}
 
@@ -194,17 +194,17 @@ func (c *MJSocialComponent) Render(w io.Writer) error {
 		}
 
 		// MSO conditional closing
-		if _, err := w.Write([]byte("<!--[if mso | IE]></tr></table><![endif]-->")); err != nil {
+		if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
 			return err
 		}
 	}
 
-	if _, err := w.Write([]byte(td.RenderClose())); err != nil {
+	if err := td.RenderClose(w); err != nil {
 		return err
 	}
 
 	// Close table row
-	if _, err := w.Write([]byte("</tr>")); err != nil {
+	if _, err := w.WriteString("</tr>"); err != nil {
 		return err
 	}
 
@@ -409,7 +409,7 @@ func (c *MJSocialElementComponent) SetVerticalMode(vertical bool) {
 }
 
 // Render implements optimized Writer-based rendering for MJSocialElementComponent
-func (c *MJSocialElementComponent) Render(w io.Writer) error {
+func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	iconSize := c.getAttribute("icon-size")
 	iconHeight := c.getAttribute("icon-height")
@@ -439,7 +439,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 
 	if c.verticalMode {
 		// Vertical mode: render as table row without MSO conditionals
-		if _, err := w.Write([]byte("<tr>")); err != nil {
+		if _, err := w.WriteString("<tr>"); err != nil {
 			return err
 		}
 
@@ -448,7 +448,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 			AddStyle("padding", padding).
 			AddStyle("vertical-align", "middle")
 
-		if _, err := w.Write([]byte(iconTd.RenderOpen())); err != nil {
+		if err := iconTd.RenderOpen(w); err != nil {
 			return err
 		}
 
@@ -462,10 +462,10 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 			AddStyle("border-radius", borderRadius).
 			AddStyle("width", iconSize)
 
-		if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+		if err := innerTable.RenderOpen(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		if _, err := w.WriteString("<tbody><tr>"); err != nil {
 			return err
 		}
 
@@ -476,7 +476,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 			AddStyle("vertical-align", "middle").
 			AddStyle("width", iconSize)
 
-		if _, err := w.Write([]byte(iconInnerTd.RenderOpen())); err != nil {
+		if err := iconInnerTd.RenderOpen(w); err != nil {
 			return err
 		}
 
@@ -494,20 +494,20 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 			AddStyle("border-radius", borderRadius).
 			AddStyle("display", "block")
 
-		if _, err := w.Write([]byte(img.RenderSelfClosing())); err != nil {
+		if err := img.RenderSelfClosing(w); err != nil {
 			return err
 		}
 
-		if _, err := w.Write([]byte(iconInnerTd.RenderClose())); err != nil {
+		if err := iconInnerTd.RenderClose(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+		if _, err := w.WriteString("</tr></tbody>"); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+		if err := innerTable.RenderClose(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(iconTd.RenderClose())); err != nil {
+		if err := iconTd.RenderClose(w); err != nil {
 			return err
 		}
 
@@ -518,7 +518,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 				AddStyle("vertical-align", "middle").
 				AddStyle("padding", c.getAttribute("text-padding"))
 
-			if _, err := w.Write([]byte(textTd.RenderOpen())); err != nil {
+			if err := textTd.RenderOpen(w); err != nil {
 				return err
 			}
 
@@ -530,21 +530,21 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 				AddStyle("line-height", c.getAttribute("line-height")).
 				AddStyle("text-decoration", c.getAttribute("text-decoration"))
 
-			if _, err := w.Write([]byte(textSpan.RenderOpen())); err != nil {
+			if err := textSpan.RenderOpen(w); err != nil {
 				return err
 			}
-			if _, err := w.Write([]byte(textContent)); err != nil {
+			if _, err := w.WriteString(textContent); err != nil {
 				return err
 			}
-			if _, err := w.Write([]byte(textSpan.RenderClose())); err != nil {
+			if err := textSpan.RenderClose(w); err != nil {
 				return err
 			}
-			if _, err := w.Write([]byte(textTd.RenderClose())); err != nil {
+			if err := textTd.RenderClose(w); err != nil {
 				return err
 			}
 		}
 
-		if _, err := w.Write([]byte("</tr>")); err != nil {
+		if _, err := w.WriteString("</tr>"); err != nil {
 			return err
 		}
 
@@ -552,7 +552,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	}
 
 	// Horizontal mode: MSO conditional for individual social element
-	if _, err := w.Write([]byte("<!--[if mso | IE]><td><![endif]-->")); err != nil {
+	if _, err := w.WriteString("<!--[if mso | IE]><td><![endif]-->"); err != nil {
 		return err
 	}
 
@@ -575,7 +575,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 		AddStyle("float", "none").
 		AddStyle("display", "inline-table")
 
-	if _, err := w.Write([]byte(outerTable.RenderOpen())); err != nil {
+	if err := outerTable.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -583,11 +583,11 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 	cssClass := c.Node.GetAttribute("css-class")
 	if cssClass != "" {
 		trTag := fmt.Sprintf("<tbody><tr class=\"%s\">", cssClass)
-		if _, err := w.Write([]byte(trTag)); err != nil {
+		if _, err := w.WriteString(trTag); err != nil {
 			return err
 		}
 	} else {
-		if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+		if _, err := w.WriteString("<tbody><tr>"); err != nil {
 			return err
 		}
 	}
@@ -615,7 +615,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 
 	paddingTd.AddStyle("vertical-align", "middle")
 
-	if _, err := w.Write([]byte(paddingTd.RenderOpen())); err != nil {
+	if err := paddingTd.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -629,10 +629,10 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 		AddStyle("border-radius", borderRadius).
 		AddStyle("width", iconSize)
 
-	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -650,7 +650,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 		AddStyle("vertical-align", "middle").
 		AddStyle("width", iconSize)
 
-	if _, err := w.Write([]byte(iconTd.RenderOpen())); err != nil {
+	if err := iconTd.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -682,31 +682,31 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 		link := html.NewHTMLTag("a").
 			AddAttribute("href", href).
 			AddAttribute("target", target)
-		if _, err := w.Write([]byte(link.RenderOpen())); err != nil {
+		if err := link.RenderOpen(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(img.RenderSelfClosing())); err != nil {
+		if err := img.RenderSelfClosing(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(link.RenderClose())); err != nil {
+		if err := link.RenderClose(w); err != nil {
 			return err
 		}
 	} else {
-		if _, err := w.Write([]byte(img.RenderSelfClosing())); err != nil {
+		if err := img.RenderSelfClosing(w); err != nil {
 			return err
 		}
 	}
 
-	if _, err := w.Write([]byte(iconTd.RenderClose())); err != nil {
+	if err := iconTd.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+	if err := innerTable.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(paddingTd.RenderClose())); err != nil {
+	if err := paddingTd.RenderClose(w); err != nil {
 		return err
 	}
 
@@ -731,7 +731,7 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 			AddStyle("vertical-align", c.getAttribute("vertical-align")).
 			AddStyle("padding", c.getAttribute("text-padding"))
 
-		if _, err := w.Write([]byte(textTd.RenderOpen())); err != nil {
+		if err := textTd.RenderOpen(w); err != nil {
 			return err
 		}
 
@@ -767,29 +767,29 @@ func (c *MJSocialElementComponent) Render(w io.Writer) error {
 			AddStyle("line-height", c.getAttribute("line-height")).
 			AddStyle("text-decoration", c.getAttribute("text-decoration"))
 
-		if _, err := w.Write([]byte(textElement.RenderOpen())); err != nil {
+		if err := textElement.RenderOpen(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(textContent)); err != nil {
+		if _, err := w.WriteString(textContent); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(textElement.RenderClose())); err != nil {
+		if err := textElement.RenderClose(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte(textTd.RenderClose())); err != nil {
+		if err := textTd.RenderClose(w); err != nil {
 			return err
 		}
 	}
 
-	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(outerTable.RenderClose())); err != nil {
+	if err := outerTable.RenderClose(w); err != nil {
 		return err
 	}
 
 	// Close MSO conditional
-	if _, err := w.Write([]byte("<!--[if mso | IE]></td><![endif]-->")); err != nil {
+	if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
 		return err
 	}
 

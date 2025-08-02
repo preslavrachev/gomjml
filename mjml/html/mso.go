@@ -1,7 +1,8 @@
 package html
 
 import (
-	"fmt"
+	"io"
+	"strconv"
 	"strings"
 )
 
@@ -14,10 +15,19 @@ import (
 //
 // Example:
 //
-//	html := RenderMSOConditional("<table><tr><td>Outlook content</td></tr></table>")
+//	RenderMSOConditional(w, "<table><tr><td>Outlook content</td></tr></table>")
 //	// Output: <!--[if mso | IE]><table><tr><td>Outlook content</td></tr></table><![endif]-->
-func RenderMSOConditional(content string) string {
-	return fmt.Sprintf("<!--[if mso | IE]>%s<![endif]-->", content)
+func RenderMSOConditional(w io.StringWriter, content string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(content); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
+	return nil
 }
 
 // CreateMSOTable creates an HTML table specifically designed for MSO/Outlook compatibility.
@@ -130,37 +140,61 @@ func ApplyMSOTableStyles(tag *HTMLTag, bgcolor string) *HTMLTag {
 //
 // Parameters:
 //
+//	w: the StringWriter to write to
 //	content: the HTML content to wrap
 //	width: table width (e.g., "600"), can be empty
 //	bgcolor: background color (e.g., "#f0f0f0"), can be empty
 //
 // Example:
 //
-//	wrapped := WrapWithMSOTable("<div>Content</div>", "600", "#f0f0f0")
-//	// Output: <!--[if mso | IE]><table width="600" bgcolor="#f0f0f0">...<tr><td>...</td></tr></table><![endif]-->
+//	WrapWithMSOTable(w, "<div>Content</div>", "600", "#f0f0f0")
+//	// Writes: <!--[if mso | IE]><table width="600" bgcolor="#f0f0f0">...<tr><td>...</td></tr></table><![endif]-->
 //	         <div>Content</div>
 //	         <!--[if mso | IE]></td></tr></table><![endif]-->
-func WrapWithMSOTable(content, width, bgcolor string) string {
-	var html strings.Builder
-
+func WrapWithMSOTable(w io.StringWriter, content, width, bgcolor string) error {
 	msoTable := CreateMSOTable(width, bgcolor)
 	msoCell := CreateMSOTableCell()
 
-	html.WriteString(RenderMSOConditional(
-		msoTable.RenderOpen() +
-			"<tr>" +
-			msoCell.RenderOpen(),
-	))
+	// Opening MSO conditional with table and cell
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := msoTable.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<tr>"); err != nil {
+		return err
+	}
+	if err := msoCell.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
 
-	html.WriteString(content)
+	// Content
+	if _, err := w.WriteString(content); err != nil {
+		return err
+	}
 
-	html.WriteString(RenderMSOConditional(
-		msoCell.RenderClose() +
-			"</tr>" +
-			msoTable.RenderClose(),
-	))
+	// Closing MSO conditional with cell and table
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := msoCell.RenderClose(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("</tr>"); err != nil {
+		return err
+	}
+	if err := msoTable.RenderClose(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
 
-	return html.String()
+	return nil
 }
 
 // CreateMSOCompatibleWrapper creates the opening HTML for an MSO-compatible wrapper structure.
@@ -168,11 +202,12 @@ func WrapWithMSOTable(content, width, bgcolor string) string {
 // - Modern CSS div for advanced email clients
 // - Table-based fallback for Outlook compatibility
 //
-// The function returns the opening HTML that should be followed by content and closed
+// The function writes the opening HTML that should be followed by content and closed
 // with CloseMSOCompatibleWrapper.
 //
 // Parameters:
 //
+//	w: the StringWriter to write to
 //	divTag: the HTMLTag for the main div element
 //	width: table width for MSO fallback (e.g., "600")
 //	bgcolor: background color for both div and MSO table
@@ -180,25 +215,32 @@ func WrapWithMSOTable(content, width, bgcolor string) string {
 // Example:
 //
 //	div := NewHTMLTag("div").AddStyle("background-color", "#f0f0f0")
-//	opening := CreateMSOCompatibleWrapper(div, "600", "#f0f0f0")
-//	// Returns: <!--[if mso | IE]><table...><tr><td...><![endif]--><div style="background-color:#f0f0f0;">
-func CreateMSOCompatibleWrapper(divTag *HTMLTag, width, bgcolor string) string {
-	var html strings.Builder
-
+//	CreateMSOCompatibleWrapper(w, div, "600", "#f0f0f0")
+//	// Writes: <!--[if mso | IE]><table...><tr><td...><![endif]--><div style="background-color:#f0f0f0;">
+func CreateMSOCompatibleWrapper(w io.StringWriter, divTag *HTMLTag, width, bgcolor string) error {
 	// MSO table wrapper
 	msoTable := CreateMSOTable(width, bgcolor)
 	msoCell := CreateMSOTableCell()
 
-	html.WriteString(RenderMSOConditional(
-		msoTable.RenderOpen() +
-			"<tr>" +
-			msoCell.RenderOpen(),
-	))
+	// Opening MSO conditional
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := msoTable.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<tr>"); err != nil {
+		return err
+	}
+	if err := msoCell.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
 
 	// Main div (hidden from MSO)
-	html.WriteString(divTag.RenderOpen())
-
-	return html.String()
+	return divTag.RenderOpen(w)
 }
 
 // CloseMSOCompatibleWrapper closes an MSO-compatible wrapper structure created by CreateMSOCompatibleWrapper.
@@ -206,23 +248,22 @@ func CreateMSOCompatibleWrapper(divTag *HTMLTag, width, bgcolor string) string {
 //
 // Parameters:
 //
+//	w: the StringWriter to write to
 //	divTag: the same HTMLTag used in CreateMSOCompatibleWrapper (used only for tag name)
 //
 // Example:
 //
 //	div := NewHTMLTag("div")
-//	closing := CloseMSOCompatibleWrapper(div)
-//	// Returns: </div><!--[if mso | IE]></td></tr></table><![endif]-->
-func CloseMSOCompatibleWrapper(divTag *HTMLTag) string {
-	var html strings.Builder
+//	CloseMSOCompatibleWrapper(w, div)
+//	// Writes: </div><!--[if mso | IE]></td></tr></table><![endif]-->
+func CloseMSOCompatibleWrapper(w io.StringWriter, divTag *HTMLTag) error {
+	// Close main div
+	if err := divTag.RenderClose(w); err != nil {
+		return err
+	}
 
-	html.WriteString(divTag.RenderClose())
-
-	html.WriteString(RenderMSOConditional(
-		"</td></tr></table>",
-	))
-
-	return html.String()
+	// Close MSO conditional
+	return RenderMSOConditional(w, "</td></tr></table>")
 }
 
 // ApplyMSOFontFallback applies MSO-specific font fallback styles to an HTML tag.
@@ -272,4 +313,152 @@ func ApplyMSOLineHeight(tag *HTMLTag, lineHeight string) *HTMLTag {
 			AddStyle("mso-line-height-rule", "exactly")
 	}
 	return tag
+}
+
+// RenderMSOTableOpen renders an MSO table opening with tr and td tags
+func RenderMSOTableOpen(w io.StringWriter, table, td *HTMLTag) error {
+	if err := table.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<tr>"); err != nil {
+		return err
+	}
+	return td.RenderOpen(w)
+}
+
+// RenderMSOTableClose renders an MSO table closing with td and tr tags
+func RenderMSOTableClose(w io.StringWriter, td, table *HTMLTag) error {
+	if err := td.RenderClose(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("</tr>"); err != nil {
+		return err
+	}
+	return table.RenderClose(w)
+}
+
+// RenderMSOTableTrOpen renders an MSO table opening with tr tags for section background
+func RenderMSOTableTrOpen(w io.StringWriter, table, tr, td *HTMLTag) error {
+	if err := table.RenderOpen(w); err != nil {
+		return err
+	}
+	if err := tr.RenderOpen(w); err != nil {
+		return err
+	}
+	return td.RenderOpen(w)
+}
+
+// RenderMSOTableOpenConditional renders MSO table open with conditional comments directly to Writer
+func RenderMSOTableOpenConditional(w io.StringWriter, table, td *HTMLTag) error {
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := table.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<tr>"); err != nil {
+		return err
+	}
+	if err := td.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderMSOTableCloseConditional renders MSO table close with conditional comments directly to Writer
+func RenderMSOTableCloseConditional(w io.StringWriter, td, table *HTMLTag) error {
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := td.RenderClose(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("</tr>"); err != nil {
+		return err
+	}
+	if err := table.RenderClose(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderMSOTableTrOpenConditional renders MSO table with tr opening with conditional comments directly to Writer
+func RenderMSOTableTrOpenConditional(w io.StringWriter, table, tr, td *HTMLTag) error {
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := table.RenderOpen(w); err != nil {
+		return err
+	}
+	if err := tr.RenderOpen(w); err != nil {
+		return err
+	}
+	if err := td.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderMSOWrapperTableOpen renders MSO wrapper table opening directly to Writer without string allocation
+func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int) error {
+	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px\"><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderMSOWrapperTableClose renders MSO wrapper table closing directly to Writer
+func RenderMSOWrapperTableClose(w io.StringWriter) error {
+	return RenderMSOConditional(w, "</td></tr></table>")
+}
+
+// RenderMSOGroupTDOpen renders MSO group TD opening directly to Writer without string allocation
+func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]><td"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(classAttr); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(" style=\"vertical-align:"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(verticalAlign); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(";width:"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(widthPx); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(";\"><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderMSOGroupTDClose renders MSO group TD closing directly to Writer
+func RenderMSOGroupTDClose(w io.StringWriter) error {
+	return RenderMSOConditional(w, "</td>")
+}
+
+// RenderMSOGroupTableClose renders MSO group table closing directly to Writer
+func RenderMSOGroupTableClose(w io.StringWriter) error {
+	return RenderMSOConditional(w, "</tr></table>")
 }

@@ -1,8 +1,8 @@
 package components
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -81,7 +81,7 @@ func (c *MJWrapperComponent) isFullWidth() bool {
 }
 
 // Render implements optimized Writer-based rendering for MJWrapperComponent
-func (c *MJWrapperComponent) Render(w io.Writer) error {
+func (c *MJWrapperComponent) Render(w io.StringWriter) error {
 	if c.isFullWidth() {
 		return c.renderFullWidthToWriter(w)
 	}
@@ -89,7 +89,7 @@ func (c *MJWrapperComponent) Render(w io.Writer) error {
 }
 
 // renderFullWidthToWriter writes full-width wrapper directly to Writer
-func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
+func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	// Get wrapper attributes
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
@@ -107,10 +107,10 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 	c.ApplyBackgroundStyles(outerTable)
 	outerTable.AddStyle("width", "100%")
 
-	if _, err := w.Write([]byte(outerTable.RenderOpen())); err != nil {
+	if err := outerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr><td>")); err != nil {
+	if _, err := w.WriteString("<tbody><tr><td>"); err != nil {
 		return err
 	}
 
@@ -127,7 +127,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 	}
 
 	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
 		AddStyle("width", GetDefaultBodyWidth())
 
 	// Add css-class support for MSO table (MRML adds -outlook suffix)
@@ -140,8 +140,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	if _, err := w.Write([]byte(html.RenderMSOConditional(
-		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))); err != nil {
+	if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
 		return err
 	}
 
@@ -155,7 +154,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 		innerDiv.AddAttribute("class", cssClass)
 	}
 
-	if _, err := w.Write([]byte(innerDiv.RenderOpen())); err != nil {
+	if err := innerDiv.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -168,10 +167,10 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 		AddAttribute("align", "center").
 		AddStyle("width", "100%")
 
-	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -191,13 +190,12 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 
 	innerTd.AddStyle("text-align", textAlign)
 
-	if _, err := w.Write([]byte(innerTd.RenderOpen())); err != nil {
+	if err := innerTd.RenderOpen(w); err != nil {
 		return err
 	}
 
 	// MSO conditional for wrapper content
-	if _, err := w.Write([]byte(html.RenderMSOConditional(
-		fmt.Sprintf("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\"%dpx\">", GetDefaultBodyWidthPixels())))); err != nil {
+	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels()); err != nil {
 		return err
 	}
 
@@ -209,33 +207,33 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write([]byte(html.RenderMSOConditional("</td></tr></table>"))); err != nil {
+	if err := html.RenderMSOWrapperTableClose(w); err != nil {
 		return err
 	}
 
-	if _, err := w.Write([]byte(innerTd.RenderClose())); err != nil {
+	if err := innerTd.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+	if err := innerTable.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(innerDiv.RenderClose())); err != nil {
+	if err := innerDiv.RenderClose(w); err != nil {
 		return err
 	}
 
 	// Close MSO conditional
-	if _, err := w.Write([]byte(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))); err != nil {
+	if err := html.RenderMSOTableCloseConditional(w, msoTd, msoTable); err != nil {
 		return err
 	}
 
 	// Close outer table
-	if _, err := w.Write([]byte("</td></tr></tbody>")); err != nil {
+	if _, err := w.WriteString("</td></tr></tbody>"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(outerTable.RenderClose())); err != nil {
+	if err := outerTable.RenderClose(w); err != nil {
 		return err
 	}
 
@@ -243,7 +241,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.Writer) error {
 }
 
 // renderSimpleToWriter writes simple wrapper directly to Writer
-func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
+func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Get wrapper attributes
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
@@ -263,7 +261,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 	}
 
 	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", fmt.Sprintf("%d", GetDefaultBodyWidthPixels())).
+		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
 		AddStyle("width", GetDefaultBodyWidth())
 
 	// Add css-class support for MSO table (MRML adds -outlook suffix)
@@ -276,8 +274,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	if _, err := w.Write([]byte(html.RenderMSOConditional(
-		msoTable.RenderOpen() + "<tr>" + msoTd.RenderOpen()))); err != nil {
+	if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
 		return err
 	}
 
@@ -302,7 +299,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 
 	wrapperDiv.AddStyle("max-width", GetDefaultBodyWidth())
 
-	if _, err := w.Write([]byte(wrapperDiv.RenderOpen())); err != nil {
+	if err := wrapperDiv.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -324,10 +321,10 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 		innerTable.AddStyle("border-radius", borderRadius)
 	}
 
-	if _, err := w.Write([]byte(innerTable.RenderOpen())); err != nil {
+	if err := innerTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -353,14 +350,13 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 
 	mainTd.AddStyle("text-align", textAlign)
 
-	if _, err := w.Write([]byte(mainTd.RenderOpen())); err != nil {
+	if err := mainTd.RenderOpen(w); err != nil {
 		return err
 	}
 
 	// For basic wrapper, we need a specific MSO conditional pattern
 	// that matches MRML's output more closely - use original body width for wrapper MSO
-	if _, err := w.Write([]byte(html.RenderMSOConditional(
-		fmt.Sprintf("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\"%dpx\">", GetDefaultBodyWidthPixels())))); err != nil {
+	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels()); err != nil {
 		return err
 	}
 
@@ -372,25 +368,25 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write([]byte(html.RenderMSOConditional("</td></tr></table>"))); err != nil {
+	if err := html.RenderMSOWrapperTableClose(w); err != nil {
 		return err
 	}
 
-	if _, err := w.Write([]byte(mainTd.RenderClose())); err != nil {
+	if err := mainTd.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(innerTable.RenderClose())); err != nil {
+	if err := innerTable.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(wrapperDiv.RenderClose())); err != nil {
+	if err := wrapperDiv.RenderClose(w); err != nil {
 		return err
 	}
 
 	// Close MSO conditional
-	if _, err := w.Write([]byte(html.RenderMSOConditional(msoTd.RenderClose() + "</tr>" + msoTable.RenderClose()))); err != nil {
+	if err := html.RenderMSOTableCloseConditional(w, msoTd, msoTable); err != nil {
 		return err
 	}
 

@@ -27,6 +27,32 @@ type RenderOpts = options.RenderOpts
 // RenderOption is a functional option for configuring MJML rendering
 type RenderOption func(*RenderOpts)
 
+// calculateOptimalBufferSize determines the optimal buffer size based on template complexity
+func calculateOptimalBufferSize(mjmlContent string) int {
+	mjmlSize := len(mjmlContent)
+	componentCount := strings.Count(mjmlContent, "<mj-")
+
+	// Prevent division by zero for empty MJML content
+	if mjmlSize == 0 {
+		// Return a reasonable default buffer size for empty input
+		return 1024
+	}
+
+	// Calculate component density (components per 1000 characters)
+	complexity := float64(componentCount) / float64(mjmlSize) * 1000
+
+	if complexity > 10 {
+		// Very dense template - needs more buffer per component
+		return mjmlSize*5 + componentCount*180
+	} else if complexity > 5 {
+		// Medium density - balanced approach
+		return mjmlSize*4 + componentCount*140
+	} else {
+		// Light template - more conservative
+		return mjmlSize*3 + componentCount*100
+	}
+}
+
 // WithDebugTags enables or disables debug tag inclusion in the rendered output
 func WithDebugTags(enabled bool) RenderOption {
 	return func(opts *RenderOpts) {
@@ -85,13 +111,13 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	}
 	debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
 
-	// Render to HTML with pre-allocated buffer based on input size
-	bufferSize := len(mjmlContent) * 4
+	// Render to HTML with optimized pre-allocation based on template complexity
+	bufferSize := calculateOptimalBufferSize(mjmlContent)
 	debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
 		"buffer_size": bufferSize,
 	})
 	var html strings.Builder
-	html.Grow(bufferSize) // Pre-allocate with a 4x multiplier to account for HTML expansion
+	html.Grow(bufferSize) // Pre-allocate with complexity-aware sizing
 
 	renderStart := time.Now()
 	err = component.Render(&html)
@@ -495,7 +521,7 @@ func (c *MJMLComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJMLComponent
-func (c *MJMLComponent) Render(w io.Writer) error {
+func (c *MJMLComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mjml-root", "render-start", "Starting root MJML component rendering")
 
 	// First, prepare the body to establish sibling relationships without full rendering
@@ -526,7 +552,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	})
 
 	// DOCTYPE and HTML opening
-	if _, err := w.Write([]byte(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`)); err != nil {
+	if _, err := w.WriteString(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`); err != nil {
 		return err
 	}
 
@@ -557,16 +583,16 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write([]byte(`<head><title>` + title + `</title>`)); err != nil {
+	if _, err := w.WriteString(`<head><title>` + title + `</title>`); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`)); err != nil {
+	if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`)); err != nil {
+	if _, err := w.WriteString(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(`<meta name="viewport" content="width=device-width, initial-scale=1">`)); err != nil {
+	if _, err := w.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`); err != nil {
 		return err
 	}
 
@@ -578,14 +604,14 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 		"img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }\n" +
 		"p { display: block; margin: 13px 0; }\n" +
 		"</style>\n"
-	if _, err := w.Write([]byte(baseCSSText)); err != nil {
+	if _, err := w.WriteString(baseCSSText); err != nil {
 		return err
 	}
 
 	// MSO conditionals
 	msoText := "<!--[if mso]>\n<noscript>\n<xml>\n<o:OfficeDocumentSettings>\n  <o:AllowPNG/>\n  <o:PixelsPerInch>96</o:PixelsPerInch>\n</o:OfficeDocumentSettings>\n</xml>\n</noscript>\n<![endif]-->\n" +
 		"<!--[if lte mso 11]>\n<style type=\"text/css\">\n.mj-outlook-group-fix { width:100% !important; }\n</style>\n<![endif]-->\n"
-	if _, err := w.Write([]byte(msoText)); err != nil {
+	if _, err := w.WriteString(msoText); err != nil {
 		return err
 	}
 
@@ -598,11 +624,16 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	// Get fonts tracked during component rendering
 	trackedFonts := c.RenderOpts.FontTracker.GetFonts()
 	detectedFonts := fonts.ConvertFontFamiliesToURLs(trackedFonts)
-	debug.DebugLogWithData("font-detection", "component-tracking", "Fonts tracked from components", map[string]interface{}{
-		"tracked_count": len(trackedFonts),
-		"url_count":     len(detectedFonts),
-		"fonts":         strings.Join(trackedFonts, ","),
-	})
+	debug.DebugLogWithData(
+		"font-detection",
+		"component-tracking",
+		"Fonts tracked from components",
+		map[string]interface{}{
+			"tracked_count": len(trackedFonts),
+			"url_count":     len(detectedFonts),
+			"fonts":         strings.Join(trackedFonts, ","),
+		},
+	)
 
 	for _, detectedFont := range detectedFonts {
 		// Only add if not already in custom fonts from mj-font
@@ -667,7 +698,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	})
 	if len(allFontsToImport) > 0 {
 		fontImportsHTML := fonts.BuildFontsTags(allFontsToImport)
-		if _, err := w.Write([]byte(fontImportsHTML)); err != nil {
+		if _, err := w.WriteString(fontImportsHTML); err != nil {
 			return err
 		}
 	}
@@ -675,7 +706,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	// Dynamic responsive CSS based on collected column classes - only if we have columns
 	if len(c.columnClasses) > 0 {
 		responsiveCSS := c.generateResponsiveCSS()
-		if _, err := w.Write([]byte(responsiveCSS)); err != nil {
+		if _, err := w.WriteString(responsiveCSS); err != nil {
 			return err
 		}
 	}
@@ -687,18 +718,18 @@ func (c *MJMLComponent) Render(w io.Writer) error {
                 td.mj-full-width-mobile { width: auto !important; }
             }
             </style>`
-		if _, err := w.Write([]byte(mobileCSSText)); err != nil {
+		if _, err := w.WriteString(mobileCSSText); err != nil {
 			return err
 		}
 	}
 
 	// Custom styles from mj-style components (MRML lines 240-244)
 	customStyles := c.generateCustomStyles()
-	if _, err := w.Write([]byte(customStyles)); err != nil {
+	if _, err := w.WriteString(customStyles); err != nil {
 		return err
 	}
 
-	if _, err := w.Write([]byte(`</head>`)); err != nil {
+	if _, err := w.WriteString(`</head>`); err != nil {
 		return err
 	}
 
@@ -718,7 +749,7 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	if len(bodyStyles) > 0 {
 		bodyTag = `<body style="` + strings.Join(bodyStyles, ";") + `;">`
 	}
-	if _, err := w.Write([]byte(bodyTag)); err != nil {
+	if _, err := w.WriteString(bodyTag); err != nil {
 		return err
 	}
 
@@ -734,10 +765,10 @@ func (c *MJMLComponent) Render(w io.Writer) error {
 	}
 
 	// Write the body content (already rendered once above)
-	if _, err := w.Write([]byte(bodyContent)); err != nil {
+	if _, err := w.WriteString(bodyContent); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(`</body></html>`)); err != nil {
+	if _, err := w.WriteString(`</body></html>`); err != nil {
 		return err
 	}
 

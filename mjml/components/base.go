@@ -14,6 +14,18 @@ import (
 	"github.com/preslavrachev/gomjml/parser"
 )
 
+// Common width strings to avoid fmt.Sprintf allocations
+var (
+	width600px = "600px"
+	width100px = "100px"
+	width200px = "200px"
+	width300px = "300px"
+	width400px = "400px"
+	width500px = "500px"
+	width150px = "150px"
+	width50px  = "50px"
+)
+
 // NotImplementedError indicates a component is not yet implemented
 type NotImplementedError struct {
 	ComponentName string
@@ -25,7 +37,7 @@ func (e *NotImplementedError) Error() string {
 
 // Component represents a renderable MJML component
 type Component interface {
-	Render(w io.Writer) error
+	Render(w io.StringWriter) error
 	GetTagName() string
 	GetDefaultAttribute(name string) string
 	SetContainerWidth(widthPx int)
@@ -247,9 +259,34 @@ func (bc *BaseComponent) GetEffectiveWidth() int {
 // GetEffectiveWidthString returns the effective width as a string with px units
 func (bc *BaseComponent) GetEffectiveWidthString() string {
 	if bc.ContainerWidth > 0 {
-		return fmt.Sprintf("%dpx", bc.ContainerWidth)
+		return getPixelWidthString(bc.ContainerWidth)
 	}
 	return GetDefaultBodyWidth()
+}
+
+// getPixelWidthString returns pixel width string, using cached values for common widths to avoid allocations
+func getPixelWidthString(widthPx int) string {
+	switch widthPx {
+	case 600:
+		return width600px
+	case 500:
+		return width500px
+	case 400:
+		return width400px
+	case 300:
+		return width300px
+	case 200:
+		return width200px
+	case 150:
+		return width150px
+	case 100:
+		return width100px
+	case 50:
+		return width50px
+	default:
+		// Fallback to fmt.Sprintf for uncommon widths
+		return fmt.Sprintf("%dpx", widthPx)
+	}
 }
 
 // Style Mixin Methods - Common styling patterns that components can use

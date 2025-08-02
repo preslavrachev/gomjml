@@ -18,7 +18,7 @@ func NewMJCarouselComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJ
 	}
 }
 
-func (c *MJCarouselComponent) Render(w io.Writer) error {
+func (c *MJCarouselComponent) Render(w io.StringWriter) error {
 	// TODO: Implement mj-carousel component functionality
 	return &NotImplementedError{ComponentName: "mj-carousel"}
 }
@@ -69,7 +69,7 @@ func NewMJCarouselImageComponent(node *parser.MJMLNode, opts *options.RenderOpts
 	}
 }
 
-func (c *MJCarouselImageComponent) Render(w io.Writer) error {
+func (c *MJCarouselImageComponent) Render(w io.StringWriter) error {
 	// TODO: Implement mj-carousel-image component functionality
 	return &NotImplementedError{ComponentName: "mj-carousel-image"}
 }

@@ -18,7 +18,7 @@ func NewMJHeroComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHero
 	}
 }
 
-func (c *MJHeroComponent) Render(w io.Writer) error {
+func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	// TODO: Implement mj-hero component functionality
 	return &NotImplementedError{ComponentName: "mj-hero"}
 }

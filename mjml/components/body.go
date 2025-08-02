@@ -34,16 +34,16 @@ func (c *MJBodyComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJBodyComponent
-func (c *MJBodyComponent) Render(w io.Writer) error {
+func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	// Apply background-color to div if specified (matching MRML's set_body_style)
 	backgroundColor := c.GetAttribute("background-color")
 
 	if backgroundColor != nil && *backgroundColor != "" {
-		if _, err := w.Write([]byte(`<div style="background-color:` + *backgroundColor + `;">`)); err != nil {
+		if _, err := w.WriteString(`<div style="background-color:` + *backgroundColor + `;">`); err != nil {
 			return err
 		}
 	} else {
-		if _, err := w.Write([]byte(`<div>`)); err != nil {
+		if _, err := w.WriteString(`<div>`); err != nil {
 			return err
 		}
 	}
@@ -54,7 +54,7 @@ func (c *MJBodyComponent) Render(w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write([]byte(`</div>`)); err != nil {
+	if _, err := w.WriteString(`</div>`); err != nil {
 		return err
 	}
 

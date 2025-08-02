@@ -19,7 +19,7 @@ func NewMJAccordionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *M
 	}
 }
 
-func (c *MJAccordionComponent) Render(w io.Writer) error {
+func (c *MJAccordionComponent) Render(w io.StringWriter) error {
 	// TODO: Implement mj-accordion component functionality
 	return &NotImplementedError{ComponentName: "mj-accordion"}
 }
@@ -68,7 +68,7 @@ func NewMJAccordionTextComponent(node *parser.MJMLNode, opts *options.RenderOpts
 	}
 }
 
-func (c *MJAccordionTextComponent) Render(w io.Writer) error {
+func (c *MJAccordionTextComponent) Render(w io.StringWriter) error {
 	// TODO: Implement mj-accordion-text component functionality
 	return &NotImplementedError{ComponentName: "mj-accordion-text"}
 }
@@ -101,7 +101,7 @@ func NewMJAccordionTitleComponent(node *parser.MJMLNode, opts *options.RenderOpt
 	}
 }
 
-func (c *MJAccordionTitleComponent) Render(w io.Writer) error {
+func (c *MJAccordionTitleComponent) Render(w io.StringWriter) error {
 	// TODO: Implement mj-accordion-title component functionality
 	return &NotImplementedError{ComponentName: "mj-accordion-title"}
 }

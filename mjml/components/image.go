@@ -28,7 +28,7 @@ func (c *MJImageComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJImageComponent
-func (c *MJImageComponent) Render(w io.Writer) error {
+func (c *MJImageComponent) Render(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -73,7 +73,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 	}
 
 	// Create TR element
-	if _, err := w.Write([]byte("<tr>")); err != nil {
+	if _, err := w.WriteString("<tr>"); err != nil {
 		return err
 	}
 
@@ -89,7 +89,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		tdTag.AddAttribute("class", cssClass)
 	}
 
-	if _, err := w.Write([]byte(tdTag.RenderOpen())); err != nil {
+	if err := tdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -102,10 +102,10 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		AddStyle("border-collapse", "collapse").
 		AddStyle("border-spacing", "0px")
 
-	if _, err := w.Write([]byte(tableTag.RenderOpen())); err != nil {
+	if err := tableTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("<tbody><tr>")); err != nil {
+	if _, err := w.WriteString("<tbody><tr>"); err != nil {
 		return err
 	}
 
@@ -115,7 +115,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		imageTdTag.AddStyle("width", width)
 	}
 
-	if _, err := w.Write([]byte(imageTdTag.RenderOpen())); err != nil {
+	if err := imageTdTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -131,7 +131,7 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 			linkTag.AddAttribute("target", target)
 		}
 
-		if _, err := w.Write([]byte(linkTag.RenderOpen())); err != nil {
+		if err := linkTag.RenderOpen(w); err != nil {
 			return err
 		}
 	}
@@ -168,30 +168,30 @@ func (c *MJImageComponent) Render(w io.Writer) error {
 		imgTag.AddStyle("border-radius", borderRadius)
 	}
 
-	if _, err := w.Write([]byte(imgTag.RenderSelfClosing())); err != nil {
+	if err := imgTag.RenderSelfClosing(w); err != nil {
 		return err
 	}
 
 	// Close optional link wrapper
 	if href != "" {
-		if _, err := w.Write([]byte("</a>")); err != nil {
+		if _, err := w.WriteString("</a>"); err != nil {
 			return err
 		}
 	}
 
-	if _, err := w.Write([]byte(imageTdTag.RenderClose())); err != nil {
+	if err := imageTdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr></tbody>")); err != nil {
+	if _, err := w.WriteString("</tr></tbody>"); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(tableTag.RenderClose())); err != nil {
+	if err := tableTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(tdTag.RenderClose())); err != nil {
+	if err := tdTag.RenderClose(w); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("</tr>")); err != nil {
+	if _, err := w.WriteString("</tr>"); err != nil {
 		return err
 	}
 
@@ -252,5 +252,5 @@ func (c *MJImageComponent) calculateDefaultWidth() string {
 		availableWidth = containerWidth // Fallback to container width
 	}
 
-	return fmt.Sprintf("%dpx", availableWidth)
+	return getPixelWidthString(availableWidth)
 }

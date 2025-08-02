@@ -4,6 +4,7 @@
 package html
 
 import (
+	"io"
 	"strings"
 )
 
@@ -142,77 +143,124 @@ func (t *HTMLTag) AddClass(class string) *HTMLTag {
 	return t
 }
 
-// RenderOpen renders the opening HTML tag with all attributes, classes, and styles.
+// RenderOpen renders the opening HTML tag with all attributes, classes, and styles to the provided Writer.
 // Styles are rendered as an inline style attribute with properties in the order they were added.
 //
 // Example output:
 //
 //	<div class="wrapper" style="background-color:#f0f0f0;margin:0px auto;" bgcolor="#f0f0f0">
-func (t *HTMLTag) RenderOpen() string {
-	var b strings.Builder
-	b.WriteString("<")
-	b.WriteString(t.name)
-	t.renderAttributes(&b)
-	b.WriteByte('>')
-	return b.String()
+func (t *HTMLTag) RenderOpen(w io.StringWriter) error {
+	if _, err := w.WriteString("<"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(t.name); err != nil {
+		return err
+	}
+	if err := t.renderAttributes(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+	return nil
 }
 
-// RenderClose renders the closing HTML tag.
+// RenderClose renders the closing HTML tag to the provided Writer.
 //
 // Example output:
 //
 //	</div>
-func (t *HTMLTag) RenderClose() string {
-	var b strings.Builder
-	b.Grow(len(t.name) + 3) // Pre-allocate for "</name>"
-	b.WriteString("</")
-	b.WriteString(t.name)
-	b.WriteByte('>')
-	return b.String()
+func (t *HTMLTag) RenderClose(w io.StringWriter) error {
+	if _, err := w.WriteString("</"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(t.name); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+	return nil
 }
 
-// RenderSelfClosing renders a self-closing HTML tag with all attributes, classes, and styles.
+// RenderSelfClosing renders a self-closing HTML tag with all attributes, classes, and styles to the provided Writer.
 // This is used for void elements like <img>, <br>, <hr>, etc.
 //
 // Example output:
 //
 //	<img src="image.jpg" style="width:100%;" />
-func (t *HTMLTag) RenderSelfClosing() string {
-	var b strings.Builder
-	b.WriteString("<")
-	b.WriteString(t.name)
-	t.renderAttributes(&b)
-	b.WriteString(" />")
-	return b.String()
+func (t *HTMLTag) RenderSelfClosing(w io.StringWriter) error {
+	if _, err := w.WriteString("<"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(t.name); err != nil {
+		return err
+	}
+	if err := t.renderAttributes(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(" />"); err != nil {
+		return err
+	}
+	return nil
 }
 
-// renderAttributes renders the common HTML attributes, CSS classes, and inline styles
-func (t *HTMLTag) renderAttributes(b *strings.Builder) {
+// renderAttributes renders the common HTML attributes, CSS classes, and inline styles to the provided Writer
+func (t *HTMLTag) renderAttributes(w io.StringWriter) error {
 	// Add HTML attributes in order
 	for _, attr := range t.attributes {
-		b.WriteByte(' ')
-		b.WriteString(attr.Name)
-		b.WriteString(`="`)
-		b.WriteString(attr.Value)
-		b.WriteByte('"')
+		if _, err := w.WriteString(" "); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(attr.Name); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(attr.Value); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
 	}
 
 	// Add CSS classes
 	if len(t.classes) > 0 {
-		b.WriteString(` class="`)
-		b.WriteString(strings.Join(t.classes, " "))
-		b.WriteByte('"')
+		if _, err := w.WriteString(` class="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(strings.Join(t.classes, " ")); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
 	}
 
 	// Add inline styles
 	if len(t.styles) > 0 {
-		b.WriteString(` style="`)
-		for _, style := range t.styles {
-			b.WriteString(style.Name)
-			b.WriteByte(':')
-			b.WriteString(style.Value)
-			b.WriteByte(';')
+		if _, err := w.WriteString(` style="`); err != nil {
+			return err
 		}
-		b.WriteByte('"')
+		for _, style := range t.styles {
+			if _, err := w.WriteString(style.Name); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(":"); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(style.Value); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(";"); err != nil {
+				return err
+			}
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
 	}
+	return nil
 }

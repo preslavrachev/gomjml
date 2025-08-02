@@ -223,7 +223,12 @@ func TestRenderOpen(t *testing.T) {
 			tag := NewHTMLTag("div")
 			tag = tt.setup(tag)
 
-			result := tag.RenderOpen()
+			var buf strings.Builder
+			err := tag.RenderOpen(&buf)
+			if err != nil {
+				t.Fatalf("RenderOpen failed: %v", err)
+			}
+			result := buf.String()
 			if result != tt.expected {
 				t.Errorf("Expected '%s', got '%s'", tt.expected, result)
 			}
@@ -233,7 +238,12 @@ func TestRenderOpen(t *testing.T) {
 
 func TestRenderClose(t *testing.T) {
 	tag := NewHTMLTag("div")
-	result := tag.RenderClose()
+	var buf strings.Builder
+	err := tag.RenderClose(&buf)
+	if err != nil {
+		t.Fatalf("RenderClose failed: %v", err)
+	}
+	result := buf.String()
 	expected := "</div>"
 
 	if result != expected {
@@ -273,7 +283,12 @@ func TestRenderSelfClosing(t *testing.T) {
 			tag := NewHTMLTag("img")
 			tag = tt.setup(tag)
 
-			result := tag.RenderSelfClosing()
+			var buf strings.Builder
+			err := tag.RenderSelfClosing(&buf)
+			if err != nil {
+				t.Fatalf("RenderSelfClosing failed: %v", err)
+			}
+			result := buf.String()
 			if result != tt.expected {
 				t.Errorf("Expected '%s', got '%s'", tt.expected, result)
 			}
@@ -305,7 +320,12 @@ func TestChaining(t *testing.T) {
 	}
 
 	// Test rendering
-	result := tag.RenderOpen()
+	var buf strings.Builder
+	err := tag.RenderOpen(&buf)
+	if err != nil {
+		t.Fatalf("RenderOpen failed: %v", err)
+	}
+	result := buf.String()
 	expectedParts := []string{
 		`id="test"`,
 		`data-value="123"`,
@@ -343,7 +363,12 @@ func TestStyleOrdering(t *testing.T) {
 		AddStyle("background", "blue").
 		AddStyle("margin", "10px")
 
-	result := tag.RenderOpen()
+	var buf strings.Builder
+	err := tag.RenderOpen(&buf)
+	if err != nil {
+		t.Fatalf("RenderOpen failed: %v", err)
+	}
+	result := buf.String()
 	expected := `<div style="z-index:1;color:red;background:blue;margin:10px;">`
 
 	if result != expected {
