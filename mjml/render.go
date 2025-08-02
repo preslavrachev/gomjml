@@ -27,6 +27,26 @@ type RenderOpts = options.RenderOpts
 // RenderOption is a functional option for configuring MJML rendering
 type RenderOption func(*RenderOpts)
 
+// calculateOptimalBufferSize determines the optimal buffer size based on template complexity
+func calculateOptimalBufferSize(mjmlContent string) int {
+	mjmlSize := len(mjmlContent)
+	componentCount := strings.Count(mjmlContent, "<mj-")
+
+	// Calculate component density (components per 1000 characters)
+	complexity := float64(componentCount) / float64(mjmlSize) * 1000
+
+	if complexity > 10 {
+		// Very dense template - needs more buffer per component
+		return mjmlSize*5 + componentCount*180
+	} else if complexity > 5 {
+		// Medium density - balanced approach
+		return mjmlSize*4 + componentCount*140
+	} else {
+		// Light template - more conservative
+		return mjmlSize*3 + componentCount*100
+	}
+}
+
 // WithDebugTags enables or disables debug tag inclusion in the rendered output
 func WithDebugTags(enabled bool) RenderOption {
 	return func(opts *RenderOpts) {
@@ -85,13 +105,13 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	}
 	debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
 
-	// Render to HTML with pre-allocated buffer based on input size
-	bufferSize := len(mjmlContent) * 4
+	// Render to HTML with optimized pre-allocation based on template complexity
+	bufferSize := calculateOptimalBufferSize(mjmlContent)
 	debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
 		"buffer_size": bufferSize,
 	})
 	var html strings.Builder
-	html.Grow(bufferSize) // Pre-allocate with a 4x multiplier to account for HTML expansion
+	html.Grow(bufferSize) // Pre-allocate with complexity-aware sizing
 
 	renderStart := time.Now()
 	err = component.Render(&html)
