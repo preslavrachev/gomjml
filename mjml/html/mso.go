@@ -140,43 +140,61 @@ func ApplyMSOTableStyles(tag *HTMLTag, bgcolor string) *HTMLTag {
 //
 // Parameters:
 //
+//	w: the StringWriter to write to
 //	content: the HTML content to wrap
 //	width: table width (e.g., "600"), can be empty
 //	bgcolor: background color (e.g., "#f0f0f0"), can be empty
 //
 // Example:
 //
-//	wrapped := WrapWithMSOTable("<div>Content</div>", "600", "#f0f0f0")
-//	// Output: <!--[if mso | IE]><table width="600" bgcolor="#f0f0f0">...<tr><td>...</td></tr></table><![endif]-->
+//	WrapWithMSOTable(w, "<div>Content</div>", "600", "#f0f0f0")
+//	// Writes: <!--[if mso | IE]><table width="600" bgcolor="#f0f0f0">...<tr><td>...</td></tr></table><![endif]-->
 //	         <div>Content</div>
 //	         <!--[if mso | IE]></td></tr></table><![endif]-->
-func WrapWithMSOTable(content, width, bgcolor string) string {
-	var html strings.Builder
-
+func WrapWithMSOTable(w io.StringWriter, content, width, bgcolor string) error {
 	msoTable := CreateMSOTable(width, bgcolor)
 	msoCell := CreateMSOTableCell()
 
-	// Helper buffers to render tags to string for MSO
-	var tableBuf, cellBuf strings.Builder
-	msoTable.RenderOpen(&tableBuf)
-	msoCell.RenderOpen(&cellBuf)
-
-	if err := RenderMSOConditional(&html, tableBuf.String()+"<tr>"+cellBuf.String()); err != nil {
-		return ""
+	// Opening MSO conditional with table and cell
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := msoTable.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<tr>"); err != nil {
+		return err
+	}
+	if err := msoCell.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
 	}
 
-	html.WriteString(content)
-
-	// Helper buffers for closing tags
-	var tableBuf2, cellBuf2 strings.Builder
-	msoCell.RenderClose(&cellBuf2)
-	msoTable.RenderClose(&tableBuf2)
-
-	if err := RenderMSOConditional(&html, cellBuf2.String()+"</tr>"+tableBuf2.String()); err != nil {
-		return ""
+	// Content
+	if _, err := w.WriteString(content); err != nil {
+		return err
 	}
 
-	return html.String()
+	// Closing MSO conditional with cell and table
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := msoCell.RenderClose(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("</tr>"); err != nil {
+		return err
+	}
+	if err := msoTable.RenderClose(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateMSOCompatibleWrapper creates the opening HTML for an MSO-compatible wrapper structure.
@@ -184,11 +202,12 @@ func WrapWithMSOTable(content, width, bgcolor string) string {
 // - Modern CSS div for advanced email clients
 // - Table-based fallback for Outlook compatibility
 //
-// The function returns the opening HTML that should be followed by content and closed
+// The function writes the opening HTML that should be followed by content and closed
 // with CloseMSOCompatibleWrapper.
 //
 // Parameters:
 //
+//	w: the StringWriter to write to
 //	divTag: the HTMLTag for the main div element
 //	width: table width for MSO fallback (e.g., "600")
 //	bgcolor: background color for both div and MSO table
@@ -196,30 +215,32 @@ func WrapWithMSOTable(content, width, bgcolor string) string {
 // Example:
 //
 //	div := NewHTMLTag("div").AddStyle("background-color", "#f0f0f0")
-//	opening := CreateMSOCompatibleWrapper(div, "600", "#f0f0f0")
-//	// Returns: <!--[if mso | IE]><table...><tr><td...><![endif]--><div style="background-color:#f0f0f0;">
-func CreateMSOCompatibleWrapper(divTag *HTMLTag, width, bgcolor string) string {
-	var html strings.Builder
-
+//	CreateMSOCompatibleWrapper(w, div, "600", "#f0f0f0")
+//	// Writes: <!--[if mso | IE]><table...><tr><td...><![endif]--><div style="background-color:#f0f0f0;">
+func CreateMSOCompatibleWrapper(w io.StringWriter, divTag *HTMLTag, width, bgcolor string) error {
 	// MSO table wrapper
 	msoTable := CreateMSOTable(width, bgcolor)
 	msoCell := CreateMSOTableCell()
 
-	// Helper buffers to render tags to string for MSO
-	var tableBuf, cellBuf strings.Builder
-	msoTable.RenderOpen(&tableBuf)
-	msoCell.RenderOpen(&cellBuf)
-
-	if err := RenderMSOConditional(&html, tableBuf.String()+"<tr>"+cellBuf.String()); err != nil {
-		return ""
+	// Opening MSO conditional
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if err := msoTable.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<tr>"); err != nil {
+		return err
+	}
+	if err := msoCell.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
 	}
 
 	// Main div (hidden from MSO)
-	var divBuf strings.Builder
-	divTag.RenderOpen(&divBuf)
-	html.WriteString(divBuf.String())
-
-	return html.String()
+	return divTag.RenderOpen(w)
 }
 
 // CloseMSOCompatibleWrapper closes an MSO-compatible wrapper structure created by CreateMSOCompatibleWrapper.
@@ -227,26 +248,22 @@ func CreateMSOCompatibleWrapper(divTag *HTMLTag, width, bgcolor string) string {
 //
 // Parameters:
 //
+//	w: the StringWriter to write to
 //	divTag: the same HTMLTag used in CreateMSOCompatibleWrapper (used only for tag name)
 //
 // Example:
 //
 //	div := NewHTMLTag("div")
-//	closing := CloseMSOCompatibleWrapper(div)
-//	// Returns: </div><!--[if mso | IE]></td></tr></table><![endif]-->
-func CloseMSOCompatibleWrapper(divTag *HTMLTag) string {
-	var html strings.Builder
-
-	// Helper buffer to render close tag to string
-	var divBuf strings.Builder
-	divTag.RenderClose(&divBuf)
-	html.WriteString(divBuf.String())
-
-	if err := RenderMSOConditional(&html, "</td></tr></table>"); err != nil {
-		return ""
+//	CloseMSOCompatibleWrapper(w, div)
+//	// Writes: </div><!--[if mso | IE]></td></tr></table><![endif]-->
+func CloseMSOCompatibleWrapper(w io.StringWriter, divTag *HTMLTag) error {
+	// Close main div
+	if err := divTag.RenderClose(w); err != nil {
+		return err
 	}
 
-	return html.String()
+	// Close MSO conditional
+	return RenderMSOConditional(w, "</td></tr></table>")
 }
 
 // ApplyMSOFontFallback applies MSO-specific font fallback styles to an HTML tag.

@@ -33,9 +33,13 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
 
 	// Get raw inner HTML content (preserve HTML tags and formatting)
-	textContent := c.getRawInnerHTML()
+	var textContent strings.Builder
+	if err := c.getRawInnerHTML(&textContent); err != nil {
+		return err
+	}
+	textContentStr := textContent.String()
 	debug.DebugLogWithData("mj-text", "content", "Processing text content", map[string]interface{}{
-		"content_length":  len(textContent),
+		"content_length":  len(textContentStr),
 		"container_width": c.GetContainerWidth(),
 	})
 
@@ -138,7 +142,7 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(textContent); err != nil {
+	if _, err := w.WriteString(textContentStr); err != nil {
 		return err
 	}
 	if err := divTag.RenderClose(w); err != nil {
@@ -175,29 +179,32 @@ func (c *MJTextComponent) GetDefaultAttribute(name string) string {
 
 // getRawInnerHTML reconstructs the original inner HTML content of the mj-text element
 // This is needed because our parser splits content, but mj-text needs to preserve HTML
-func (c *MJTextComponent) getRawInnerHTML() string {
+func (c *MJTextComponent) getRawInnerHTML(w io.StringWriter) error {
 	// If we have children (HTML elements), we need to reconstruct the original HTML
 	if len(c.Node.Children) > 0 {
-		var html strings.Builder
-
 		// Add any text content before children (trimmed)
 		if c.Node.Text != "" {
 			trimmedText := strings.TrimSpace(c.Node.Text)
 			if trimmedText != "" {
-				html.WriteString(c.restoreHTMLEntities(trimmedText))
+				if _, err := w.WriteString(c.restoreHTMLEntities(trimmedText)); err != nil {
+					return err
+				}
 			}
 		}
 
 		// Add children as HTML elements
 		for _, child := range c.Node.Children {
-			html.WriteString(c.reconstructHTMLElement(child))
+			if err := c.reconstructHTMLElement(child, w); err != nil {
+				return err
+			}
 		}
 
-		return html.String()
+		return nil
 	}
 
-	// If no children, return the text content with HTML entities restored and whitespace trimmed
-	return c.restoreHTMLEntities(strings.TrimSpace(c.Node.Text))
+	// If no children, write the text content with HTML entities restored and whitespace trimmed
+	_, err := w.WriteString(c.restoreHTMLEntities(strings.TrimSpace(c.Node.Text)))
+	return err
 }
 
 // restoreHTMLEntities converts Unicode characters back to HTML entities for proper output
@@ -208,50 +215,71 @@ func (c *MJTextComponent) restoreHTMLEntities(text string) string {
 }
 
 // reconstructHTMLElement reconstructs an HTML element from a parsed node
-func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode) string {
-	var html strings.Builder
-
+func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode, w io.StringWriter) error {
 	tagName := node.XMLName.Local
 
 	// Check if this is a void element (self-closing)
 	isVoidElement := isVoidHTMLElement(tagName)
 
 	// Opening tag
-	html.WriteString("<")
-	html.WriteString(tagName)
+	if _, err := w.WriteString("<"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(tagName); err != nil {
+		return err
+	}
 
 	// Attributes
 	for _, attr := range node.Attrs {
-		html.WriteString(" ")
-		html.WriteString(attr.Name.Local)
-		html.WriteString(`="`)
-		html.WriteString(attr.Value)
-		html.WriteString(`"`)
+		if _, err := w.WriteString(" "); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(attr.Name.Local); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(attr.Value); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
 	}
 
 	if isVoidElement {
 		// Self-closing tag
-		html.WriteString(" />")
-		return html.String()
+		_, err := w.WriteString(" />")
+		return err
 	}
 
-	html.WriteString(">")
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
 
 	// Content (text + children)
 	if node.Text != "" {
-		html.WriteString(c.restoreHTMLEntities(node.Text))
+		if _, err := w.WriteString(c.restoreHTMLEntities(node.Text)); err != nil {
+			return err
+		}
 	}
 
 	for _, child := range node.Children {
-		html.WriteString(c.reconstructHTMLElement(child))
+		if err := c.reconstructHTMLElement(child, w); err != nil {
+			return err
+		}
 	}
 
 	// Closing tag
-	html.WriteString("</")
-	html.WriteString(tagName)
-	html.WriteString(">")
-
-	return html.String()
+	if _, err := w.WriteString("</"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(tagName); err != nil {
+		return err
+	}
+	_, err := w.WriteString(">")
+	return err
 }
 
 // isVoidHTMLElement checks if an HTML element is a void element (self-closing)
