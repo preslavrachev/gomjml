@@ -32,14 +32,7 @@ func (c *MJTextComponent) GetTagName() string {
 func (c *MJTextComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
 
-	// Get raw inner HTML content (preserve HTML tags and formatting)
-	var textContent strings.Builder
-	if err := c.getRawInnerHTML(&textContent); err != nil {
-		return err
-	}
-	textContentStr := textContent.String()
 	debug.DebugLogWithData("mj-text", "content", "Processing text content", map[string]interface{}{
-		"content_length":  len(textContentStr),
 		"container_width": c.GetContainerWidth(),
 	})
 
@@ -142,7 +135,7 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(textContentStr); err != nil {
+	if err := c.getRawInnerHTML(w); err != nil {
 		return err
 	}
 	if err := divTag.RenderClose(w); err != nil {
