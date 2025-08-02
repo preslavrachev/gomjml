@@ -269,12 +269,13 @@ The following benchmarks were run on a Mac Mini M1 with 16GB RAM and Go 1.21.4. 
 ```
 | Benchmark                                  |  Time   | Memory  | Allocs |
 | :----------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8          | 0.42ms  | 0.58MB  |  7.7K  |
-| BenchmarkMJMLRender_100_Sections-8         | 4.90ms  | 5.50MB  | 74.7K  |
-| BenchmarkMJMLRender_1000_Sections-8        | 43.80ms | 54.87MB | 744.3K |
-| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.42ms  | 0.58MB  |  7.7K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.92ms  | 5.50MB  | 74.7K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8 | 43.38ms | 54.87MB | 744.3K |
+| BenchmarkMJMLRender_10_Sections-8          | 0.41ms  | 0.56MB  |  4.9K  |
+| BenchmarkMJMLRender_100_Sections-8         | 4.67ms  | 5.83MB  | 46.2K  |
+| BenchmarkMJMLRender_1000_Sections-8        | 41.39ms | 59.23MB | 459.4K |
+| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.41ms  | 0.56MB  |  4.9K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.64ms  | 5.83MB  | 46.2K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8 | 41.64ms | 59.23MB | 459.4K |
+| BenchmarkMJMLRender_100_Sections_Writer-8  | 2.39ms  | 4.68MB  | 21.2K  |
 
 ## 🏗️ Architecture
 
