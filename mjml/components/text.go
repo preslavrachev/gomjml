@@ -135,7 +135,7 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if err := c.getRawInnerHTML(w); err != nil {
+	if err := c.writeRawInnerHTML(w); err != nil {
 		return err
 	}
 	if err := divTag.RenderClose(w); err != nil {
@@ -170,9 +170,9 @@ func (c *MJTextComponent) GetDefaultAttribute(name string) string {
 	}
 }
 
-// getRawInnerHTML reconstructs the original inner HTML content of the mj-text element
+// writeRawInnerHTML writes the original inner HTML content of the mj-text element to the writer
 // This is needed because our parser splits content, but mj-text needs to preserve HTML
-func (c *MJTextComponent) getRawInnerHTML(w io.StringWriter) error {
+func (c *MJTextComponent) writeRawInnerHTML(w io.StringWriter) error {
 	// If we have children (HTML elements), we need to reconstruct the original HTML
 	if len(c.Node.Children) > 0 {
 		// Add any text content before children (trimmed)

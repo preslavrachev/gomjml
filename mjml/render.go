@@ -32,6 +32,12 @@ func calculateOptimalBufferSize(mjmlContent string) int {
 	mjmlSize := len(mjmlContent)
 	componentCount := strings.Count(mjmlContent, "<mj-")
 
+	// Prevent division by zero for empty MJML content
+	if mjmlSize == 0 {
+		// Return a reasonable default buffer size for empty input
+		return 1024
+	}
+
 	// Calculate component density (components per 1000 characters)
 	complexity := float64(componentCount) / float64(mjmlSize) * 1000
 
