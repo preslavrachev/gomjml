@@ -80,6 +80,8 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 		return components.NewMJAccordionTextComponent(node, opts), nil
 	case "mj-accordion-title":
 		return components.NewMJAccordionTitleComponent(node, opts), nil
+	case "mj-accordion-element":
+		return components.NewMJAccordionElementComponent(node, opts), nil
 	case "mj-carousel":
 		return components.NewMJCarouselComponent(node, opts), nil
 	case "mj-carousel-image":
@@ -164,6 +166,22 @@ func processComponentChildren(component Component, node *parser.MJMLNode, opts *
 		for _, childNode := range node.Children {
 			if childComponent, err := CreateComponent(childNode, opts); err == nil {
 				comp.Children = append(comp.Children, childComponent)
+			}
+		}
+	case *components.MJAccordionComponent:
+		// Process accordion element children
+		for _, childNode := range node.Children {
+			if childComponent, err := CreateComponent(childNode, opts); err == nil {
+				comp.Children = append(comp.Children, childComponent)
+
+				// Process accordion element children (title and text)
+				if accordionElement, ok := childComponent.(*components.MJAccordionElementComponent); ok {
+					for _, elementChildNode := range childNode.Children {
+						if elementChildComponent, err := CreateComponent(elementChildNode, opts); err == nil {
+							accordionElement.Children = append(accordionElement.Children, elementChildComponent)
+						}
+					}
+				}
 			}
 		}
 		// Add more component types here as needed

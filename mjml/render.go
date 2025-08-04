@@ -409,6 +409,26 @@ func (c *MJMLComponent) generateCustomStyles() string {
 	return fmt.Sprintf(`<style type="text/css">%s</style>`, content.String())
 }
 
+// generateAccordionCSS generates the CSS styles needed for accordion functionality
+func (c *MJMLComponent) generateAccordionCSS() string {
+	return `<style type="text/css">noinput.mj-accordion-checkbox { display: block! important; }
+@media yahoo, only screen and (min-width:0) {
+  .mj-accordion-element { display:block; }
+  input.mj-accordion-checkbox, .mj-accordion-less { display: none !important; }
+  input.mj-accordion-checkbox+* .mj-accordion-title { cursor: pointer; touch-action: manipulation; -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+  input.mj-accordion-checkbox+* .mj-accordion-content { overflow: hidden; display: none; }
+  input.mj-accordion-checkbox+* .mj-accordion-more { display: block !important; }
+  input.mj-accordion-checkbox:checked+* .mj-accordion-content { display: block; }
+  input.mj-accordion-checkbox:checked+* .mj-accordion-more { display: none !important; }
+  input.mj-accordion-checkbox:checked+* .mj-accordion-less { display: block !important; }
+}
+.moz-text-html input.mj-accordion-checkbox+* .mj-accordion-title { cursor: auto; touch-action: auto; -webkit-user-select: auto; -moz-user-select: auto; user-select: auto; }
+.moz-text-html input.mj-accordion-checkbox+* .mj-accordion-content { overflow: hidden; display: block; }
+.moz-text-html input.mj-accordion-checkbox+* .mj-accordion-ico { display: none; }
+@goodbye { @gmail }
+</style>`
+}
+
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS
 func (c *MJMLComponent) hasMobileCSSComponents() bool {
 	if c.Body == nil {
@@ -446,6 +466,20 @@ func (c *MJMLComponent) hasButtonComponents() bool {
 	}
 	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
 		return comp.GetTagName() == "mj-button"
+	})
+}
+
+// hasAccordionComponents checks if the MJML contains any accordion components
+func (c *MJMLComponent) hasAccordionComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
+		switch comp.GetTagName() {
+		case "mj-accordion", "mj-accordion-element", "mj-accordion-title", "mj-accordion-text":
+			return true
+		}
+		return false
 	})
 }
 
@@ -507,6 +541,12 @@ func (c *MJMLComponent) checkChildrenForCondition(component Component, condition
 			}
 		}
 	case *components.MJSocialComponent:
+		for _, child := range v.Children {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
+				return true
+			}
+		}
+	case *components.MJAccordionComponent:
 		for _, child := range v.Children {
 			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
@@ -719,6 +759,14 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
             }
             </style>`
 		if _, err := w.WriteString(mobileCSSText); err != nil {
+			return err
+		}
+	}
+
+	// Accordion CSS - add only if components need it (following MRML pattern)
+	if c.hasAccordionComponents() {
+		accordionCSSText := c.generateAccordionCSS()
+		if _, err := w.WriteString(accordionCSSText); err != nil {
 			return err
 		}
 	}
