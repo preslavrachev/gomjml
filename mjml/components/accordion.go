@@ -77,7 +77,7 @@ func (c *MJAccordionComponent) Render(w io.StringWriter) error {
 		AddStyle(constants.CSSWidth, "100%").
 		AddStyle(constants.CSSBorderCollapse, constants.BorderCollapseCollapse).
 		AddStyle(constants.CSSBorder, border).
-		AddStyle("border-bottom", "none").
+		AddStyle(constants.CSSBorderBottom, "none").
 		AddStyle(constants.CSSFontFamily, fontFamily)
 
 	if err := tableTag.RenderOpen(w); err != nil {
@@ -406,7 +406,7 @@ func (c *MJAccordionElementComponent) renderTitle(w io.StringWriter, titleCompon
 		AddAttribute(constants.AttrCellSpacing, "0").
 		AddAttribute(constants.AttrCellPadding, "0").
 		AddStyle(constants.CSSWidth, "100%").
-		AddStyle("border-bottom", border)
+		AddStyle(constants.CSSBorderBottom, border)
 
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err
@@ -583,7 +583,7 @@ func (c *MJAccordionElementComponent) renderContent(w io.StringWriter, textCompo
 		AddAttribute(constants.AttrCellSpacing, "0").
 		AddAttribute(constants.AttrCellPadding, "0").
 		AddStyle(constants.CSSWidth, "100%").
-		AddStyle("border-bottom", border)
+		AddStyle(constants.CSSBorderBottom, border)
 
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err
