@@ -3,7 +3,6 @@ package mjml
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
 	"testing"
@@ -11,8 +10,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// TestMJMLAgainstMRML compares Go implementation output with MRML (Rust) output
-func TestMJMLAgainstMRML(t *testing.T) {
+// TestMJMLAgainstExpected compares Go implementation output with pre-generated expected HTML
+func TestMJMLAgainstExpected(t *testing.T) {
 	testCases := []struct {
 		name     string
 		filename string
@@ -102,14 +101,14 @@ func TestMJMLAgainstMRML(t *testing.T) {
 				t.Fatalf("Failed to read test file %s: %v", tc.filename, err)
 			}
 
-			// Get expected output from MRML (Rust implementation)
-			expected, err := runMRML(string(mjmlContent))
+			// Get expected output from cached HTML file
+			expectedFile := strings.Replace(tc.filename, ".mjml", ".html", 1)
+			expectedContent, err := os.ReadFile(expectedFile)
 			if err != nil {
-				// Some test cases with conditional comments can't be parsed by MRML
-				// due to XML parsing limitations, but our implementation should still work
+				// Handle special case for conditional comments
 				if tc.name == "mj-raw-conditional-comment" {
 					t.Logf(
-						"MRML cannot parse %s due to conditional comments, checking that our implementation works",
+						"No expected HTML file for %s due to conditional comments, checking that our implementation works",
 						tc.name,
 					)
 
@@ -136,8 +135,9 @@ func TestMJMLAgainstMRML(t *testing.T) {
 
 					return
 				}
-				t.Fatalf("Failed to run MRML: %v", err)
+				t.Fatalf("Failed to read expected HTML file %s: %v", expectedFile, err)
 			}
+			expected := string(expectedContent)
 
 			// Get actual output from Go implementation (direct library usage)
 			actual, err := Render(string(mjmlContent))
@@ -163,31 +163,6 @@ func TestMJMLAgainstMRML(t *testing.T) {
 	}
 }
 
-// runMRML calls the MRML (Rust) implementation to get expected output
-func runMRML(mjmlInput string) (string, error) {
-	// Create temporary file for input
-	tmpFile, err := os.CreateTemp("", "test_*.mjml")
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(tmpFile.Name())
-
-	// Write MJML input to temp file
-	if _, err := tmpFile.WriteString(mjmlInput); err != nil {
-		tmpFile.Close()
-		return "", err
-	}
-	tmpFile.Close()
-
-	// Run mrml command with correct syntax
-	cmd := exec.Command("mrml", tmpFile.Name(), "render")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-
-	return string(output), nil
-}
 
 // TestDirectLibraryUsage demonstrates and tests direct library usage
 func TestDirectLibraryUsage(t *testing.T) {
