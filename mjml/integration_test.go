@@ -87,6 +87,11 @@ func TestMJMLAgainstMRML(t *testing.T) {
 		{"mj-social-mode", "testdata/mj-social-mode.mjml"},
 		{"mj-social-padding", "testdata/mj-social-padding.mjml"},
 		{"mj-social-text", "testdata/mj-social-text.mjml"},
+		// MJ-ACCORDION tests (commented out - need implementation)
+		{"mj-accordion", "testdata/mj-accordion.mjml"},
+		{"mj-accordion-font-padding", "testdata/mj-accordion-font-padding.mjml"},
+		{"mj-accordion-icon", "testdata/mj-accordion-icon.mjml"},
+		{"mj-accordion-other", "testdata/mj-accordion-other.mjml"},
 	}
 
 	for _, tc := range testCases {
