@@ -11,8 +11,8 @@ fi
 echo "🚀 Starting MJML benchmarks..."
 echo "📊 Running comprehensive performance tests..."
 
-# Process benchmark results
-go test ./mjml -bench=. -benchmem -run='^$' 2>/dev/null | awk -v markdown="$MARKDOWN" '
+# Process benchmark results - only run specific benchmarks
+go test ./mjml -bench='BenchmarkMJMLRender_(10|100|1000)_Sections' -benchmem -run='^$' 2>/dev/null | awk -v markdown="$MARKDOWN" '
 /^Benchmark/ {
     if (/ns\/op.*B\/op.*allocs\/op/) {
         # Has memory data
