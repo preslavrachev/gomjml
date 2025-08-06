@@ -152,7 +152,8 @@ func (c *MJTextComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJTextComponent) RenderMJML(w io.StringWriter) error {
-	if _, err := w.WriteString("\n        <mj-text"); err != nil {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(4) + "<mj-text"); err != nil {
 		return err
 	}
 

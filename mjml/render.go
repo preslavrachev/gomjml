@@ -67,6 +67,14 @@ func WithOutputFormat(format options.OutputFormat) RenderOption {
 	}
 }
 
+// createDefaultRenderOpts creates a default RenderOpts with FontTracker initialized
+func createDefaultRenderOpts() *RenderOpts {
+	return &RenderOpts{
+		FontTracker: options.NewFontTracker(),
+		Indentation: options.NewDefaultIndentationConfig(),
+	}
+}
+
 // RenderResult contains both the rendered HTML and the MJML AST
 type RenderResult struct {
 	Result string
@@ -82,9 +90,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	})
 
 	// Apply render options
-	renderOpts := &RenderOpts{
-		FontTracker: options.NewFontTracker(),
-	}
+	renderOpts := createDefaultRenderOpts()
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
@@ -161,10 +167,8 @@ func RenderHTML(mjmlContent string, opts ...RenderOption) (string, error) {
 
 // RenderFromAST renders from a pre-parsed AST to the specified output format
 func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
-	// Apply render options with FontTracker initialized
-	renderOpts := &RenderOpts{
-		FontTracker: options.NewFontTracker(),
-	}
+	// Apply render options
+	renderOpts := createDefaultRenderOpts()
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
@@ -188,9 +192,7 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)
 func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
 	// Apply render options
-	renderOpts := &RenderOpts{
-		FontTracker: options.NewFontTracker(),
-	}
+	renderOpts := createDefaultRenderOpts()
 	for _, opt := range opts {
 		opt(renderOpts)
 	}

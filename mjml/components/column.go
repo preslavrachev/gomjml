@@ -139,7 +139,8 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 }
 
 func (c *MJColumnComponent) RenderMJML(w io.StringWriter) error {
-	if _, err := w.WriteString("\n      <mj-column"); err != nil {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(3) + "<mj-column"); err != nil {
 		return err
 	}
 
@@ -161,7 +162,7 @@ func (c *MJColumnComponent) RenderMJML(w io.StringWriter) error {
 		}
 	}
 
-	if _, err := w.WriteString("\n      </mj-column>"); err != nil {
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(3) + "</mj-column>"); err != nil {
 		return err
 	}
 

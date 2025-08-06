@@ -63,7 +63,8 @@ func (c *MJBodyComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJBodyComponent) RenderMJML(w io.StringWriter) error {
-	if _, err := w.WriteString("\n  <mj-body"); err != nil {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(1) + "<mj-body"); err != nil {
 		return err
 	}
 
@@ -85,7 +86,7 @@ func (c *MJBodyComponent) RenderMJML(w io.StringWriter) error {
 		}
 	}
 
-	if _, err := w.WriteString("\n  </mj-body>"); err != nil {
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(1) + "</mj-body>"); err != nil {
 		return err
 	}
 

@@ -47,10 +47,71 @@ func (ft *FontTracker) GetFonts() []string {
 	return fonts
 }
 
+// IndentationConfig controls MJML output formatting
+type IndentationConfig struct {
+	Enabled   bool   // Whether to use indentation
+	Unit      string // Indentation unit (e.g., "  ", "    ", "\t")
+	BaseLevel int    // Starting indentation level
+}
+
+// NewDefaultIndentationConfig creates a default indentation configuration
+func NewDefaultIndentationConfig() *IndentationConfig {
+	return &IndentationConfig{
+		Enabled:   true,
+		Unit:      "  ", // Two spaces
+		BaseLevel: 0,
+	}
+}
+
+// GetIndent returns the indentation string for the given level
+func (ic *IndentationConfig) GetIndent(level int) string {
+	if !ic.Enabled {
+		return ""
+	}
+
+	totalLevel := ic.BaseLevel + level
+	if totalLevel <= 0 {
+		return ""
+	}
+
+	indent := ""
+	for i := 0; i < totalLevel; i++ {
+		indent += ic.Unit
+	}
+	return indent
+}
+
+// FormatMJMLTag formats an MJML tag with proper indentation
+func (ic *IndentationConfig) FormatMJMLTag(tagName string, level int, selfClosing bool) string {
+	if !ic.Enabled {
+		if selfClosing {
+			return "<" + tagName + "/>"
+		}
+		return "<" + tagName + ">"
+	}
+
+	indent := ic.GetIndent(level)
+	if selfClosing {
+		return "\n" + indent + "<" + tagName + "/>"
+	}
+	return "\n" + indent + "<" + tagName + ">"
+}
+
+// FormatMJMLClosingTag formats an MJML closing tag with proper indentation
+func (ic *IndentationConfig) FormatMJMLClosingTag(tagName string, level int) string {
+	if !ic.Enabled {
+		return "</" + tagName + ">"
+	}
+
+	indent := ic.GetIndent(level)
+	return "\n" + indent + "</" + tagName + ">"
+}
+
 // RenderOpts contains options for MJML rendering
 type RenderOpts struct {
-	DebugTags    bool         // Whether to include debug attributes in output
-	InsideGroup  bool         // Whether the component is being rendered inside a group
-	FontTracker  *FontTracker // Tracks fonts used during rendering
-	OutputFormat OutputFormat // Output format (HTML=0 default, MJML=1)
+	DebugTags    bool               // Whether to include debug attributes in output
+	InsideGroup  bool               // Whether the component is being rendered inside a group
+	FontTracker  *FontTracker       // Tracks fonts used during rendering
+	OutputFormat OutputFormat       // Output format (HTML=0 default, MJML=1)
+	Indentation  *IndentationConfig // MJML indentation configuration
 }

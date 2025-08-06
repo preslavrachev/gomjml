@@ -266,7 +266,8 @@ func (c *MJSectionComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJSectionComponent) RenderMJML(w io.StringWriter) error {
-	if _, err := w.WriteString("\n    <mj-section"); err != nil {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(2) + "<mj-section"); err != nil {
 		return err
 	}
 
@@ -288,7 +289,7 @@ func (c *MJSectionComponent) RenderMJML(w io.StringWriter) error {
 		}
 	}
 
-	if _, err := w.WriteString("\n    </mj-section>"); err != nil {
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(2) + "</mj-section>"); err != nil {
 		return err
 	}
 
