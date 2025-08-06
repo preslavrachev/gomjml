@@ -272,7 +272,7 @@ func (c *MJSectionComponent) RenderMJML(w io.StringWriter) error {
 
 	// Render attributes
 	for name, value := range c.Attrs {
-		if _, err := w.WriteString(" " + name + "=\"" + value + "\""); err != nil {
+		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
 			return err
 		}
 	}

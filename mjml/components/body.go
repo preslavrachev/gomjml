@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 
+	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -68,7 +69,7 @@ func (c *MJBodyComponent) RenderMJML(w io.StringWriter) error {
 
 	// Render attributes
 	for name, value := range c.Attrs {
-		if _, err := w.WriteString(" " + name + "=\"" + value + "\""); err != nil {
+		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
 			return err
 		}
 	}
