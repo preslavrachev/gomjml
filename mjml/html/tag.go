@@ -218,7 +218,7 @@ func (t *HTMLTag) renderAttributes(w io.StringWriter) error {
 		if _, err := w.WriteString(`="`); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(attr.Value); err != nil {
+		if _, err := w.WriteString(EscapeXMLAttr(attr.Value)); err != nil {
 			return err
 		}
 		if _, err := w.WriteString(`"`); err != nil {

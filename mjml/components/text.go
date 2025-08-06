@@ -29,7 +29,7 @@ func (c *MJTextComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJTextComponent
-func (c *MJTextComponent) Render(w io.StringWriter) error {
+func (c *MJTextComponent) RenderHTML(w io.StringWriter) error {
 	debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
 
 	debug.DebugLogWithData("mj-text", "content", "Processing text content", map[string]interface{}{
@@ -145,6 +145,38 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	if _, err := w.WriteString("</tr>"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *MJTextComponent) RenderMJML(w io.StringWriter) error {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(4) + "<mj-text"); err != nil {
+		return err
+	}
+
+	// Render attributes in original order
+	for _, attr := range c.Node.Attrs {
+		if _, err := w.WriteString(" " + attr.Name.Local + "=\"" + html.EscapeXMLAttr(attr.Value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render text content - preserve original formatting from node
+	if c.Node.Text != "" {
+		// Use the text as-is to preserve original whitespace and formatting
+		if _, err := w.WriteString(c.Node.Text); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("</mj-text>"); err != nil {
 		return err
 	}
 

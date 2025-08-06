@@ -37,7 +37,8 @@ func (e *NotImplementedError) Error() string {
 
 // Component represents a renderable MJML component
 type Component interface {
-	Render(w io.StringWriter) error
+	RenderHTML(w io.StringWriter) error
+	RenderMJML(w io.StringWriter) error
 	GetTagName() string
 	GetDefaultAttribute(name string) string
 	SetContainerWidth(widthPx int)
@@ -46,6 +47,8 @@ type Component interface {
 	SetRawSiblings(rawSiblings int)
 	GetSiblings() int
 	GetRawSiblings() int
+	SetDepth(depth int)
+	GetDepth() int
 }
 
 // BaseComponent provides common functionality for all components
@@ -56,6 +59,7 @@ type BaseComponent struct {
 	ContainerWidth int                 // Container width in pixels (0 means use default)
 	Siblings       int                 // Total siblings count
 	RawSiblings    int                 // Raw siblings count (for width calculations)
+	Depth          int                 // Nesting depth in the component tree (0 = root)
 	RenderOpts     *options.RenderOpts // Rendering options
 }
 
@@ -77,6 +81,7 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		ContainerWidth: 0, // 0 means use default body width
 		Siblings:       1,
 		RawSiblings:    0,
+		Depth:          0, // Default depth, will be set during tree construction
 		RenderOpts:     opts,
 	}
 }
@@ -241,6 +246,16 @@ func (bc *BaseComponent) GetSiblings() int {
 // GetRawSiblings returns the number of raw siblings
 func (bc *BaseComponent) GetRawSiblings() int {
 	return bc.RawSiblings
+}
+
+// SetDepth sets the nesting depth for this component
+func (bc *BaseComponent) SetDepth(depth int) {
+	bc.Depth = depth
+}
+
+// GetDepth returns the nesting depth of this component
+func (bc *BaseComponent) GetDepth() int {
+	return bc.Depth
 }
 
 // GetNonRawSiblings returns the number of non-raw siblings (used for width calculations)

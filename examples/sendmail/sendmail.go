@@ -35,8 +35,8 @@ func main() {
 		log.Fatalf("Failed to read MJML file: %v", err)
 	}
 
-	// Render MJML to HTML
-	html, err := mjml.Render(string(mjmlContent))
+	// RenderHTML MJML to HTML
+	html, err := mjml.RenderHTML(string(mjmlContent))
 	if err != nil {
 		log.Fatalf("MJML render error: %v", err)
 	}

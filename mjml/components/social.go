@@ -91,7 +91,7 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 }
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
-func (c *MJSocialComponent) Render(w io.StringWriter) error {
+func (c *MJSocialComponent) RenderHTML(w io.StringWriter) error {
 	padding := c.getAttribute(constants.MJMLPadding)
 	align := c.getAttribute(constants.MJMLAlign)
 	mode := c.getAttribute(constants.MJMLMode)
@@ -150,13 +150,13 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 			return err
 		}
 
-		// Render social elements as table rows
+		// RenderHTML social elements as table rows
 		for _, child := range c.Children {
 			if socialElement, ok := child.(*MJSocialElementComponent); ok {
 				socialElement.SetContainerWidth(c.GetContainerWidth())
 				socialElement.InheritFromParent(c)
 				socialElement.SetVerticalMode(true)
-				if err := socialElement.Render(w); err != nil {
+				if err := socialElement.RenderHTML(w); err != nil {
 					return err
 				}
 			}
@@ -182,12 +182,12 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 			return err
 		}
 
-		// Render social elements
+		// RenderHTML social elements
 		for _, child := range c.Children {
 			if socialElement, ok := child.(*MJSocialElementComponent); ok {
 				socialElement.SetContainerWidth(c.GetContainerWidth())
 				socialElement.InheritFromParent(c)
-				if err := socialElement.Render(w); err != nil {
+				if err := socialElement.RenderHTML(w); err != nil {
 					return err
 				}
 			}
@@ -209,6 +209,10 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 	}
 
 	return nil
+}
+
+func (c *MJSocialComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-social"}
 }
 
 func (c *MJSocialComponent) GetTagName() string {
@@ -409,7 +413,7 @@ func (c *MJSocialElementComponent) SetVerticalMode(vertical bool) {
 }
 
 // Render implements optimized Writer-based rendering for MJSocialElementComponent
-func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
+func (c *MJSocialElementComponent) RenderHTML(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	iconSize := c.getAttribute("icon-size")
 	iconHeight := c.getAttribute("icon-height")
@@ -710,7 +714,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Render text content if present - INSIDE the same <tr>
+	// RenderHTML text content if present - INSIDE the same <tr>
 	// Use GetMixedContent to preserve HTML tags like <b>, <i>, etc. within text
 	textContent := c.Node.GetMixedContent()
 	debug.DebugLogWithData(
@@ -794,6 +798,10 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	return nil
+}
+
+func (c *MJSocialElementComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-social-element"}
 }
 
 func (c *MJSocialElementComponent) GetTagName() string {

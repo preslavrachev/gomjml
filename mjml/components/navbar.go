@@ -19,8 +19,12 @@ func NewMJNavbarComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNa
 	}
 }
 
-func (c *MJNavbarComponent) Render(w io.StringWriter) error {
+func (c *MJNavbarComponent) RenderHTML(w io.StringWriter) error {
 	// TODO: Implement mj-navbar component functionality
+	return &NotImplementedError{ComponentName: "mj-navbar"}
+}
+
+func (c *MJNavbarComponent) RenderMJML(w io.StringWriter) error {
 	return &NotImplementedError{ComponentName: "mj-navbar"}
 }
 
@@ -68,8 +72,12 @@ func NewMJNavbarLinkComponent(node *parser.MJMLNode, opts *options.RenderOpts) *
 	}
 }
 
-func (c *MJNavbarLinkComponent) Render(w io.StringWriter) error {
+func (c *MJNavbarLinkComponent) RenderHTML(w io.StringWriter) error {
 	// TODO: Implement mj-navbar-link component functionality
+	return &NotImplementedError{ComponentName: "mj-navbar-link"}
+}
+
+func (c *MJNavbarLinkComponent) RenderMJML(w io.StringWriter) error {
 	return &NotImplementedError{ComponentName: "mj-navbar-link"}
 }
 

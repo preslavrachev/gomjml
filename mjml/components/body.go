@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 
+	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -34,7 +35,7 @@ func (c *MJBodyComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJBodyComponent
-func (c *MJBodyComponent) Render(w io.StringWriter) error {
+func (c *MJBodyComponent) RenderHTML(w io.StringWriter) error {
 	// Apply background-color to div if specified (matching MRML's set_body_style)
 	backgroundColor := c.GetAttribute("background-color")
 
@@ -49,12 +50,43 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	}
 
 	for _, child := range c.Children {
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 	}
 
 	if _, err := w.WriteString(`</div>`); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *MJBodyComponent) RenderMJML(w io.StringWriter) error {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(1) + "<mj-body"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render children
+	for _, child := range c.Children {
+		if err := child.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(1) + "</mj-body>"); err != nil {
 		return err
 	}
 

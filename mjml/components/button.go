@@ -69,7 +69,7 @@ func (c *MJButtonComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJButtonComponent
-func (c *MJButtonComponent) Render(w io.StringWriter) error {
+func (c *MJButtonComponent) RenderHTML(w io.StringWriter) error {
 	// Get text content
 	textContent := c.Node.Text
 	if textContent == "" {
@@ -228,6 +228,38 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	if _, err := w.WriteString("</tr>"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *MJButtonComponent) RenderMJML(w io.StringWriter) error {
+	// Write opening tag with dynamic indentation based on component depth
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(c.GetDepth()) + "<mj-button"); err != nil {
+		return err
+	}
+
+	// Render attributes in original order
+	for _, attr := range c.Node.Attrs {
+		if _, err := w.WriteString(" " + attr.Name.Local + "=\"" + html.EscapeXMLAttr(attr.Value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render text content - preserve original formatting from node
+	if c.Node.Text != "" {
+		// Use the text as-is to preserve original whitespace and formatting
+		if _, err := w.WriteString(c.Node.Text); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("</mj-button>"); err != nil {
 		return err
 	}
 

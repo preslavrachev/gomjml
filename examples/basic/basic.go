@@ -24,9 +24,9 @@ func main() {
       </mjml>`
 
 	// Method 1: Direct rendering (recommended)
-	html, err := mjml.Render(mjmlContent)
+	html, err := mjml.RenderHTML(mjmlContent)
 	if err != nil {
-		log.Fatal("Render error:", err)
+		log.Fatal("RenderHTML error:", err)
 	}
 	fmt.Println(html)
 
@@ -43,7 +43,7 @@ func main() {
 
 	html, err = mjml.RenderComponentString(component)
 	if err != nil {
-		log.Fatal("Render error:", err)
+		log.Fatal("RenderHTML error:", err)
 	}
 	fmt.Println(html)
 }

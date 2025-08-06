@@ -60,10 +60,25 @@ func WithDebugTags(enabled bool) RenderOption {
 	}
 }
 
+// WithOutputFormat sets the output format for rendering
+func WithOutputFormat(format options.OutputFormat) RenderOption {
+	return func(opts *RenderOpts) {
+		opts.OutputFormat = format
+	}
+}
+
+// createDefaultRenderOpts creates a default RenderOpts with FontTracker initialized
+func createDefaultRenderOpts() *RenderOpts {
+	return &RenderOpts{
+		FontTracker: options.NewFontTracker(),
+		Indentation: options.NewDefaultIndentationConfig(),
+	}
+}
+
 // RenderResult contains both the rendered HTML and the MJML AST
 type RenderResult struct {
-	HTML string
-	AST  *MJMLNode
+	Result string
+	AST    *MJMLNode
 }
 
 // RenderWithAST provides the internal MJML to HTML conversion function that returns both HTML and AST
@@ -75,9 +90,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	})
 
 	// Apply render options
-	renderOpts := &RenderOpts{
-		FontTracker: options.NewFontTracker(),
-	}
+	renderOpts := createDefaultRenderOpts()
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
@@ -120,7 +133,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	html.Grow(bufferSize) // Pre-allocate with complexity-aware sizing
 
 	renderStart := time.Now()
-	err = component.Render(&html)
+	err = component.RenderHTML(&html)
 	if err != nil {
 		debug.DebugLogError("mjml", "render-html-error", "Failed to render HTML", err)
 		return nil, err
@@ -138,24 +151,24 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	})
 
 	return &RenderResult{
-		HTML: htmlOutput,
-		AST:  ast,
+		Result: htmlOutput,
+		AST:    ast,
 	}, nil
 }
 
-// Render provides the main MJML to HTML conversion function
-func Render(mjmlContent string, opts ...RenderOption) (string, error) {
+// RenderHTML provides the main MJML to HTML conversion function
+func RenderHTML(mjmlContent string, opts ...RenderOption) (string, error) {
 	result, err := RenderWithAST(mjmlContent, opts...)
 	if err != nil {
 		return "", err
 	}
-	return result.HTML, nil
+	return result.Result, nil
 }
 
-// RenderFromAST renders HTML from a pre-parsed AST
+// RenderFromAST renders from a pre-parsed AST to the specified output format
 func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 	// Apply render options
-	renderOpts := &RenderOpts{}
+	renderOpts := createDefaultRenderOpts()
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
@@ -165,15 +178,21 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 		return "", err
 	}
 
-	return RenderComponentString(component)
+	// Switch based on output format
+	switch renderOpts.OutputFormat {
+	case options.OutputHTML:
+		return RenderComponentString(component)
+	case options.OutputMJML:
+		return RenderComponentMJMLString(component)
+	default:
+		return RenderComponentString(component) // Default to HTML
+	}
 }
 
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)
 func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
 	// Apply render options
-	renderOpts := &RenderOpts{
-		FontTracker: options.NewFontTracker(),
-	}
+	renderOpts := createDefaultRenderOpts()
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
@@ -273,7 +292,7 @@ func (c *MJMLComponent) prepareBodySiblings(comp Component) {
 			for _, child := range v.Children {
 				child.SetContainerWidth(v.GetEffectiveWidth())
 
-				// Set width attributes on columns like the group's Render() method does
+				// Set width attributes on columns like the group's RenderHTML() method does
 				if columnComp, ok := child.(*components.MJColumnComponent); ok {
 					if columnComp.GetAttribute("width") == nil {
 						percentageWidth := fmt.Sprintf("%.15f%%", percentagePerColumn)
@@ -560,8 +579,8 @@ func (c *MJMLComponent) GetTagName() string {
 	return "mjml"
 }
 
-// Render implements optimized Writer-based rendering for MJMLComponent
-func (c *MJMLComponent) Render(w io.StringWriter) error {
+// RenderHTML implements optimized Writer-based rendering for MJMLComponent
+func (c *MJMLComponent) RenderHTML(w io.StringWriter) error {
 	debug.DebugLog("mjml-root", "render-start", "Starting root MJML component rendering")
 
 	// First, prepare the body to establish sibling relationships without full rendering
@@ -581,7 +600,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
 	var bodyBuffer strings.Builder
 	if c.Body != nil {
-		if err := c.Body.Render(&bodyBuffer); err != nil {
+		if err := c.Body.RenderHTML(&bodyBuffer); err != nil {
 			debug.DebugLogError("mjml-root", "render-body-error", "Failed to render body", err)
 			return err
 		}
@@ -805,7 +824,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	if c.Head != nil {
 		for _, child := range c.Head.Children {
 			if previewComp, ok := child.(*components.MJPreviewComponent); ok {
-				if err := previewComp.Render(w); err != nil {
+				if err := previewComp.RenderHTML(w); err != nil {
 					return err
 				}
 			}
@@ -817,6 +836,32 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	if _, err := w.WriteString(`</body></html>`); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *MJMLComponent) RenderMJML(w io.StringWriter) error {
+	if _, err := w.WriteString("<mjml>"); err != nil {
+		return err
+	}
+
+	// Render head if present
+	if c.Head != nil {
+		if err := c.Head.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	// Render body if present
+	if c.Body != nil {
+		if err := c.Body.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("\n</mjml>"); err != nil {
 		return err
 	}
 

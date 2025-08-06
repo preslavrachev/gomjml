@@ -52,7 +52,7 @@ func TestMJRawWithGoTemplate(t *testing.T) {
 	}
 
 	// Convert templated MJML to HTML using gomjml
-	finalHTML, err := Render(templatedMJML.String())
+	finalHTML, err := RenderHTML(templatedMJML.String())
 	if err != nil {
 		t.Fatalf("Failed to render MJML: %v", err)
 	}

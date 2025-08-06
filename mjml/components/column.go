@@ -34,7 +34,7 @@ func (c *MJColumnComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJColumnComponent
-func (c *MJColumnComponent) Render(w io.StringWriter) error {
+func (c *MJColumnComponent) RenderHTML(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -121,9 +121,9 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 		return err
 	}
 
-	// Render column content (child components)
+	// RenderHTML column content (child components)
 	for _, child := range c.Children {
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 	}
@@ -132,6 +132,37 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 		return err
 	}
 	if err := innerTable.RenderClose(w); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *MJColumnComponent) RenderMJML(w io.StringWriter) error {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(3) + "<mj-column"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render children
+	for _, child := range c.Children {
+		if err := child.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(3) + "</mj-column>"); err != nil {
 		return err
 	}
 

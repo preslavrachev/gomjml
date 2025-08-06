@@ -42,6 +42,10 @@ func NewMJGroupComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJGro
 	}
 }
 
+func (c *MJGroupComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-group"}
+}
+
 func (c *MJGroupComponent) GetDefaultAttribute(name string) string {
 	switch name {
 	case "direction":
@@ -64,7 +68,7 @@ func (c *MJGroupComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJGroupComponent
-func (c *MJGroupComponent) Render(w io.StringWriter) error {
+func (c *MJGroupComponent) RenderHTML(w io.StringWriter) error {
 	direction := c.getAttribute("direction")
 	verticalAlign := c.getAttribute("vertical-align")
 	backgroundColor := c.getAttribute("background-color")
@@ -131,7 +135,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Render each column in the group
+	// RenderHTML each column in the group
 	for _, child := range c.Children {
 		if columnComp, ok := child.(*MJColumnComponent); ok {
 			// Set the column width based on group's width distribution
@@ -168,8 +172,8 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			childOpts.InsideGroup = true
 			columnComp.RenderOpts = &childOpts
 
-			// Render column content with padding support table wrapper
-			if err := child.Render(w); err != nil {
+			// RenderHTML column content with padding support table wrapper
+			if err := child.RenderHTML(w); err != nil {
 				return err
 			}
 

@@ -28,7 +28,7 @@ func (c *MJImageComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJImageComponent
-func (c *MJImageComponent) Render(w io.StringWriter) error {
+func (c *MJImageComponent) RenderHTML(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -192,6 +192,26 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	if _, err := w.WriteString("</tr>"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *MJImageComponent) RenderMJML(w io.StringWriter) error {
+	// Write opening tag with dynamic indentation based on component depth
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(c.GetDepth()) + "<mj-image"); err != nil {
+		return err
+	}
+
+	// Render attributes in original order
+	for _, attr := range c.Node.Attrs {
+		if _, err := w.WriteString(" " + attr.Name.Local + "=\"" + html.EscapeXMLAttr(attr.Value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(" />"); err != nil {
 		return err
 	}
 

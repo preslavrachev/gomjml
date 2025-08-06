@@ -27,7 +27,7 @@ func (c *MJSectionComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJSectionComponent
-func (c *MJSectionComponent) Render(w io.StringWriter) error {
+func (c *MJSectionComponent) RenderHTML(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -166,7 +166,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
+	// RenderHTML child columns and groups (section provides MSO TR, columns provide MSO TDs)
 	for _, child := range c.Children {
 		// Pass the effective width and sibling counts to the child
 		child.SetContainerWidth(c.GetEffectiveWidth())
@@ -221,7 +221,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 
 		// Use optimized rendering with fallback to string-based
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 
@@ -260,6 +260,37 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if _, err := w.WriteString("</td></tr></tbody></table>"); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (c *MJSectionComponent) RenderMJML(w io.StringWriter) error {
+	// Write opening tag with indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(2) + "<mj-section"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render children
+	for _, child := range c.Children {
+		if err := child.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(2) + "</mj-section>"); err != nil {
+		return err
 	}
 
 	return nil

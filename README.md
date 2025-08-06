@@ -107,16 +107,16 @@ func main() {
       </mjml>`
 
 	// Method 1: Direct rendering (recommended)
-	html, err := mjml.Render(mjmlContent)
+	html, err := mjml.RenderHTML(mjmlContent)
 	if err != nil {
-		log.Fatal("Render error:", err)
+		log.Fatal("RenderHTML error:", err)
 	}
 	fmt.Println(html)
 
 	// Method 1b: Direct rendering with debug attributes
-	htmlWithDebug, err := mjml.Render(mjmlContent, mjml.WithDebugTags(true))
+	htmlWithDebug, err := mjml.RenderHTML(mjmlContent, mjml.WithDebugTags(true))
 	if err != nil {
-		log.Fatal("Render error:", err)
+		log.Fatal("RenderHTML error:", err)
 	}
 	fmt.Println(htmlWithDebug) // Includes data-mj-debug-* attributes
 
@@ -133,7 +133,7 @@ func main() {
 
 	html, err = mjml.RenderComponentString(component)
 	if err != nil {
-		log.Fatal("Render error:", err)
+		log.Fatal("RenderHTML error:", err)
 	}
 	fmt.Println(html)
 }
@@ -168,15 +168,20 @@ func NewMJNewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJNewCo
 // Note: RenderString() is no longer part of the Component interface
 // Use mjml.RenderComponentString(component) helper function instead
 
-func (c *MJNewComponent) Render(w io.Writer) error {
-    // Implementation here - write HTML directly to Writer
+func (c *MJNewComponent) RenderHTML(w io.StringWriter) error {
+    // Implementation here - write HTML directly to StringWriter
     // Use c.AddDebugAttribute(tag, "new") for debug traceability
     
     // Example implementation:
-    // if _, err := w.Write([]byte("<div>Hello World</div>")); err != nil {
+    // if _, err := w.WriteString("<div>Hello World</div>"); err != nil {
     //     return err
     // }
     return nil
+}
+
+func (c *MJNewComponent) RenderMJML(w io.StringWriter) error {
+    // Implementation for MJML-to-MJML rendering (for transformations)
+    return &NotImplementedError{ComponentName: "mj-new"}
 }
 
 func (c *MJNewComponent) GetTagName() string {
@@ -195,18 +200,23 @@ case "mj-new":
 
 All MJML components must implement the `Component` interface, which requires:
 
-- **`Render(w io.Writer) error`**: Primary rendering method that writes HTML directly to a Writer for optimal performance
+- **`RenderHTML(w io.StringWriter) error`**: Primary rendering method that writes HTML directly to a StringWriter for optimal performance
+- **`RenderMJML(w io.StringWriter) error`**: MJML-to-MJML rendering method for transformations (can return NotImplementedError for most components)
 - **`GetTagName() string`**: Returns the component's MJML tag name
 
-For string-based rendering, use the helper function `mjml.RenderComponentString(component)` instead of a component method.
+For string-based rendering, use the helper functions `mjml.RenderComponentString(component)` for HTML output or `mjml.RenderComponentMJMLString(component)` for MJML output.
 
 #### Delaying Component Implementation
 
 If you need to register a component but won't implement its functionality right away, use the `NotImplementedError` pattern:
 
 ```go
-func (c *MJNewComponent) Render(w io.Writer) error {
+func (c *MJNewComponent) RenderHTML(w io.StringWriter) error {
     // TODO: Implement mj-new component functionality
+    return &NotImplementedError{ComponentName: "mj-new"}
+}
+
+func (c *MJNewComponent) RenderMJML(w io.StringWriter) error {
     return &NotImplementedError{ComponentName: "mj-new"}
 }
 
@@ -397,6 +407,39 @@ Generated HTML works across all major email clients:
 - **CSS Inlining Ready**: Structure compatible with CSS inlining tools
 - **Mobile Responsive**: Automatic mobile breakpoints and media queries
 - **Web Font Support**: Google Fonts integration with fallbacks
+
+## 🚀 Future Possibilities: Dual Rendering Architecture
+
+The implementation now features a **dual rendering system** with both `RenderHTML()` and `RenderMJML()` methods, opening exciting possibilities for email template workflows:
+
+### Code-First Email Templates
+- **Generate Go Code from MJML**: Future tooling could parse MJML files and generate corresponding Go code that constructs component trees programmatically
+- **Go as Single Source of Truth**: Keep Go code as the primary email template definition, with the ability to render both HTML (for sending) and MJML (for validation/debugging)
+- **Round-trip Compatibility**: Generate MJML from Go component trees for verification against original MJML specifications or for use with other MJML tools
+
+### Potential Workflow
+```go
+// Future: Generate this Go code from MJML input
+func CreateNewsletterTemplate(title, content, ctaUrl string) mjml.Component {
+    return mjml.NewMJML().
+        AddHead(mjml.NewMJHead().
+            AddTitle(title)).
+        AddBody(mjml.NewMJBody().
+            AddSection(mjml.NewMJSection().
+                AddColumn(mjml.NewMJColumn().
+                    AddText(content).
+                    AddButton(mjml.NewMJButton().
+                        SetHref(ctaUrl).
+                        SetText("Click Me")))))
+}
+
+// Use the template
+template := CreateNewsletterTemplate("News", "Hello World!", "https://example.com")
+html, _ := mjml.RenderComponentString(template)        // For email sending
+mjmlCode, _ := mjml.RenderComponentMJMLString(template) // For validation/debugging
+```
+
+This approach enables **template-as-code** patterns where email templates can be version-controlled, tested, and maintained using standard software development practices while retaining full MJML compatibility.
 
 ## 🔗 Related Projects
 

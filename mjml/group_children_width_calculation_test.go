@@ -24,12 +24,12 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 			mjmlBuilder.WriteString(`</mj-group></mj-section></mj-body></mjml>`)
 			mjmlInput := mjmlBuilder.String()
 
-			// Render the MJML
+			// RenderHTML the MJML
 			renderResult, err := RenderWithAST(mjmlInput)
 			if err != nil {
 				t.Fatalf("Failed to render MJML: %v", err)
 			}
-			htmlOutput := renderResult.HTML
+			htmlOutput := renderResult.Result
 
 			// Extract expected CSS class from the AST instead of manually calculating
 			expectedClasses := extractColumnClassesFromAST(renderResult.AST)

@@ -76,9 +76,9 @@ func BenchmarkMJMLRender_10_Sections(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template)
+		_, err := RenderHTML(template)
 		if err != nil {
-			b.Fatalf("Render failed: %v", err)
+			b.Fatalf("RenderHTML failed: %v", err)
 		}
 	}
 }
@@ -89,9 +89,9 @@ func BenchmarkMJMLRender_100_Sections(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template)
+		_, err := RenderHTML(template)
 		if err != nil {
-			b.Fatalf("Render failed: %v", err)
+			b.Fatalf("RenderHTML failed: %v", err)
 		}
 	}
 }
@@ -102,9 +102,9 @@ func BenchmarkMJMLRender_1000_Sections(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template)
+		_, err := RenderHTML(template)
 		if err != nil {
-			b.Fatalf("Render failed: %v", err)
+			b.Fatalf("RenderHTML failed: %v", err)
 		}
 	}
 }
@@ -116,9 +116,9 @@ func BenchmarkMJMLRender_10_Sections_Memory(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template)
+		_, err := RenderHTML(template)
 		if err != nil {
-			b.Fatalf("Render failed: %v", err)
+			b.Fatalf("RenderHTML failed: %v", err)
 		}
 	}
 }
@@ -130,9 +130,9 @@ func BenchmarkMJMLRender_100_Sections_Memory(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template)
+		_, err := RenderHTML(template)
 		if err != nil {
-			b.Fatalf("Render failed: %v", err)
+			b.Fatalf("RenderHTML failed: %v", err)
 		}
 	}
 }
@@ -144,9 +144,9 @@ func BenchmarkMJMLRender_1000_Sections_Memory(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template)
+		_, err := RenderHTML(template)
 		if err != nil {
-			b.Fatalf("Render failed: %v", err)
+			b.Fatalf("RenderHTML failed: %v", err)
 		}
 	}
 }
@@ -207,9 +207,9 @@ func BenchmarkMJMLRender_100_Sections_Writer(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var buf strings.Builder
-		err := component.Render(&buf)
+		err := component.RenderHTML(&buf)
 		if err != nil {
-			b.Fatalf("Render failed: %v", err)
+			b.Fatalf("RenderHTML failed: %v", err)
 		}
 		_ = buf.String() // Force evaluation to match string-based benchmark
 	}
@@ -222,9 +222,9 @@ func BenchmarkMJMLRender_vs_RenderString_100_Sections(b *testing.B) {
 	b.Run("String-based", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			_, err := Render(template)
+			_, err := RenderHTML(template)
 			if err != nil {
-				b.Fatalf("Render failed: %v", err)
+				b.Fatalf("RenderHTML failed: %v", err)
 			}
 		}
 	})
@@ -242,9 +242,9 @@ func BenchmarkMJMLRender_vs_RenderString_100_Sections(b *testing.B) {
 			}
 
 			var buf strings.Builder
-			err = component.Render(&buf)
+			err = component.RenderHTML(&buf)
 			if err != nil {
-				b.Fatalf("Render failed: %v", err)
+				b.Fatalf("RenderHTML failed: %v", err)
 			}
 		}
 	})
