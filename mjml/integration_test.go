@@ -18,7 +18,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		filename          string
 		testMJMLRoundTrip bool // Set to true to enable MJML round-trip test for this specific test case
 	}{
-		{name: "basic", filename: "testdata/basic.mjml", testMJMLRoundTrip: false},
+		{name: "basic", filename: "testdata/basic.mjml", testMJMLRoundTrip: true},
 		{name: "with-head", filename: "testdata/with-head.mjml", testMJMLRoundTrip: false},
 		{name: "complex-layout", filename: "testdata/complex-layout.mjml", testMJMLRoundTrip: false},
 		{name: "wrapper-basic", filename: "testdata/wrapper-basic.mjml", testMJMLRoundTrip: false},

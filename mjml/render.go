@@ -841,5 +841,27 @@ func (c *MJMLComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJMLComponent) RenderMJML(w io.StringWriter) error {
-	return &components.NotImplementedError{ComponentName: "mjml"}
+	if _, err := w.WriteString("<mjml>"); err != nil {
+		return err
+	}
+
+	// Render head if present
+	if c.Head != nil {
+		if err := c.Head.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	// Render body if present
+	if c.Body != nil {
+		if err := c.Body.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("\n</mjml>"); err != nil {
+		return err
+	}
+
+	return nil
 }

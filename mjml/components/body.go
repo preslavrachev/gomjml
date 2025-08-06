@@ -62,7 +62,33 @@ func (c *MJBodyComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJBodyComponent) RenderMJML(w io.StringWriter) error {
-	return &NotImplementedError{ComponentName: "mj-body"}
+	if _, err := w.WriteString("\n  <mj-body"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + value + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render children
+	for _, child := range c.Children {
+		if err := child.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("\n  </mj-body>"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJBodyComponent) GetDefaultAttribute(name string) string {

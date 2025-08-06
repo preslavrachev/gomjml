@@ -152,7 +152,34 @@ func (c *MJTextComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJTextComponent) RenderMJML(w io.StringWriter) error {
-	return &NotImplementedError{ComponentName: "mj-text"}
+	if _, err := w.WriteString("\n        <mj-text"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + value + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render text content - preserve original formatting from node
+	if c.Node.Text != "" {
+		// Use the text as-is to preserve original whitespace and formatting
+		if _, err := w.WriteString(c.Node.Text); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("</mj-text>"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJTextComponent) GetDefaultAttribute(name string) string {

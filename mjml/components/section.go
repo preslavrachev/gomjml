@@ -266,7 +266,33 @@ func (c *MJSectionComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJSectionComponent) RenderMJML(w io.StringWriter) error {
-	return &NotImplementedError{ComponentName: "mj-section"}
+	if _, err := w.WriteString("\n    <mj-section"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + value + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render children
+	for _, child := range c.Children {
+		if err := child.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("\n    </mj-section>"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJSectionComponent) GetDefaultAttribute(name string) string {
