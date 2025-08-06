@@ -1,6 +1,6 @@
 # gomjml - Native Go MJML Compiler
 
-A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML. 
+A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML. See our [performance benchmarks](docs/benchmarks.md) for detailed comparisons with other MJML implementations. 
 
 ![status](https://img.shields.io/badge/status-not_ready_for_production-red) 
 ![Tests](https://github.com/preslavrachev/gomjml/actions/workflows/test.yml/badge.svg)
@@ -26,7 +26,7 @@ A native Go implementation of the MJML email framework, providing fast compilati
 ```bash
 # Clone and build
 git clone https://github.com/preslavrachev/gomjml
-cd go
+cd gomjml
 go build -o bin/gomjml ./cmd/gomjml
 
 # Add to PATH (optional)
@@ -243,9 +243,9 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-attributes` | ✅ **Implemented** | Global attribute definitions |
 | `mj-all` | ✅ **Implemented** | Global attributes for all components |
 | **Not Implemented** | | |
-| `mj-accordion` | ❌ **Not Implemented** | Collapsible content sections |
-| `mj-accordion-text` | ❌ **Not Implemented** | Text content within accordion |
-| `mj-accordion-title` | ❌ **Not Implemented** | Title for accordion sections |
+| `mj-accordion` | ✅ **Implemented** | Collapsible content sections |
+| `mj-accordion-text` | ✅ **Implemented** | Text content within accordion |
+| `mj-accordion-title` | ✅ **Implemented** | Title for accordion sections |
 | `mj-carousel` | ❌ **Not Implemented** | Image carousel component |
 | `mj-carousel-image` | ❌ **Not Implemented** | Images within carousel |
 | `mj-hero` | ❌ **Not Implemented** | Header/banner sections with background images |
@@ -255,20 +255,15 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-table` | ❌ **Not Implemented** | Email-safe table component |
 
 ### Implementation Summary
-- **✅ Implemented: 16 components** - All essential layout, content, and head components work
-- **❌ Not Implemented: 10 components** - Advanced interactive components return `NotImplementedError`
+- **✅ Implemented: 19 components** - All essential layout, content, head components, and accordion work
+- **❌ Not Implemented: 7 components** - Advanced interactive components return `NotImplementedError`
 - **Total MJML Components: 26** - Covers all major MJML specification components
 
 ### Integration Test Status
 Based on the integration test suite in `mjml/integration_test.go`, the implemented components are thoroughly tested against the MRML (Rust) reference implementation to ensure compatibility and correctness.
 
-### Baseline Benchmark
+### Performance Benchmarks
 
-The following benchmarks were run on a Mac Mini M1 with 16GB RAM and Go 1.21.4. As you can see, for a MVP, the performance is quite sufficient for most use cases, however, there is something to be desired in terms of memory usage and allocations. I am hoping to make significant refactoring and improvement in future releases.
-
-```bash
-./bench.sh  # You can also add --markdown for a markdown table output
-```
 | Benchmark                                  |  Time   | Memory  | Allocs |
 | :----------------------------------------- | :-----: | :-----: | :----: |
 | BenchmarkMJMLRender_10_Sections-8          | 0.41ms  | 0.56MB  |  4.9K  |
@@ -278,6 +273,16 @@ The following benchmarks were run on a Mac Mini M1 with 16GB RAM and Go 1.21.4. 
 | BenchmarkMJMLRender_100_Sections_Memory-8  | 4.64ms  | 5.83MB  | 46.2K  |
 | BenchmarkMJMLRender_1000_Sections_Memory-8 | 41.64ms | 59.23MB | 459.4K |
 | BenchmarkMJMLRender_100_Sections_Writer-8  | 2.39ms  | 4.68MB  | 21.2K  |
+
+For comprehensive performance analysis including comparisons with other MJML implementations, see our dedicated [performance benchmarks documentation](docs/benchmarks.md).
+
+```bash
+# Run comparative benchmarks
+./bench-austin.sh --markdown
+
+# Run internal Go benchmarks
+./bench.sh
+```
 
 ## 🏗️ Architecture
 
