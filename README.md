@@ -1,6 +1,6 @@
 # gomjml - Native Go MJML Compiler
 
-A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML. See our [performance benchmarks](docs/benchmarks.md) for detailed comparisons with other MJML implementations. 
+A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML. See some [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations. 
 
 ![status](https://img.shields.io/badge/status-not_ready_for_production-red) 
 ![Tests](https://github.com/preslavrachev/gomjml/actions/workflows/test.yml/badge.svg)
