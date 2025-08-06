@@ -20,7 +20,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 	}{
 		{name: "basic", filename: "testdata/basic.mjml", testMJMLRoundTrip: true},
 		{name: "with-head", filename: "testdata/with-head.mjml", testMJMLRoundTrip: false},
-		{name: "complex-layout", filename: "testdata/complex-layout.mjml", testMJMLRoundTrip: false},
+		{name: "complex-layout", filename: "testdata/complex-layout.mjml", testMJMLRoundTrip: true},
 		{name: "wrapper-basic", filename: "testdata/wrapper-basic.mjml", testMJMLRoundTrip: false},
 		{name: "wrapper-background", filename: "testdata/wrapper-background.mjml", testMJMLRoundTrip: false},
 		{name: "wrapper-fullwidth", filename: "testdata/wrapper-fullwidth.mjml", testMJMLRoundTrip: false},

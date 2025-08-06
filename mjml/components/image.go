@@ -199,7 +199,23 @@ func (c *MJImageComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJImageComponent) RenderMJML(w io.StringWriter) error {
-	return &NotImplementedError{ComponentName: "mj-image"}
+	// Write opening tag with dynamic indentation based on component depth
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(c.GetDepth()) + "<mj-image"); err != nil {
+		return err
+	}
+
+	// Render attributes in original order
+	for _, attr := range c.Node.Attrs {
+		if _, err := w.WriteString(" " + attr.Name.Local + "=\"" + html.EscapeXMLAttr(attr.Value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(" />"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJImageComponent) GetDefaultAttribute(name string) string {

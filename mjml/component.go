@@ -17,6 +17,11 @@ type Component = components.Component
 
 // CreateComponent creates a component from an MJML AST node
 func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component, error) {
+	return CreateComponentWithDepth(node, opts, 0)
+}
+
+// CreateComponentWithDepth creates a component from an MJML AST node with depth tracking
+func CreateComponentWithDepth(node *parser.MJMLNode, opts *options.RenderOpts, depth int) (Component, error) {
 	// Ensure opts is not nil and has FontTracker initialized
 	if opts == nil {
 		opts = &options.RenderOpts{
@@ -35,87 +40,105 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 		"attr_count":   len(node.Attrs),
 	})
 
+	var comp Component
+	var err error
+
 	switch tagName {
 	case "mjml":
-		return createMJMLComponent(node, opts)
+		comp, err = createMJMLComponentWithDepth(node, opts, depth)
+		if err != nil {
+			return nil, err
+		}
 	case "mj-head":
-		return components.NewMJHeadComponent(node, opts), nil
+		comp = components.NewMJHeadComponent(node, opts)
 	case "mj-body":
-		return components.NewMJBodyComponent(node, opts), nil
+		comp = components.NewMJBodyComponent(node, opts)
 	case "mj-section":
-		return components.NewMJSectionComponent(node, opts), nil
+		comp = components.NewMJSectionComponent(node, opts)
 	case "mj-column":
-		return components.NewMJColumnComponent(node, opts), nil
+		comp = components.NewMJColumnComponent(node, opts)
 	case "mj-text":
-		return components.NewMJTextComponent(node, opts), nil
+		comp = components.NewMJTextComponent(node, opts)
 	case "mj-button":
-		return components.NewMJButtonComponent(node, opts), nil
+		comp = components.NewMJButtonComponent(node, opts)
 	case "mj-image":
-		return components.NewMJImageComponent(node, opts), nil
+		comp = components.NewMJImageComponent(node, opts)
 	case "mj-title":
-		return components.NewMJTitleComponent(node, opts), nil
+		comp = components.NewMJTitleComponent(node, opts)
 	case "mj-font":
-		return components.NewMJFontComponent(node, opts), nil
+		comp = components.NewMJFontComponent(node, opts)
 	case "mj-wrapper":
-		return components.NewMJWrapperComponent(node, opts), nil
+		comp = components.NewMJWrapperComponent(node, opts)
 	case "mj-divider":
-		return components.NewMJDividerComponent(node, opts), nil
+		comp = components.NewMJDividerComponent(node, opts)
 	case "mj-social":
-		return components.NewMJSocialComponent(node, opts), nil
+		comp = components.NewMJSocialComponent(node, opts)
 	case "mj-social-element":
-		return components.NewMJSocialElementComponent(node, opts), nil
+		comp = components.NewMJSocialElementComponent(node, opts)
 	case "mj-group":
-		return components.NewMJGroupComponent(node, opts), nil
+		comp = components.NewMJGroupComponent(node, opts)
 	case "mj-preview":
-		return components.NewMJPreviewComponent(node, opts), nil
+		comp = components.NewMJPreviewComponent(node, opts)
 	case "mj-style":
-		return components.NewMJStyleComponent(node, opts), nil
+		comp = components.NewMJStyleComponent(node, opts)
 	case "mj-attributes":
-		return components.NewMJAttributesComponent(node, opts), nil
+		comp = components.NewMJAttributesComponent(node, opts)
 	case "mj-all":
-		return components.NewMJAllComponent(node, opts), nil
+		comp = components.NewMJAllComponent(node, opts)
 	case "mj-accordion":
-		return components.NewMJAccordionComponent(node, opts), nil
+		comp = components.NewMJAccordionComponent(node, opts)
 	case "mj-accordion-text":
-		return components.NewMJAccordionTextComponent(node, opts), nil
+		comp = components.NewMJAccordionTextComponent(node, opts)
 	case "mj-accordion-title":
-		return components.NewMJAccordionTitleComponent(node, opts), nil
+		comp = components.NewMJAccordionTitleComponent(node, opts)
 	case "mj-accordion-element":
-		return components.NewMJAccordionElementComponent(node, opts), nil
+		comp = components.NewMJAccordionElementComponent(node, opts)
 	case "mj-carousel":
-		return components.NewMJCarouselComponent(node, opts), nil
+		comp = components.NewMJCarouselComponent(node, opts)
 	case "mj-carousel-image":
-		return components.NewMJCarouselImageComponent(node, opts), nil
+		comp = components.NewMJCarouselImageComponent(node, opts)
 	case "mj-hero":
-		return components.NewMJHeroComponent(node, opts), nil
+		comp = components.NewMJHeroComponent(node, opts)
 	case "mj-navbar":
-		return components.NewMJNavbarComponent(node, opts), nil
+		comp = components.NewMJNavbarComponent(node, opts)
 	case "mj-navbar-link":
-		return components.NewMJNavbarLinkComponent(node, opts), nil
+		comp = components.NewMJNavbarLinkComponent(node, opts)
 	case "mj-spacer":
-		return components.NewMJSpacerComponent(node, opts), nil
+		comp = components.NewMJSpacerComponent(node, opts)
 	case "mj-table":
-		return components.NewMJTableComponent(node, opts), nil
+		comp = components.NewMJTableComponent(node, opts)
 	case "mj-raw":
-		return components.NewMJRawComponent(node, opts), nil
+		comp = components.NewMJRawComponent(node, opts)
 	default:
 		debug.DebugLogError("component", "create-error", "Unknown component type", fmt.Errorf("unknown component: %s", tagName))
 		return nil, fmt.Errorf("unknown component: %s", tagName)
 	}
+
+	// Set depth on the component
+	comp.SetDepth(depth)
+	return comp, nil
 }
 
 func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJMLComponent, error) {
+	return createMJMLComponentWithDepth(node, opts, 0)
+}
+
+func createMJMLComponentWithDepth(node *parser.MJMLNode, opts *options.RenderOpts, depth int) (*MJMLComponent, error) {
 	comp := &MJMLComponent{
 		BaseComponent: components.NewBaseComponent(node, opts),
 	}
 
+	// Set depth for root MJML component
+	comp.SetDepth(depth)
+
 	// Find head and body components
 	if headNode := node.FindFirstChild("mj-head"); headNode != nil {
 		head := components.NewMJHeadComponent(headNode, opts)
+		head.SetDepth(depth + 1)
 
 		// Process head children
 		for _, childNode := range headNode.Children {
-			if childComponent, err := CreateComponent(childNode, opts); err == nil {
+			if childComponent, err := CreateComponentWithDepth(childNode, opts, depth+2); err == nil {
 				head.Children = append(head.Children, childComponent)
 			}
 		}
@@ -125,11 +148,12 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 
 	if bodyNode := node.FindFirstChild("mj-body"); bodyNode != nil {
 		body := components.NewMJBodyComponent(bodyNode, opts)
+		body.SetDepth(depth + 1)
 		comp.Body = body
 
 		// Process body children
 		for _, childNode := range bodyNode.Children {
-			if childComponent, err := CreateComponent(childNode, opts); err == nil {
+			if childComponent, err := CreateComponentWithDepth(childNode, opts, depth+2); err == nil {
 				body.Children = append(body.Children, childComponent)
 			}
 		}
@@ -138,15 +162,15 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 		for _, child := range body.Children {
 			switch comp := child.(type) {
 			case *components.MJSectionComponent:
-				processSectionChildren(comp, opts)
+				processSectionChildrenWithDepth(comp, opts, depth+3)
 			case *components.MJWrapperComponent:
 				for _, childNode := range comp.Node.Children {
-					if childComponent, err := CreateComponent(childNode, opts); err == nil {
+					if childComponent, err := CreateComponentWithDepth(childNode, opts, depth+3); err == nil {
 						comp.Children = append(comp.Children, childComponent)
 
 						// Process wrapper's section children
 						if section, ok := childComponent.(*components.MJSectionComponent); ok {
-							processSectionChildren(section, opts)
+							processSectionChildrenWithDepth(section, opts, depth+4)
 						}
 					}
 				}
@@ -159,25 +183,30 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 
 // processComponentChildren recursively processes children of content components
 func processComponentChildren(component Component, node *parser.MJMLNode, opts *options.RenderOpts) {
+	processComponentChildrenWithDepth(component, node, opts, 5) // Default depth for nested components
+}
+
+// processComponentChildrenWithDepth recursively processes children of content components with depth tracking
+func processComponentChildrenWithDepth(component Component, node *parser.MJMLNode, opts *options.RenderOpts, childDepth int) {
 	// Only process components that can have children
 	switch comp := component.(type) {
 	case *components.MJSocialComponent:
 		// Process social element children
 		for _, childNode := range node.Children {
-			if childComponent, err := CreateComponent(childNode, opts); err == nil {
+			if childComponent, err := CreateComponentWithDepth(childNode, opts, childDepth); err == nil {
 				comp.Children = append(comp.Children, childComponent)
 			}
 		}
 	case *components.MJAccordionComponent:
 		// Process accordion element children
 		for _, childNode := range node.Children {
-			if childComponent, err := CreateComponent(childNode, opts); err == nil {
+			if childComponent, err := CreateComponentWithDepth(childNode, opts, childDepth); err == nil {
 				comp.Children = append(comp.Children, childComponent)
 
 				// Process accordion element children (title and text)
 				if accordionElement, ok := childComponent.(*components.MJAccordionElementComponent); ok {
 					for _, elementChildNode := range childNode.Children {
-						if elementChildComponent, err := CreateComponent(elementChildNode, opts); err == nil {
+						if elementChildComponent, err := CreateComponentWithDepth(elementChildNode, opts, childDepth+1); err == nil {
 							accordionElement.Children = append(accordionElement.Children, elementChildComponent)
 						}
 					}
@@ -190,8 +219,13 @@ func processComponentChildren(component Component, node *parser.MJMLNode, opts *
 
 // processSectionChildren processes the children of a section component (columns and groups)
 func processSectionChildren(section *components.MJSectionComponent, opts *options.RenderOpts) {
+	processSectionChildrenWithDepth(section, opts, 3) // Default depth for sections
+}
+
+// processSectionChildrenWithDepth processes the children of a section component with depth tracking
+func processSectionChildrenWithDepth(section *components.MJSectionComponent, opts *options.RenderOpts, columnDepth int) {
 	for _, colNode := range section.Node.Children {
-		if colComponent, err := CreateComponent(colNode, opts); err == nil {
+		if colComponent, err := CreateComponentWithDepth(colNode, opts, columnDepth); err == nil {
 			section.Children = append(section.Children, colComponent)
 
 			// Handle different column types
@@ -199,27 +233,27 @@ func processSectionChildren(section *components.MJSectionComponent, opts *option
 			case *components.MJColumnComponent:
 				// Process column children
 				for _, contentNode := range col.Node.Children {
-					if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
+					if contentComponent, err := CreateComponentWithDepth(contentNode, opts, columnDepth+1); err == nil {
 						col.Children = append(col.Children, contentComponent)
 
 						// Process nested children (e.g., social elements within social component)
-						processComponentChildren(contentComponent, contentNode, opts)
+						processComponentChildrenWithDepth(contentComponent, contentNode, opts, columnDepth+2)
 					}
 				}
 			case *components.MJGroupComponent:
 				// Process group children (columns within the group)
 				for _, groupChildNode := range col.Node.Children {
-					if groupChildComponent, err := CreateComponent(groupChildNode, opts); err == nil {
+					if groupChildComponent, err := CreateComponentWithDepth(groupChildNode, opts, columnDepth+1); err == nil {
 						col.Children = append(col.Children, groupChildComponent)
 
 						// Process column children within the group
 						if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
 							for _, contentNode := range groupColumn.Node.Children {
-								if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
+								if contentComponent, err := CreateComponentWithDepth(contentNode, opts, columnDepth+2); err == nil {
 									groupColumn.Children = append(groupColumn.Children, contentComponent)
 
 									// Process nested children (e.g., social elements within social component)
-									processComponentChildren(contentComponent, contentNode, opts)
+									processComponentChildrenWithDepth(contentComponent, contentNode, opts, columnDepth+3)
 								}
 							}
 						}

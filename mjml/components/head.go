@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
@@ -29,7 +30,35 @@ func (c *MJHeadComponent) GetTagName() string {
 }
 
 func (c *MJHeadComponent) RenderMJML(w io.StringWriter) error {
-	return &NotImplementedError{ComponentName: "mj-head"}
+	// Opening tag with newline and indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(1) + "<mj-head"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render children
+	for _, child := range c.Children {
+		if err := child.RenderMJML(w); err != nil {
+			return err
+		}
+	}
+
+	// Closing tag with newline and indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(1) + "</mj-head>"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJHeadComponent) GetDefaultAttribute(name string) string {
@@ -53,7 +82,35 @@ func (c *MJTitleComponent) RenderHTML(w io.StringWriter) error {
 }
 
 func (c *MJTitleComponent) RenderMJML(w io.StringWriter) error {
-	return &NotImplementedError{ComponentName: "mj-title"}
+	// Opening tag with newline and indentation
+	if _, err := w.WriteString("\n" + c.RenderOpts.Indentation.GetIndent(2) + "<mj-title"); err != nil {
+		return err
+	}
+
+	// Render attributes
+	for name, value := range c.Attrs {
+		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+
+	// Render text content
+	if c.Node.Text != "" {
+		if _, err := w.WriteString(c.Node.Text); err != nil {
+			return err
+		}
+	}
+
+	// Closing tag
+	if _, err := w.WriteString("</mj-title>"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *MJTitleComponent) GetTagName() string {

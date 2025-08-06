@@ -157,9 +157,9 @@ func (c *MJTextComponent) RenderMJML(w io.StringWriter) error {
 		return err
 	}
 
-	// Render attributes
-	for name, value := range c.Attrs {
-		if _, err := w.WriteString(" " + name + "=\"" + html.EscapeXMLAttr(value) + "\""); err != nil {
+	// Render attributes in original order
+	for _, attr := range c.Node.Attrs {
+		if _, err := w.WriteString(" " + attr.Name.Local + "=\"" + html.EscapeXMLAttr(attr.Value) + "\""); err != nil {
 			return err
 		}
 	}
