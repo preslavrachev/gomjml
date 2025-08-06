@@ -34,7 +34,7 @@ func (c *MJColumnComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJColumnComponent
-func (c *MJColumnComponent) Render(w io.StringWriter) error {
+func (c *MJColumnComponent) RenderHTML(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -121,9 +121,9 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 		return err
 	}
 
-	// Render column content (child components)
+	// RenderHTML column content (child components)
 	for _, child := range c.Children {
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 	}
@@ -136,6 +136,10 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 	}
 
 	return nil
+}
+
+func (c *MJColumnComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-column"}
 }
 
 func (c *MJColumnComponent) GetDefaultAttribute(name string) string {

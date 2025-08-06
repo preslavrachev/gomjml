@@ -22,7 +22,7 @@ func NewMJAccordionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *M
 	}
 }
 
-func (c *MJAccordionComponent) Render(w io.StringWriter) error {
+func (c *MJAccordionComponent) RenderHTML(w io.StringWriter) error {
 	border := c.GetAttributeWithDefault(c, constants.MJMLBorder)
 	fontFamily := c.GetAttributeWithDefault(c, constants.MJMLFontFamily)
 	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
@@ -87,12 +87,12 @@ func (c *MJAccordionComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Render accordion elements
+	// RenderHTML accordion elements
 	for _, child := range c.Children {
 		if accordionElement, ok := child.(*MJAccordionElementComponent); ok {
 			accordionElement.SetContainerWidth(c.GetContainerWidth())
 			accordionElement.inheritFromParent(c)
-			if err := accordionElement.Render(w); err != nil {
+			if err := accordionElement.RenderHTML(w); err != nil {
 				return err
 			}
 		}
@@ -108,6 +108,10 @@ func (c *MJAccordionComponent) Render(w io.StringWriter) error {
 
 func (c *MJAccordionComponent) GetTagName() string {
 	return "mj-accordion"
+}
+
+func (c *MJAccordionComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-accordion"}
 }
 
 func (c *MJAccordionComponent) GetDefaultAttribute(name string) string {
@@ -150,8 +154,8 @@ func NewMJAccordionTextComponent(node *parser.MJMLNode, opts *options.RenderOpts
 	}
 }
 
-func (c *MJAccordionTextComponent) Render(w io.StringWriter) error {
-	// Render the raw content inside the accordion text
+func (c *MJAccordionTextComponent) RenderHTML(w io.StringWriter) error {
+	// RenderHTML the raw content inside the accordion text
 	content := strings.TrimSpace(c.Node.Text)
 	if content != "" {
 		if _, err := w.WriteString(content); err != nil {
@@ -177,14 +181,14 @@ func (c *MJAccordionTextComponent) renderHTMLChild(w io.StringWriter, node *pars
 			return err
 		}
 
-		// Render text content
+		// RenderHTML text content
 		if content := strings.TrimSpace(node.Text); content != "" {
 			if _, err := w.WriteString(content); err != nil {
 				return err
 			}
 		}
 
-		// Render children recursively
+		// RenderHTML children recursively
 		for _, child := range node.Children {
 			if err := c.renderHTMLChild(w, child); err != nil {
 				return err
@@ -203,6 +207,10 @@ func (c *MJAccordionTextComponent) renderHTMLChild(w io.StringWriter, node *pars
 		}
 	}
 	return nil
+}
+
+func (c *MJAccordionTextComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-accordion-text"}
 }
 
 func (c *MJAccordionTextComponent) GetTagName() string {
@@ -235,8 +243,8 @@ func NewMJAccordionTitleComponent(node *parser.MJMLNode, opts *options.RenderOpt
 	}
 }
 
-func (c *MJAccordionTitleComponent) Render(w io.StringWriter) error {
-	// Render the raw content inside the accordion title
+func (c *MJAccordionTitleComponent) RenderHTML(w io.StringWriter) error {
+	// RenderHTML the raw content inside the accordion title
 	content := strings.TrimSpace(c.Node.Text)
 	if content != "" {
 		if _, err := w.WriteString(content); err != nil {
@@ -244,6 +252,10 @@ func (c *MJAccordionTitleComponent) Render(w io.StringWriter) error {
 		}
 	}
 	return nil
+}
+
+func (c *MJAccordionTitleComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-accordion-title"}
 }
 
 func (c *MJAccordionTitleComponent) GetTagName() string {
@@ -275,7 +287,7 @@ func NewMJAccordionElementComponent(node *parser.MJMLNode, opts *options.RenderO
 	}
 }
 
-func (c *MJAccordionElementComponent) Render(w io.StringWriter) error {
+func (c *MJAccordionElementComponent) RenderHTML(w io.StringWriter) error {
 	fontSize := c.getAttribute("font-size")
 	fontFamily := c.getAttribute("font-family")
 	backgroundColor := c.getAttribute("background-color")
@@ -351,14 +363,14 @@ func (c *MJAccordionElementComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Render title section
+	// RenderHTML title section
 	if titleComponent != nil {
 		if err := c.renderTitle(w, titleComponent, iconAlign, iconHeight, iconWidth, iconWrappedUrl, iconUnwrappedUrl, iconWrappedAlt, iconUnwrappedAlt); err != nil {
 			return err
 		}
 	}
 
-	// Render content section
+	// RenderHTML content section
 	if textComponent != nil {
 		if err := c.renderContent(w, textComponent); err != nil {
 			return err
@@ -415,7 +427,7 @@ func (c *MJAccordionElementComponent) renderTitle(w io.StringWriter, titleCompon
 		return err
 	}
 
-	// Render icon on left if icon-position="left"
+	// RenderHTML icon on left if icon-position="left"
 	if iconPosition == constants.AlignLeft {
 		if err := c.renderIconCell(w, iconAlign, iconHeight, iconWidth, iconWrappedUrl, iconUnwrappedUrl, iconWrappedAlt, iconUnwrappedAlt, titleComponent, backgroundColor); err != nil {
 			return err
@@ -469,8 +481,8 @@ func (c *MJAccordionElementComponent) renderTitle(w io.StringWriter, titleCompon
 		return err
 	}
 
-	// Render title content
-	if err := titleComponent.Render(w); err != nil {
+	// RenderHTML title content
+	if err := titleComponent.RenderHTML(w); err != nil {
 		return err
 	}
 
@@ -479,7 +491,7 @@ func (c *MJAccordionElementComponent) renderTitle(w io.StringWriter, titleCompon
 		return err
 	}
 
-	// Render icon on right if icon-position="right" (default)
+	// RenderHTML icon on right if icon-position="right" (default)
 	if iconPosition != constants.AlignLeft {
 		if err := c.renderIconCell(w, iconAlign, iconHeight, iconWidth, iconWrappedUrl, iconUnwrappedUrl, iconWrappedAlt, iconUnwrappedAlt, titleComponent, backgroundColor); err != nil {
 			return err
@@ -641,8 +653,8 @@ func (c *MJAccordionElementComponent) renderContent(w io.StringWriter, textCompo
 		return err
 	}
 
-	// Render text content
-	if err := textComponent.Render(w); err != nil {
+	// RenderHTML text content
+	if err := textComponent.RenderHTML(w); err != nil {
 		return err
 	}
 
@@ -652,6 +664,10 @@ func (c *MJAccordionElementComponent) renderContent(w io.StringWriter, textCompo
 	}
 
 	return nil
+}
+
+func (c *MJAccordionElementComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-accordion-element"}
 }
 
 func (c *MJAccordionElementComponent) GetTagName() string {

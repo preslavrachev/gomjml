@@ -160,9 +160,9 @@ func BenchmarkPreallocationStrategies_Simple(b *testing.B) {
 
 				var buf strings.Builder
 				buf.Grow(bufferSize) // Pre-allocate with strategy
-				err = component.Render(&buf)
+				err = component.RenderHTML(&buf)
 				if err != nil {
-					b.Fatalf("Render failed: %v", err)
+					b.Fatalf("RenderHTML failed: %v", err)
 				}
 				_ = buf.String() // Force evaluation
 			}
@@ -195,9 +195,9 @@ func BenchmarkPreallocationStrategies_Medium(b *testing.B) {
 
 				var buf strings.Builder
 				buf.Grow(bufferSize) // Pre-allocate with strategy
-				err = component.Render(&buf)
+				err = component.RenderHTML(&buf)
 				if err != nil {
-					b.Fatalf("Render failed: %v", err)
+					b.Fatalf("RenderHTML failed: %v", err)
 				}
 				_ = buf.String() // Force evaluation
 			}
@@ -230,9 +230,9 @@ func BenchmarkPreallocationStrategies_Complex(b *testing.B) {
 
 				var buf strings.Builder
 				buf.Grow(bufferSize) // Pre-allocate with strategy
-				err = component.Render(&buf)
+				err = component.RenderHTML(&buf)
 				if err != nil {
-					b.Fatalf("Render failed: %v", err)
+					b.Fatalf("RenderHTML failed: %v", err)
 				}
 				_ = buf.String() // Force evaluation
 			}
@@ -266,9 +266,9 @@ func BenchmarkPreallocationStrategies_RealWorld(b *testing.B) {
 
 				var buf strings.Builder
 				buf.Grow(bufferSize) // Pre-allocate with strategy
-				err = component.Render(&buf)
+				err = component.RenderHTML(&buf)
 				if err != nil {
-					b.Fatalf("Render failed: %v", err)
+					b.Fatalf("RenderHTML failed: %v", err)
 				}
 				_ = buf.String() // Force evaluation
 			}
@@ -304,9 +304,9 @@ func BenchmarkBufferGrowth_Analysis(b *testing.B) {
 
 				// No pre-allocation to see natural growth
 				var buf strings.Builder
-				err = component.Render(&buf)
+				err = component.RenderHTML(&buf)
 				if err != nil {
-					b.Fatalf("Render failed: %v", err)
+					b.Fatalf("RenderHTML failed: %v", err)
 				}
 
 				result := buf.String()
@@ -338,9 +338,9 @@ func TestExpansionRatios(t *testing.T) {
 			}
 
 			var buf strings.Builder
-			err = component.Render(&buf)
+			err = component.RenderHTML(&buf)
 			if err != nil {
-				t.Fatalf("Render failed: %v", err)
+				t.Fatalf("RenderHTML failed: %v", err)
 			}
 
 			result := buf.String()

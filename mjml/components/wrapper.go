@@ -22,6 +22,10 @@ func NewMJWrapperComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJW
 	}
 }
 
+func (c *MJWrapperComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-wrapper"}
+}
+
 func (c *MJWrapperComponent) GetDefaultAttribute(name string) string {
 	switch name {
 	case "background-position":
@@ -81,7 +85,7 @@ func (c *MJWrapperComponent) isFullWidth() bool {
 }
 
 // Render implements optimized Writer-based rendering for MJWrapperComponent
-func (c *MJWrapperComponent) Render(w io.StringWriter) error {
+func (c *MJWrapperComponent) RenderHTML(w io.StringWriter) error {
 	if c.isFullWidth() {
 		return c.renderFullWidthToWriter(w)
 	}
@@ -199,10 +203,10 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		return err
 	}
 
-	// Render children with standard body width
+	// RenderHTML children with standard body width
 	for _, child := range c.Children {
 		child.SetContainerWidth(GetDefaultBodyWidthPixels())
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 	}
@@ -360,10 +364,10 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		return err
 	}
 
-	// Render children - pass the effective width (600px - border width)
+	// RenderHTML children - pass the effective width (600px - border width)
 	for _, child := range c.Children {
 		child.SetContainerWidth(effectiveWidth)
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 	}

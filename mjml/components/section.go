@@ -27,7 +27,7 @@ func (c *MJSectionComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJSectionComponent
-func (c *MJSectionComponent) Render(w io.StringWriter) error {
+func (c *MJSectionComponent) RenderHTML(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -166,7 +166,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
+	// RenderHTML child columns and groups (section provides MSO TR, columns provide MSO TDs)
 	for _, child := range c.Children {
 		// Pass the effective width and sibling counts to the child
 		child.SetContainerWidth(c.GetEffectiveWidth())
@@ -221,7 +221,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 
 		// Use optimized rendering with fallback to string-based
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 
@@ -263,6 +263,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	return nil
+}
+
+func (c *MJSectionComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-section"}
 }
 
 func (c *MJSectionComponent) GetDefaultAttribute(name string) string {

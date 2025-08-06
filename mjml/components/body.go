@@ -34,7 +34,7 @@ func (c *MJBodyComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJBodyComponent
-func (c *MJBodyComponent) Render(w io.StringWriter) error {
+func (c *MJBodyComponent) RenderHTML(w io.StringWriter) error {
 	// Apply background-color to div if specified (matching MRML's set_body_style)
 	backgroundColor := c.GetAttribute("background-color")
 
@@ -49,7 +49,7 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	}
 
 	for _, child := range c.Children {
-		if err := child.Render(w); err != nil {
+		if err := child.RenderHTML(w); err != nil {
 			return err
 		}
 	}
@@ -59,6 +59,10 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	}
 
 	return nil
+}
+
+func (c *MJBodyComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-body"}
 }
 
 func (c *MJBodyComponent) GetDefaultAttribute(name string) string {

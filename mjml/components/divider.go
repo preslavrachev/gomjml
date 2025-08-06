@@ -20,6 +20,10 @@ func NewMJDividerComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJD
 	}
 }
 
+func (c *MJDividerComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-divider"}
+}
+
 func (c *MJDividerComponent) GetDefaultAttribute(name string) string {
 	switch name {
 	case "align":
@@ -46,7 +50,7 @@ func (c *MJDividerComponent) getAttribute(name string) string {
 }
 
 // Render implements optimized Writer-based rendering for MJDividerComponent
-func (c *MJDividerComponent) Render(w io.StringWriter) error {
+func (c *MJDividerComponent) RenderHTML(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	borderColor := c.getAttribute("border-color")
 	borderStyle := c.getAttribute("border-style")
@@ -92,7 +96,7 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	width := c.getAttribute("width")
 	p = p.AddStyle("width", width)
 
-	// Render paragraph - must be empty, not self-closing to match MRML
+	// RenderHTML paragraph - must be empty, not self-closing to match MRML
 	if err := p.RenderOpen(w); err != nil {
 		return err
 	}

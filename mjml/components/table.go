@@ -19,13 +19,17 @@ func NewMJTableComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTab
 	}
 }
 
-func (c *MJTableComponent) Render(w io.StringWriter) error {
+func (c *MJTableComponent) RenderHTML(w io.StringWriter) error {
 	// TODO: Implement mj-table component functionality
 	return &NotImplementedError{ComponentName: "mj-table"}
 }
 
 func (c *MJTableComponent) GetTagName() string {
 	return "mj-table"
+}
+
+func (c *MJTableComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-table"}
 }
 
 func (c *MJTableComponent) GetDefaultAttribute(name string) string {

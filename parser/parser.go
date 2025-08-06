@@ -170,7 +170,7 @@ func (n *MJMLNode) GetMixedContent() string {
 
 	// Add child elements with remaining text parts
 	for i, child := range n.Children {
-		// Render child element as HTML
+		// RenderHTML child element as HTML
 		result.WriteString("<")
 		result.WriteString(child.XMLName.Local)
 

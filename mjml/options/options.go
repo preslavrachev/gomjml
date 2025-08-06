@@ -3,6 +3,14 @@ package options
 
 import "sync"
 
+// OutputFormat specifies the output format for rendering
+type OutputFormat int
+
+const (
+	OutputHTML OutputFormat = iota // Default HTML rendering
+	OutputMJML                     // MJML rendering
+)
+
 // FontTracker tracks font families used by components during rendering
 type FontTracker struct {
 	mu    sync.Mutex
@@ -41,7 +49,8 @@ func (ft *FontTracker) GetFonts() []string {
 
 // RenderOpts contains options for MJML rendering
 type RenderOpts struct {
-	DebugTags   bool         // Whether to include debug attributes in output
-	InsideGroup bool         // Whether the component is being rendered inside a group
-	FontTracker *FontTracker // Tracks fonts used during rendering
+	DebugTags    bool         // Whether to include debug attributes in output
+	InsideGroup  bool         // Whether the component is being rendered inside a group
+	FontTracker  *FontTracker // Tracks fonts used during rendering
+	OutputFormat OutputFormat // Output format (HTML=0 default, MJML=1)
 }

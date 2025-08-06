@@ -31,7 +31,7 @@ func (c *MJRawComponent) GetDefaultAttribute(name string) string {
 }
 
 // Render implements optimized Writer-based rendering for MJRawComponent
-func (c *MJRawComponent) Render(w io.StringWriter) error {
+func (c *MJRawComponent) RenderHTML(w io.StringWriter) error {
 	// mj-raw simply outputs its content as-is, without any wrapping HTML
 	// The content includes both text and child nodes as raw HTML
 	content := c.getRawContent()
@@ -104,4 +104,8 @@ func (c *MJRawComponent) nodeToHTML(node *parser.MJMLNode) string {
 
 	html += "</" + tagName + ">"
 	return html
+}
+
+func (c *MJRawComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-raw"}
 }

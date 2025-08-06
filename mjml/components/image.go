@@ -28,7 +28,7 @@ func (c *MJImageComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJImageComponent
-func (c *MJImageComponent) Render(w io.StringWriter) error {
+func (c *MJImageComponent) RenderHTML(w io.StringWriter) error {
 	// Helper function to get attribute with default
 	getAttr := func(name string) string {
 		if attr := c.GetAttribute(name); attr != nil {
@@ -196,6 +196,10 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 	}
 
 	return nil
+}
+
+func (c *MJImageComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-image"}
 }
 
 func (c *MJImageComponent) GetDefaultAttribute(name string) string {

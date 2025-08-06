@@ -20,12 +20,16 @@ func NewMJHeadComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHead
 	}
 }
 
-func (c *MJHeadComponent) Render(w io.StringWriter) error {
+func (c *MJHeadComponent) RenderHTML(w io.StringWriter) error {
 	return nil // Head is handled in MJML component
 }
 
 func (c *MJHeadComponent) GetTagName() string {
 	return "mj-head"
+}
+
+func (c *MJHeadComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-head"}
 }
 
 func (c *MJHeadComponent) GetDefaultAttribute(name string) string {
@@ -44,8 +48,12 @@ func NewMJTitleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTit
 	}
 }
 
-func (c *MJTitleComponent) Render(w io.StringWriter) error {
+func (c *MJTitleComponent) RenderHTML(w io.StringWriter) error {
 	return nil // Title is handled in MJML component head processing
+}
+
+func (c *MJTitleComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-title"}
 }
 
 func (c *MJTitleComponent) GetTagName() string {
@@ -68,8 +76,12 @@ func NewMJFontComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJFont
 	}
 }
 
-func (c *MJFontComponent) Render(w io.StringWriter) error {
+func (c *MJFontComponent) RenderHTML(w io.StringWriter) error {
 	return nil // Font is handled in MJML component head processing
+}
+
+func (c *MJFontComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-font"}
 }
 
 func (c *MJFontComponent) GetTagName() string {
@@ -99,7 +111,7 @@ func NewMJPreviewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJP
 	}
 }
 
-func (c *MJPreviewComponent) Render(w io.StringWriter) error {
+func (c *MJPreviewComponent) RenderHTML(w io.StringWriter) error {
 	// Preview text is rendered as hidden div in body
 	if c.Node.Text != "" {
 		previewHTML := fmt.Sprintf(
@@ -110,6 +122,10 @@ func (c *MJPreviewComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	return nil
+}
+
+func (c *MJPreviewComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-preview"}
 }
 
 func (c *MJPreviewComponent) GetTagName() string {
@@ -132,7 +148,7 @@ func NewMJStyleComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSty
 	}
 }
 
-func (c *MJStyleComponent) Render(w io.StringWriter) error {
+func (c *MJStyleComponent) RenderHTML(w io.StringWriter) error {
 	// Custom CSS styles - render as style tag
 	if c.Node.Text != "" {
 		styleHTML := fmt.Sprintf(`<style type="text/css">%s</style>`, c.Node.Text)
@@ -140,6 +156,10 @@ func (c *MJStyleComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	return nil
+}
+
+func (c *MJStyleComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-style"}
 }
 
 func (c *MJStyleComponent) GetTagName() string {
@@ -162,8 +182,12 @@ func NewMJAttributesComponent(node *parser.MJMLNode, opts *options.RenderOpts) *
 	}
 }
 
-func (c *MJAttributesComponent) Render(w io.StringWriter) error {
+func (c *MJAttributesComponent) RenderHTML(w io.StringWriter) error {
 	return nil // Attributes are processed during parsing, no HTML output
+}
+
+func (c *MJAttributesComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-attributes"}
 }
 
 func (c *MJAttributesComponent) GetTagName() string {
@@ -186,8 +210,12 @@ func NewMJAllComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJAllCo
 	}
 }
 
-func (c *MJAllComponent) Render(w io.StringWriter) error {
+func (c *MJAllComponent) RenderHTML(w io.StringWriter) error {
 	return nil // Global attributes are processed during parsing, no HTML output
+}
+
+func (c *MJAllComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-all"}
 }
 
 func (c *MJAllComponent) GetTagName() string {

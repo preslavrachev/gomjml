@@ -29,7 +29,7 @@ func (c *MJTextComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJTextComponent
-func (c *MJTextComponent) Render(w io.StringWriter) error {
+func (c *MJTextComponent) RenderHTML(w io.StringWriter) error {
 	debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
 
 	debug.DebugLogWithData("mj-text", "content", "Processing text content", map[string]interface{}{
@@ -149,6 +149,10 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	}
 
 	return nil
+}
+
+func (c *MJTextComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-text"}
 }
 
 func (c *MJTextComponent) GetDefaultAttribute(name string) string {

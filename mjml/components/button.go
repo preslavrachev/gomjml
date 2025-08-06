@@ -69,7 +69,7 @@ func (c *MJButtonComponent) GetTagName() string {
 }
 
 // Render implements optimized Writer-based rendering for MJButtonComponent
-func (c *MJButtonComponent) Render(w io.StringWriter) error {
+func (c *MJButtonComponent) RenderHTML(w io.StringWriter) error {
 	// Get text content
 	textContent := c.Node.Text
 	if textContent == "" {
@@ -232,6 +232,10 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	}
 
 	return nil
+}
+
+func (c *MJButtonComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-button"}
 }
 
 func (c *MJButtonComponent) GetDefaultAttribute(name string) string {

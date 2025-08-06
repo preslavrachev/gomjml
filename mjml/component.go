@@ -231,12 +231,24 @@ func processSectionChildren(section *components.MJSectionComponent, opts *option
 }
 
 // RenderComponentString renders the given Component to a string.
-// It creates a strings.Builder writer and passes it to the Component's Render method.
+// It creates a strings.Builder writer and passes it to the Component's RenderHTML method.
 // This function returns the rendered output as a string, or an error if rendering fails.
-// Where possible, it is recommended to use the component's Render function directly for better performance and flexibility.
+// Where possible, it is recommended to use the component's RenderHTML function directly for better performance and flexibility.
 func RenderComponentString(c Component) (string, error) {
 	var output strings.Builder
-	if err := c.Render(&output); err != nil {
+	if err := c.RenderHTML(&output); err != nil {
+		return "", err
+	}
+	return output.String(), nil
+}
+
+// RenderComponentMJMLString renders the given Component to an MJML string.
+// It creates a strings.Builder writer and passes it to the Component's RenderMJML method.
+// This function returns the rendered MJML output as a string, or an error if rendering fails.
+// Where possible, it is recommended to use the component's RenderMJML function directly for better performance and flexibility.
+func RenderComponentMJMLString(c Component) (string, error) {
+	var output strings.Builder
+	if err := c.RenderMJML(&output); err != nil {
 		return "", err
 	}
 	return output.String(), nil

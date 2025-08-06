@@ -36,12 +36,12 @@ Examples:
 				os.Exit(1)
 			}
 
-			// Render MJML to HTML using library
+			// RenderHTML MJML to HTML using library
 			var html string
 			if debug {
-				html, err = mjml.Render(string(mjmlContent), mjml.WithDebugTags(true))
+				html, err = mjml.RenderHTML(string(mjmlContent), mjml.WithDebugTags(true))
 			} else {
-				html, err = mjml.Render(string(mjmlContent))
+				html, err = mjml.RenderHTML(string(mjmlContent))
 			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error rendering MJML: %v\n", err)

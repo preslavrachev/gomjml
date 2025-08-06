@@ -18,13 +18,17 @@ func NewMJSpacerComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSp
 	}
 }
 
-func (c *MJSpacerComponent) Render(w io.StringWriter) error {
+func (c *MJSpacerComponent) RenderHTML(w io.StringWriter) error {
 	// TODO: Implement mj-spacer component functionality
 	return &NotImplementedError{ComponentName: "mj-spacer"}
 }
 
 func (c *MJSpacerComponent) GetTagName() string {
 	return "mj-spacer"
+}
+
+func (c *MJSpacerComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-spacer"}
 }
 
 func (c *MJSpacerComponent) GetDefaultAttribute(name string) string {

@@ -66,23 +66,23 @@ func TestRender(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			html, err := Render(tt.input)
+			html, err := RenderHTML(tt.input)
 
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("Render() expected error but got none")
+					t.Errorf("RenderHTML() expected error but got none")
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("Render() error = %v", err)
+				t.Errorf("RenderHTML() error = %v", err)
 				return
 			}
 
 			for _, want := range tt.contains {
 				if !strings.Contains(html, want) {
-					t.Errorf("Render() output should contain %q", want)
+					t.Errorf("RenderHTML() output should contain %q", want)
 				}
 			}
 		})
@@ -108,10 +108,10 @@ func TestCreateComponent(t *testing.T) {
 	// Test rendering
 	html, err := RenderComponentString(comp)
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf("RenderHTML() error = %v", err)
 	}
 
 	if !strings.Contains(html, "Hello") {
-		t.Errorf("Render() output should contain 'Hello'")
+		t.Errorf("RenderHTML() output should contain 'Hello'")
 	}
 }

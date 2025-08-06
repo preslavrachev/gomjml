@@ -18,13 +18,17 @@ func NewMJHeroComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHero
 	}
 }
 
-func (c *MJHeroComponent) Render(w io.StringWriter) error {
+func (c *MJHeroComponent) RenderHTML(w io.StringWriter) error {
 	// TODO: Implement mj-hero component functionality
 	return &NotImplementedError{ComponentName: "mj-hero"}
 }
 
 func (c *MJHeroComponent) GetTagName() string {
 	return "mj-hero"
+}
+
+func (c *MJHeroComponent) RenderMJML(w io.StringWriter) error {
+	return &NotImplementedError{ComponentName: "mj-hero"}
 }
 
 func (c *MJHeroComponent) GetDefaultAttribute(name string) string {

@@ -8,89 +8,91 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/preslavrachev/gomjml/mjml/options"
 )
 
 // TestMJMLAgainstExpected compares Go implementation output with pre-generated expected HTML
 func TestMJMLAgainstExpected(t *testing.T) {
 	testCases := []struct {
-		name     string
-		filename string
+		name              string
+		filename          string
+		testMJMLRoundTrip bool // Set to true to enable MJML round-trip test for this specific test case
 	}{
-		{"basic", "testdata/basic.mjml"},
-		{"with-head", "testdata/with-head.mjml"},
-		{"complex-layout", "testdata/complex-layout.mjml"},
-		{"wrapper-basic", "testdata/wrapper-basic.mjml"},
-		{"wrapper-background", "testdata/wrapper-background.mjml"},
-		{"wrapper-fullwidth", "testdata/wrapper-fullwidth.mjml"},
-		{"wrapper-border", "testdata/wrapper-border.mjml"},
-		{"group-footer-test", "testdata/group-footer-test.mjml"},
-		{"section-padding-top-zero", "testdata/section-padding-top-zero.mjml"},
-		//{"Austin layout from the MJML.io site", "testdata/austin-layout-from-mjml-io.mjml"},
+		{name: "basic", filename: "testdata/basic.mjml", testMJMLRoundTrip: false},
+		{name: "with-head", filename: "testdata/with-head.mjml", testMJMLRoundTrip: false},
+		{name: "complex-layout", filename: "testdata/complex-layout.mjml", testMJMLRoundTrip: false},
+		{name: "wrapper-basic", filename: "testdata/wrapper-basic.mjml", testMJMLRoundTrip: false},
+		{name: "wrapper-background", filename: "testdata/wrapper-background.mjml", testMJMLRoundTrip: false},
+		{name: "wrapper-fullwidth", filename: "testdata/wrapper-fullwidth.mjml", testMJMLRoundTrip: false},
+		{name: "wrapper-border", filename: "testdata/wrapper-border.mjml", testMJMLRoundTrip: false},
+		{name: "group-footer-test", filename: "testdata/group-footer-test.mjml", testMJMLRoundTrip: false},
+		{name: "section-padding-top-zero", filename: "testdata/section-padding-top-zero.mjml", testMJMLRoundTrip: false},
+		//{name: "Austin layout from the MJML.io site", filename: "testdata/austin-layout-from-mjml-io.mjml", testMJMLRoundTrip: false},
 		// Austin layout component tests
-		{"austin-header-section", "testdata/austin-header-section.mjml"},
-		{"austin-hero-images", "testdata/austin-hero-images.mjml"},
-		{"austin-wrapper-basic", "testdata/austin-wrapper-basic.mjml"},
-		{"austin-text-with-links", "testdata/austin-text-with-links.mjml"},
-		{"austin-buttons", "testdata/austin-buttons.mjml"},
-		{"austin-two-column-images", "testdata/austin-two-column-images.mjml"},
-		{"austin-divider", "testdata/austin-divider.mjml"},
-		{"austin-two-column-text", "testdata/austin-two-column-text.mjml"},
-		{"austin-full-width-wrapper", "testdata/austin-full-width-wrapper.mjml"},
-		//{"austin-social-media", "testdata/austin-social-media.mjml"},
-		{"austin-footer-text", "testdata/austin-footer-text.mjml"},
-		{"austin-group-component", "testdata/austin-group-component.mjml"},
-		{"austin-global-attributes", "testdata/austin-global-attributes.mjml"},
-		{"austin-map-image", "testdata/austin-map-image.mjml"},
+		{name: "austin-header-section", filename: "testdata/austin-header-section.mjml", testMJMLRoundTrip: false},
+		{name: "austin-hero-images", filename: "testdata/austin-hero-images.mjml", testMJMLRoundTrip: false},
+		{name: "austin-wrapper-basic", filename: "testdata/austin-wrapper-basic.mjml", testMJMLRoundTrip: false},
+		{name: "austin-text-with-links", filename: "testdata/austin-text-with-links.mjml", testMJMLRoundTrip: false},
+		{name: "austin-buttons", filename: "testdata/austin-buttons.mjml", testMJMLRoundTrip: false},
+		{name: "austin-two-column-images", filename: "testdata/austin-two-column-images.mjml", testMJMLRoundTrip: false},
+		{name: "austin-divider", filename: "testdata/austin-divider.mjml", testMJMLRoundTrip: false},
+		{name: "austin-two-column-text", filename: "testdata/austin-two-column-text.mjml", testMJMLRoundTrip: false},
+		{name: "austin-full-width-wrapper", filename: "testdata/austin-full-width-wrapper.mjml", testMJMLRoundTrip: false},
+		//{name: "austin-social-media", filename: "testdata/austin-social-media.mjml", testMJMLRoundTrip: false},
+		{name: "austin-footer-text", filename: "testdata/austin-footer-text.mjml", testMJMLRoundTrip: false},
+		{name: "austin-group-component", filename: "testdata/austin-group-component.mjml", testMJMLRoundTrip: false},
+		{name: "austin-global-attributes", filename: "testdata/austin-global-attributes.mjml", testMJMLRoundTrip: false},
+		{name: "austin-map-image", filename: "testdata/austin-map-image.mjml", testMJMLRoundTrip: false},
 		// MRML reference tests
-		{"mrml-divider-basic", "testdata/mrml-divider-basic.mjml"},
-		{"mrml-text-basic", "testdata/mrml-text-basic.mjml"},
-		{"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
-		{"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
+		{name: "mrml-divider-basic", filename: "testdata/mrml-divider-basic.mjml", testMJMLRoundTrip: false},
+		{name: "mrml-text-basic", filename: "testdata/mrml-text-basic.mjml", testMJMLRoundTrip: false},
+		{name: "mrml-button-basic", filename: "testdata/mrml-button-basic.mjml", testMJMLRoundTrip: false},
+		{name: "body-wrapper-section", filename: "testdata/body-wrapper-section.mjml", testMJMLRoundTrip: false},
 		// MJ-Group tests from MRML
-		{"mj-group", "testdata/mj-group.mjml"},
-		{"mj-group-background-color", "testdata/mj-group-background-color.mjml"},
-		{"mj-group-class", "testdata/mj-group-class.mjml"},
-		{"mj-group-direction", "testdata/mj-group-direction.mjml"},
-		{"mj-group-vertical-align", "testdata/mj-group-vertical-align.mjml"},
-		{"mj-group-width", "testdata/mj-group-width.mjml"},
+		{name: "mj-group", filename: "testdata/mj-group.mjml", testMJMLRoundTrip: false},
+		{name: "mj-group-background-color", filename: "testdata/mj-group-background-color.mjml", testMJMLRoundTrip: false},
+		{name: "mj-group-class", filename: "testdata/mj-group-class.mjml", testMJMLRoundTrip: false},
+		{name: "mj-group-direction", filename: "testdata/mj-group-direction.mjml", testMJMLRoundTrip: false},
+		{name: "mj-group-vertical-align", filename: "testdata/mj-group-vertical-align.mjml", testMJMLRoundTrip: false},
+		{name: "mj-group-width", filename: "testdata/mj-group-width.mjml", testMJMLRoundTrip: false},
 		// Simple MJML components from MRML test suite
-		{"mj-text", "testdata/mj-text.mjml"},
-		{"mj-text-class", "testdata/mj-text-class.mjml"},
-		{"mj-button", "testdata/mj-button.mjml"},
-		{"mj-button-class", "testdata/mj-button-class.mjml"},
-		{"mj-image", "testdata/mj-image.mjml"},
-		{"mj-image-class", "testdata/mj-image-class.mjml"},
-		{"mj-section-with-columns", "testdata/mj-section-with-columns.mjml"},
-		{"mj-section", "testdata/mj-section.mjml"},
-		{"mj-section-class", "testdata/mj-section-class.mjml"},
-		{"mj-column", "testdata/mj-column.mjml"},
-		{"mj-column-padding", "testdata/mj-column-padding.mjml"},
-		{"mj-column-class", "testdata/mj-column-class.mjml"},
-		{"mj-wrapper", "testdata/mj-wrapper.mjml"},
+		{name: "mj-text", filename: "testdata/mj-text.mjml", testMJMLRoundTrip: false},
+		{name: "mj-text-class", filename: "testdata/mj-text-class.mjml", testMJMLRoundTrip: false},
+		{name: "mj-button", filename: "testdata/mj-button.mjml", testMJMLRoundTrip: false},
+		{name: "mj-button-class", filename: "testdata/mj-button-class.mjml", testMJMLRoundTrip: false},
+		{name: "mj-image", filename: "testdata/mj-image.mjml", testMJMLRoundTrip: false},
+		{name: "mj-image-class", filename: "testdata/mj-image-class.mjml", testMJMLRoundTrip: false},
+		{name: "mj-section-with-columns", filename: "testdata/mj-section-with-columns.mjml", testMJMLRoundTrip: false},
+		{name: "mj-section", filename: "testdata/mj-section.mjml", testMJMLRoundTrip: false},
+		{name: "mj-section-class", filename: "testdata/mj-section-class.mjml", testMJMLRoundTrip: false},
+		{name: "mj-column", filename: "testdata/mj-column.mjml", testMJMLRoundTrip: false},
+		{name: "mj-column-padding", filename: "testdata/mj-column-padding.mjml", testMJMLRoundTrip: false},
+		{name: "mj-column-class", filename: "testdata/mj-column-class.mjml", testMJMLRoundTrip: false},
+		{name: "mj-wrapper", filename: "testdata/mj-wrapper.mjml", testMJMLRoundTrip: false},
 		// MJ-RAW tests
-		{"mj-raw", "testdata/mj-raw.mjml"},
-		{"mj-raw-conditional-comment", "testdata/mj-raw-conditional-comment.mjml"},
-		{"mj-raw-go-template", "testdata/mj-raw-go-template.mjml"},
+		{name: "mj-raw", filename: "testdata/mj-raw.mjml", testMJMLRoundTrip: false},
+		{name: "mj-raw-conditional-comment", filename: "testdata/mj-raw-conditional-comment.mjml", testMJMLRoundTrip: false},
+		{name: "mj-raw-go-template", filename: "testdata/mj-raw-go-template.mjml", testMJMLRoundTrip: false},
 		// MJ-SOCIAL tests
-		{"mj-social", "testdata/mj-social.mjml"},
-		{"mj-social-align", "testdata/mj-social-align.mjml"},
-		{"mj-social-border-radius", "testdata/mj-social-border-radius.mjml"},
-		{"mj-social-class", "testdata/mj-social-class.mjml"},
-		{"mj-social-color", "testdata/mj-social-color.mjml"},
-		{"mj-social-container-background-color", "testdata/mj-social-container-background-color.mjml"},
-		{"mj-social-element-ending", "testdata/mj-social-element-ending.mjml"},
-		{"mj-social-font-family", "testdata/mj-social-font-family.mjml"},
-		{"mj-social-font", "testdata/mj-social-font.mjml"},
-		{"mj-social-icon", "testdata/mj-social-icon.mjml"},
-		{"mj-social-link", "testdata/mj-social-link.mjml"},
-		{"mj-social-mode", "testdata/mj-social-mode.mjml"},
-		{"mj-social-padding", "testdata/mj-social-padding.mjml"},
-		{"mj-social-text", "testdata/mj-social-text.mjml"},
+		{name: "mj-social", filename: "testdata/mj-social.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-align", filename: "testdata/mj-social-align.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-border-radius", filename: "testdata/mj-social-border-radius.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-class", filename: "testdata/mj-social-class.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-color", filename: "testdata/mj-social-color.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-container-background-color", filename: "testdata/mj-social-container-background-color.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-element-ending", filename: "testdata/mj-social-element-ending.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-font-family", filename: "testdata/mj-social-font-family.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-font", filename: "testdata/mj-social-font.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-icon", filename: "testdata/mj-social-icon.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-link", filename: "testdata/mj-social-link.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-mode", filename: "testdata/mj-social-mode.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-padding", filename: "testdata/mj-social-padding.mjml", testMJMLRoundTrip: false},
+		{name: "mj-social-text", filename: "testdata/mj-social-text.mjml", testMJMLRoundTrip: false},
 		// MJ-ACCORDION tests (commented out - need implementation)
-		{"mj-accordion", "testdata/mj-accordion.mjml"},
-		{"mj-accordion-font-padding", "testdata/mj-accordion-font-padding.mjml"},
-		{"mj-accordion-icon", "testdata/mj-accordion-icon.mjml"},
-		{"mj-accordion-other", "testdata/mj-accordion-other.mjml"},
+		{name: "mj-accordion", filename: "testdata/mj-accordion.mjml", testMJMLRoundTrip: false},
+		{name: "mj-accordion-font-padding", filename: "testdata/mj-accordion-font-padding.mjml", testMJMLRoundTrip: false},
+		{name: "mj-accordion-icon", filename: "testdata/mj-accordion-icon.mjml", testMJMLRoundTrip: false},
+		{name: "mj-accordion-other", filename: "testdata/mj-accordion-other.mjml", testMJMLRoundTrip: false},
 	}
 
 	for _, tc := range testCases {
@@ -113,7 +115,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 					)
 
 					// Just verify our implementation doesn't crash and produces some output
-					actual, err := Render(string(mjmlContent))
+					actual, err := RenderHTML(string(mjmlContent))
 					if err != nil {
 						t.Fatalf("Failed to render MJML: %v", err)
 					}
@@ -140,7 +142,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 			expected := string(expectedContent)
 
 			// Get actual output from Go implementation (direct library usage)
-			actual, err := Render(string(mjmlContent))
+			actual, err := RenderHTML(string(mjmlContent))
 			if err != nil {
 				t.Fatalf("Failed to render MJML: %v", err)
 			}
@@ -159,10 +161,16 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				os.WriteFile("/tmp/expected_"+tc.name+".html", []byte(expected), 0o644)
 				os.WriteFile("/tmp/actual_"+tc.name+".html", []byte(actual), 0o644)
 			}
+
+			// MJML round-trip test (if enabled for this test case)
+			if tc.testMJMLRoundTrip {
+				t.Run(tc.name+"_mjml_roundtrip", func(t *testing.T) {
+					runMJMLRoundTripTest(t, string(mjmlContent), tc.name)
+				})
+			}
 		})
 	}
 }
-
 
 // TestDirectLibraryUsage demonstrates and tests direct library usage
 func TestDirectLibraryUsage(t *testing.T) {
@@ -177,7 +185,7 @@ func TestDirectLibraryUsage(t *testing.T) {
 	</mjml>`
 
 	// Test direct library usage as documented in the restructuring plan
-	html, err := Render(mjmlInput)
+	html, err := RenderHTML(mjmlInput)
 	if err != nil {
 		t.Fatalf("Direct library usage failed: %v", err)
 	}
@@ -212,10 +220,10 @@ func TestComponentCreation(t *testing.T) {
 		t.Fatalf("NewFromAST failed: %v", err)
 	}
 
-	// Render to HTML
+	// RenderHTML to HTML
 	html, err := RenderComponentString(component)
 	if err != nil {
-		t.Fatalf("Render failed: %v", err)
+		t.Fatalf("RenderHTML failed: %v", err)
 	}
 
 	// Verify output
@@ -946,4 +954,85 @@ func normalizeCSSContent(css string) string {
 	})
 
 	return string(runes)
+}
+
+// runMJMLRoundTripTest tests MJML round-trip: MJML -> AST -> MJML and compares with original
+func runMJMLRoundTripTest(t *testing.T, originalMJML, testName string) {
+	// Parse original MJML to AST
+	ast, err := ParseMJML(originalMJML)
+	if err != nil {
+		t.Fatalf("Failed to parse MJML for round-trip test: %v", err)
+	}
+
+	// Render AST back to MJML
+	renderedMJML, err := RenderFromAST(ast, WithOutputFormat(options.OutputMJML))
+	if err != nil {
+		t.Fatalf("Failed to render AST to MJML: %v", err)
+	}
+
+	// Compare original and rendered MJML
+	if !compareMJMLContent(originalMJML, renderedMJML) {
+		t.Errorf("MJML round-trip failed for %s", testName)
+		t.Logf("Original MJML length: %d", len(originalMJML))
+		t.Logf("Rendered MJML length: %d", len(renderedMJML))
+
+		// Write both to temp files for debugging
+		os.WriteFile("/tmp/original_"+testName+".mjml", []byte(originalMJML), 0o644)
+		os.WriteFile("/tmp/rendered_"+testName+".mjml", []byte(renderedMJML), 0o644)
+
+		// Show first difference
+		showMJMLDiff(t, originalMJML, renderedMJML, testName)
+	}
+}
+
+// compareMJMLContent compares two MJML strings, normalizing whitespace and structure
+func compareMJMLContent(original, rendered string) bool {
+	// Basic normalization - remove extra whitespace, normalize line endings
+	normalizeWhitespace := func(s string) string {
+		// Normalize line endings
+		s = strings.ReplaceAll(s, "\r\n", "\n")
+		s = strings.ReplaceAll(s, "\r", "\n")
+
+		// Split into lines and trim each
+		lines := strings.Split(s, "\n")
+		var normalizedLines []string
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" {
+				normalizedLines = append(normalizedLines, trimmed)
+			}
+		}
+
+		return strings.Join(normalizedLines, "\n")
+	}
+
+	normalizedOriginal := normalizeWhitespace(original)
+	normalizedRendered := normalizeWhitespace(rendered)
+
+	return normalizedOriginal == normalizedRendered
+}
+
+// showMJMLDiff shows the first significant difference between original and rendered MJML
+func showMJMLDiff(t *testing.T, original, rendered, testName string) {
+	originalLines := strings.Split(original, "\n")
+	renderedLines := strings.Split(rendered, "\n")
+
+	maxLines := max(len(originalLines), len(renderedLines))
+
+	for i := 0; i < maxLines; i++ {
+		var origLine, rendLine string
+		if i < len(originalLines) {
+			origLine = strings.TrimSpace(originalLines[i])
+		}
+		if i < len(renderedLines) {
+			rendLine = strings.TrimSpace(renderedLines[i])
+		}
+
+		if origLine != rendLine {
+			t.Logf("First difference at line %d:", i+1)
+			t.Logf("  Original: %q", origLine)
+			t.Logf("  Rendered: %q", rendLine)
+			break
+		}
+	}
 }
