@@ -145,6 +145,9 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 // Render provides the main MJML to HTML conversion function
 func Render(mjmlContent string, opts ...RenderOption) (string, error) {
+	// Reset navbar ID counter for deterministic IDs within each render
+	components.ResetNavbarIDCounter()
+
 	result, err := RenderWithAST(mjmlContent, opts...)
 	if err != nil {
 		return "", err
@@ -429,6 +432,21 @@ func (c *MJMLComponent) generateAccordionCSS() string {
 </style>`
 }
 
+// generateNavbarCSS generates the CSS styles needed for navbar hamburger menu functionality
+func (c *MJMLComponent) generateNavbarCSS() string {
+	return `<style type="text/css">
+        noinput.mj-menu-checkbox { display:block!important; max-height:none!important; visibility:visible!important; }
+        @media only screen and (max-width:479px) {
+          .mj-menu-checkbox[type="checkbox"] ~ .mj-inline-links { display:none!important; }
+          .mj-menu-checkbox[type="checkbox"]:checked ~ .mj-inline-links,
+          .mj-menu-checkbox[type="checkbox"] ~ .mj-menu-trigger { display:block!important; max-width:none!important; max-height:none!important; font-size:inherit!important; }
+          .mj-menu-checkbox[type="checkbox"] ~ .mj-inline-links > a { display:block!important; }
+          .mj-menu-checkbox[type="checkbox"]:checked ~ .mj-menu-trigger .mj-menu-icon-close { display:block!important; }
+          .mj-menu-checkbox[type="checkbox"]:checked ~ .mj-menu-trigger .mj-menu-icon-open { display:none!important; }
+        }
+        </style>`
+}
+
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS
 func (c *MJMLComponent) hasMobileCSSComponents() bool {
 	if c.Body == nil {
@@ -477,6 +495,20 @@ func (c *MJMLComponent) hasAccordionComponents() bool {
 	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
 		switch comp.GetTagName() {
 		case "mj-accordion", "mj-accordion-element", "mj-accordion-title", "mj-accordion-text":
+			return true
+		}
+		return false
+	})
+}
+
+// hasNavbarComponents checks if the MJML contains any navbar components
+func (c *MJMLComponent) hasNavbarComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
+		switch comp.GetTagName() {
+		case "mj-navbar", "mj-navbar-link":
 			return true
 		}
 		return false
@@ -547,6 +579,12 @@ func (c *MJMLComponent) checkChildrenForCondition(component Component, condition
 			}
 		}
 	case *components.MJAccordionComponent:
+		for _, child := range v.Children {
+			if condition(child) || c.checkChildrenForCondition(child, condition) {
+				return true
+			}
+		}
+	case *components.MJNavbarComponent:
 		for _, child := range v.Children {
 			if condition(child) || c.checkChildrenForCondition(child, condition) {
 				return true
@@ -767,6 +805,14 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	if c.hasAccordionComponents() {
 		accordionCSSText := c.generateAccordionCSS()
 		if _, err := w.WriteString(accordionCSSText); err != nil {
+			return err
+		}
+	}
+
+	// Navbar CSS - add only if components need it (following MRML pattern)
+	if c.hasNavbarComponents() {
+		navbarCSSText := c.generateNavbarCSS()
+		if _, err := w.WriteString(navbarCSSText); err != nil {
 			return err
 		}
 	}

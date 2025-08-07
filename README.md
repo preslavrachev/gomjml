@@ -234,6 +234,8 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-divider` | ✅ **Implemented** | Visual separators and spacing elements |
 | `mj-social` | ✅ **Implemented** | Social media icons container |
 | `mj-social-element` | ✅ **Implemented** | Individual social media icons |
+| `mj-navbar` | ✅ **Implemented** | Navigation bar component |
+| `mj-navbar-link` | ✅ **Implemented** | Navigation links within navbar |
 | `mj-raw` | ✅ **Implemented** | Raw HTML content insertion |
 | **Head Components** | | |
 | `mj-title` | ✅ **Implemented** | Document title for email clients |
@@ -249,14 +251,12 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-carousel` | ❌ **Not Implemented** | Image carousel component |
 | `mj-carousel-image` | ❌ **Not Implemented** | Images within carousel |
 | `mj-hero` | ❌ **Not Implemented** | Header/banner sections with background images |
-| `mj-navbar` | ❌ **Not Implemented** | Navigation bar component |
-| `mj-navbar-link` | ❌ **Not Implemented** | Navigation links within navbar |
 | `mj-spacer` | ❌ **Not Implemented** | Layout spacing control |
 | `mj-table` | ❌ **Not Implemented** | Email-safe table component |
 
 ### Implementation Summary
-- **✅ Implemented: 19 components** - All essential layout, content, head components, and accordion work
-- **❌ Not Implemented: 7 components** - Advanced interactive components return `NotImplementedError`
+- **✅ Implemented: 21 components** - All essential layout, content, head components, accordion, and navbar work
+- **❌ Not Implemented: 5 components** - Advanced interactive components return `NotImplementedError`
 - **Total MJML Components: 26** - Covers all major MJML specification components
 
 ### Integration Test Status

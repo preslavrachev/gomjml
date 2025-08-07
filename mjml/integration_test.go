@@ -8,10 +8,13 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/preslavrachev/gomjml/mjml/components"
 )
 
 // TestMJMLAgainstExpected compares Go implementation output with pre-generated expected HTML
 func TestMJMLAgainstExpected(t *testing.T) {
+	// Reset navbar ID counter for deterministic testing
+	components.ResetNavbarIDCounter()
 	testCases := []struct {
 		name     string
 		filename string
@@ -86,11 +89,16 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{"mj-social-mode", "testdata/mj-social-mode.mjml"},
 		{"mj-social-padding", "testdata/mj-social-padding.mjml"},
 		{"mj-social-text", "testdata/mj-social-text.mjml"},
-		// MJ-ACCORDION tests (commented out - need implementation)
+		// MJ-ACCORDION tests
 		{"mj-accordion", "testdata/mj-accordion.mjml"},
 		{"mj-accordion-font-padding", "testdata/mj-accordion-font-padding.mjml"},
 		{"mj-accordion-icon", "testdata/mj-accordion-icon.mjml"},
 		{"mj-accordion-other", "testdata/mj-accordion-other.mjml"},
+		// MJ-NAVBAR tests
+		{"mj-navbar", "testdata/mj-navbar.mjml"},
+		{"mj-navbar-ico", "testdata/mj-navbar-ico.mjml"},
+		{"mj-navbar-align-class", "testdata/mj-navbar-align-class.mjml"},
+		{"mj-navbar-multiple", "testdata/mj-navbar-multiple.mjml"},
 	}
 
 	for _, tc := range testCases {
@@ -162,7 +170,6 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		})
 	}
 }
-
 
 // TestDirectLibraryUsage demonstrates and tests direct library usage
 func TestDirectLibraryUsage(t *testing.T) {
