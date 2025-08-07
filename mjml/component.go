@@ -184,6 +184,13 @@ func processComponentChildren(component Component, node *parser.MJMLNode, opts *
 				}
 			}
 		}
+	case *components.MJNavbarComponent:
+		// Process navbar link children
+		for _, childNode := range node.Children {
+			if childComponent, err := CreateComponent(childNode, opts); err == nil {
+				comp.Children = append(comp.Children, childComponent)
+			}
+		}
 		// Add more component types here as needed
 	}
 }
