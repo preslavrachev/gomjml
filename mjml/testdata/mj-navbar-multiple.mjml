@@ -1,0 +1,18 @@
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-navbar hamburger="hamburger">
+          <mj-navbar-link href="/hello">First Navbar - Hello</mj-navbar-link>
+        </mj-navbar>
+      </mj-column>
+    </mj-section>
+    <mj-section>
+      <mj-column>
+        <mj-navbar hamburger="hamburger">
+          <mj-navbar-link href="/world">Second Navbar - World</mj-navbar-link>
+        </mj-navbar>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

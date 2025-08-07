@@ -1,8 +1,10 @@
 package components
 
 import (
+	"fmt"
 	"io"
 	"strings"
+	"sync/atomic"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
@@ -10,6 +12,14 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
 )
+
+// Global counter for unique navbar checkbox IDs
+var navbarIDCounter int64
+
+// ResetNavbarIDCounter resets the global counter for deterministic testing
+func ResetNavbarIDCounter() {
+	atomic.StoreInt64(&navbarIDCounter, 0)
+}
 
 // MJNavbarComponent represents the mj-navbar component
 type MJNavbarComponent struct {
@@ -233,14 +243,12 @@ func (c *MJNavbarComponent) renderInlineLinks(w io.StringWriter, baseURL string)
 	for _, child := range c.Children {
 		if navbarLink, ok := child.(*MJNavbarLinkComponent); ok {
 			// MSO table cell with CSS class and padding
-			msoClass := navbarLink.getAttribute(constants.MJMLCSSClass)
-			if msoClass != "" {
-				msoClass = msoClass + "-outlook"
-			}
+			originalClass := navbarLink.getAttribute(constants.MJMLCSSClass)
 			if _, err := w.WriteString("<!--[if mso | IE]><td"); err != nil {
 				return err
 			}
-			if msoClass != "" && msoClass != "-outlook" {
+			if originalClass != "" {
+				msoClass := originalClass + "-outlook"
 				if _, err := w.WriteString(" class=\"" + msoClass + "\""); err != nil {
 					return err
 				}
@@ -271,9 +279,10 @@ func (c *MJNavbarComponent) renderInlineLinks(w io.StringWriter, baseURL string)
 }
 
 func (c *MJNavbarComponent) generateCheckboxID() string {
-	// Use fixed ID for consistent testing
-	// In practice, this could be made random or configurable
-	return "00000000"
+	// Generate unique ID using atomic counter: 00000000, 00000001, 00000002, etc.
+	// This maintains compatibility with existing tests while fixing multi-navbar conflicts
+	counter := atomic.AddInt64(&navbarIDCounter, 1)
+	return fmt.Sprintf("%08d", counter-1) // Start from 00000000
 }
 
 func (c *MJNavbarComponent) getAttribute(name string) string {
