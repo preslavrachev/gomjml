@@ -145,9 +145,8 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 // Render provides the main MJML to HTML conversion function
 func Render(mjmlContent string, opts ...RenderOption) (string, error) {
-	// NOTE: Removed global ResetNavbarIDCounter() call to avoid concurrency issues.
-	// Navbar ID counters should be managed per-render, not globally, to ensure thread safety.
-	// See CodeQL warning: resetting a global counter is unsafe in concurrent environments.
+	// Reset navbar ID counter for deterministic IDs within each render
+	components.ResetNavbarIDCounter()
 
 	result, err := RenderWithAST(mjmlContent, opts...)
 	if err != nil {
