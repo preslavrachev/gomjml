@@ -281,8 +281,10 @@ func (c *MJNavbarComponent) renderInlineLinks(w io.StringWriter, baseURL string)
 func (c *MJNavbarComponent) generateCheckboxID() string {
 	// Generate unique ID using atomic counter: 00000000, 00000001, 00000002, etc.
 	// This maintains compatibility with existing tests while fixing multi-navbar conflicts
-	counter := atomic.AddInt64(&navbarIDCounter, 1)
-	return fmt.Sprintf("%08d", counter-1) // Start from 00000000
+	counter := atomic.LoadInt64(&navbarIDCounter)
+	id := fmt.Sprintf("%08d", counter) // Start from 00000000
+	atomic.AddInt64(&navbarIDCounter, 1)
+	return id
 }
 
 func (c *MJNavbarComponent) getAttribute(name string) string {
