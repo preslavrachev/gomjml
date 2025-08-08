@@ -150,6 +150,9 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 						}
 					}
 				}
+			case *components.MJHeroComponent:
+				// Process hero children
+				processComponentChildren(comp, comp.Node, opts)
 			}
 		}
 	}
@@ -186,6 +189,13 @@ func processComponentChildren(component Component, node *parser.MJMLNode, opts *
 		}
 	case *components.MJNavbarComponent:
 		// Process navbar link children
+		for _, childNode := range node.Children {
+			if childComponent, err := CreateComponent(childNode, opts); err == nil {
+				comp.Children = append(comp.Children, childComponent)
+			}
+		}
+	case *components.MJHeroComponent:
+		// Process hero children
 		for _, childNode := range node.Children {
 			if childComponent, err := CreateComponent(childNode, opts); err == nil {
 				comp.Children = append(comp.Children, childComponent)

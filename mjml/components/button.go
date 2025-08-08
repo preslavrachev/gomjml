@@ -109,9 +109,15 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 
 	// Create TD with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
-		AddAttribute("align", align).
-		AddAttribute("vertical-align", verticalAlign).
-		AddStyle("font-size", "0px").
+		AddAttribute("align", align)
+
+	// Only add vertical-align attribute if not inside an mj-hero
+	// In mj-hero context, MRML doesn't include this attribute
+	if !c.RenderOpts.InsideHero {
+		tdTag.AddAttribute("vertical-align", verticalAlign)
+	}
+
+	tdTag.AddStyle("font-size", "0px").
 		AddStyle("padding", padding).
 		AddStyle("word-break", "break-word")
 
