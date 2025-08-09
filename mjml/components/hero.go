@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -31,14 +32,14 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	}
 
 	// Get attributes
-	backgroundColor := getAttr("background-color")
-	backgroundPosition := getAttr("background-position")
-	backgroundRepeat := "no-repeat"
-	backgroundUrl := getAttr("background-url")
-	backgroundHeight := getAttr("background-height")
-	height := getAttr("height")
-	padding := getAttr("padding")
-	verticalAlign := getAttr("vertical-align")
+	backgroundColor := getAttr(constants.MJMLBackgroundColor)
+	backgroundPosition := getAttr(constants.MJMLBackgroundPosition)
+	backgroundRepeat := constants.BackgroundRepeatNoRepeat
+	backgroundUrl := getAttr(constants.MJMLBackgroundUrl)
+	backgroundHeight := getAttr(constants.MJMLBackgroundHeight)
+	height := getAttr(constants.MJMLHeight)
+	padding := getAttr(constants.MJMLPadding)
+	verticalAlign := getAttr(constants.MJMLVerticalAlign)
 
 	// Calculate effective height by subtracting padding
 	effectiveHeight := height
@@ -85,69 +86,74 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Main responsive container
-	if _, err := w.WriteString(`<div`); err != nil {
-		return err
-	}
+	// Main responsive container using HTMLTag builder
+	divTag := html.NewHTMLTag("div").
+		AddStyle(constants.CSSMargin, "0 auto").
+		AddStyle(constants.CSSMaxWidth, containerWidthPx)
 
 	// Add css-class if present
 	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		if _, err := w.WriteString(` class="`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(cssClass); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`"`); err != nil {
-			return err
-		}
+		divTag.AddAttribute(constants.AttrClass, cssClass)
 	}
 
-	if _, err := w.WriteString(` style="margin:0 auto;max-width:`); err != nil {
-		return err
-	}
-	if _, err := w.WriteString(containerWidthPx); err != nil {
-		return err
-	}
-	if _, err := w.WriteString(`;">`); err != nil {
+	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
 
-	// Main table
-	if _, err := w.WriteString(`<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;"><tbody><tr style="vertical-align:top;">`); err != nil {
+	// Main table using HTMLTag builder
+	mainTableTag := html.NewHTMLTag("table").
+		AddAttribute(constants.AttrBorder, "0").
+		AddAttribute(constants.AttrCellPadding, "0").
+		AddAttribute(constants.AttrCellSpacing, "0").
+		AddAttribute(constants.AttrRole, "presentation").
+		AddStyle(constants.CSSWidth, "100%")
+
+	if err := mainTableTag.RenderOpen(w); err != nil {
+		return err
+	}
+
+	// tbody and tr
+	tbodyTag := html.NewHTMLTag("tbody")
+	if err := tbodyTag.RenderOpen(w); err != nil {
+		return err
+	}
+
+	trTag := html.NewHTMLTag("tr").
+		AddStyle(constants.CSSVerticalAlign, constants.VAlignTop)
+	if err := trTag.RenderOpen(w); err != nil {
 		return err
 	}
 
 	// Main TD with background and height using HTMLTag builder
 	tdTag := html.NewHTMLTag("td").
-		AddAttribute("height", strings.TrimSuffix(effectiveHeight, "px")).
-		AddStyle("background", backgroundColor).
-		AddStyle("background-position", backgroundPosition).
-		AddStyle("background-repeat", backgroundRepeat).
-		AddStyle("padding", padding).
-		AddStyle("vertical-align", verticalAlign).
-		AddStyle("height", effectiveHeight)
+		AddAttribute(constants.AttrHeight, strings.TrimSuffix(effectiveHeight, "px")).
+		AddStyle(constants.CSSBackground, backgroundColor).
+		AddStyle(constants.CSSBackgroundPosition, backgroundPosition).
+		AddStyle(constants.CSSBackgroundRepeat, backgroundRepeat).
+		AddStyle(constants.CSSPadding, padding).
+		AddStyle(constants.CSSVerticalAlign, verticalAlign).
+		AddStyle(constants.CSSHeight, effectiveHeight)
 
 	// Add background image if provided
 	if backgroundUrl != "" {
-		tdTag.AddAttribute("background", backgroundUrl)
+		tdTag.AddAttribute(constants.CSSBackground, backgroundUrl)
 		// Add CSS shorthand background for modern email clients
 		shorthandBg := fmt.Sprintf("%s url('%s') %s %s / cover", backgroundColor, backgroundUrl, backgroundRepeat, backgroundPosition)
-		tdTag.AddStyle("background", shorthandBg)
+		tdTag.AddStyle(constants.CSSBackground, shorthandBg)
 	}
 
 	// Add individual padding overrides (similar to other components)
-	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
-		tdTag.AddStyle("padding-top", *paddingTopAttr)
+	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
 	}
-	if paddingRightAttr := c.GetAttribute("padding-right"); paddingRightAttr != nil {
-		tdTag.AddStyle("padding-right", *paddingRightAttr)
+	if paddingRightAttr := c.GetAttribute(constants.MJMLPaddingRight); paddingRightAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingRight, *paddingRightAttr)
 	}
-	if paddingBottomAttr := c.GetAttribute("padding-bottom"); paddingBottomAttr != nil {
-		tdTag.AddStyle("padding-bottom", *paddingBottomAttr)
+	if paddingBottomAttr := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottomAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingBottom, *paddingBottomAttr)
 	}
-	if paddingLeftAttr := c.GetAttribute("padding-left"); paddingLeftAttr != nil {
-		tdTag.AddStyle("padding-left", *paddingLeftAttr)
+	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingLeft, *paddingLeftAttr)
 	}
 
 	if err := tdTag.RenderOpen(w); err != nil {
@@ -164,18 +170,56 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Hero content container
-	if _, err := w.WriteString(`<div class="mj-hero-content" style="margin:0px auto;">`); err != nil {
+	// Hero content container using HTMLTag builder
+	heroContentTag := html.NewHTMLTag("div").
+		AddAttribute(constants.AttrClass, "mj-hero-content").
+		AddStyle(constants.CSSMargin, "0px auto")
+	if err := heroContentTag.RenderOpen(w); err != nil {
 		return err
 	}
 
-	// Content table structure
-	if _, err := w.WriteString(`<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;margin:0px;"><tbody><tr><td>`); err != nil {
+	// Content table structure using HTMLTag builder
+	contentTableTag := html.NewHTMLTag("table").
+		AddAttribute(constants.AttrBorder, "0").
+		AddAttribute(constants.AttrCellPadding, "0").
+		AddAttribute(constants.AttrCellSpacing, "0").
+		AddAttribute(constants.AttrRole, "presentation").
+		AddStyle(constants.CSSWidth, "100%").
+		AddStyle(constants.CSSMargin, "0px")
+	if err := contentTableTag.RenderOpen(w); err != nil {
 		return err
 	}
 
-	// Inner content table for children
-	if _, err := w.WriteString(`<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;margin:0px;"><tbody>`); err != nil {
+	// tbody, tr, td
+	contentTbodyTag := html.NewHTMLTag("tbody")
+	if err := contentTbodyTag.RenderOpen(w); err != nil {
+		return err
+	}
+
+	contentTrTag := html.NewHTMLTag("tr")
+	if err := contentTrTag.RenderOpen(w); err != nil {
+		return err
+	}
+
+	contentTdTag := html.NewHTMLTag("td")
+	if err := contentTdTag.RenderOpen(w); err != nil {
+		return err
+	}
+
+	// Inner content table for children using HTMLTag builder
+	innerTableTag := html.NewHTMLTag("table").
+		AddAttribute(constants.AttrBorder, "0").
+		AddAttribute(constants.AttrCellPadding, "0").
+		AddAttribute(constants.AttrCellSpacing, "0").
+		AddAttribute(constants.AttrRole, "presentation").
+		AddStyle(constants.CSSWidth, "100%").
+		AddStyle(constants.CSSMargin, "0px")
+	if err := innerTableTag.RenderOpen(w); err != nil {
+		return err
+	}
+
+	innerTbodyTag := html.NewHTMLTag("tbody")
+	if err := innerTbodyTag.RenderOpen(w); err != nil {
 		return err
 	}
 
@@ -205,12 +249,12 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close inner content table
-	if _, err := w.WriteString(`</tbody></table>`); err != nil {
+	if _, err := w.WriteString("</tbody></table>"); err != nil {
 		return err
 	}
 
 	// Close content structure
-	if _, err := w.WriteString(`</td></tr></tbody></table></div>`); err != nil {
+	if _, err := w.WriteString("</td></tr></tbody></table></div>"); err != nil {
 		return err
 	}
 
@@ -219,8 +263,8 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Close main TD and table
-	if _, err := w.WriteString(`</td></tr></tbody></table></div>`); err != nil {
+	// Close main TD, tr, tbody, table, and div
+	if _, err := w.WriteString("</td></tr></tbody></table></div>"); err != nil {
 		return err
 	}
 
@@ -260,12 +304,12 @@ func (c *MJHeroComponent) calculateEffectiveHeight(height, padding string) strin
 	topPadding := paddingVal
 	bottomPadding := paddingVal
 
-	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
+	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
 		topPaddingPx := strings.TrimSuffix(*paddingTopAttr, "px")
 		fmt.Sscanf(topPaddingPx, "%d", &topPadding)
 	}
 
-	if paddingBottomAttr := c.GetAttribute("padding-bottom"); paddingBottomAttr != nil {
+	if paddingBottomAttr := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottomAttr != nil {
 		bottomPaddingPx := strings.TrimSuffix(*paddingBottomAttr, "px")
 		fmt.Sscanf(bottomPaddingPx, "%d", &bottomPadding)
 	}
@@ -281,18 +325,18 @@ func (c *MJHeroComponent) calculateEffectiveHeight(height, padding string) strin
 
 func (c *MJHeroComponent) GetDefaultAttribute(name string) string {
 	switch name {
-	case "background-color":
+	case constants.MJMLBackgroundColor:
 		return "#ffffff"
-	case "background-position":
+	case constants.MJMLBackgroundPosition:
 		return "center center"
-	case "height":
+	case constants.MJMLHeight:
 		return "0px"
-	case "mode":
+	case constants.MJMLMode:
 		return "fixed-height"
-	case "padding":
+	case constants.MJMLPadding:
 		return "0px"
-	case "vertical-align":
-		return "top"
+	case constants.MJMLVerticalAlign:
+		return constants.VAlignTop
 	default:
 		return ""
 	}
