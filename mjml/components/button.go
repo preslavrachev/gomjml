@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -114,7 +115,7 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	// Only add vertical-align attribute if not inside an mj-hero
 	// In mj-hero context, MRML doesn't include this attribute
 	if !c.RenderOpts.InsideHero {
-		tdTag.AddAttribute("vertical-align", verticalAlign)
+		tdTag.AddAttribute(constants.AttrVerticalAlign, verticalAlign)
 	}
 
 	tdTag.AddStyle("font-size", "0px").
@@ -157,7 +158,7 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	// Button cell with background and border styles
 	buttonTdTag := html.NewHTMLTag("td").
 		AddAttribute("align", "center").
-		AddAttribute("bgcolor", backgroundColor).
+		AddAttribute(constants.AttrBgcolor, backgroundColor).
 		AddAttribute("role", "presentation").
 		AddAttribute("valign", verticalAlign).
 		AddStyle("border", border).

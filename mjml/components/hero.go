@@ -136,7 +136,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 
 	// Add background image if provided
 	if backgroundUrl != "" {
-		tdTag.AddAttribute(constants.CSSBackground, backgroundUrl)
+		tdTag.AddAttribute(constants.AttrBackground, backgroundUrl)
 		// Add CSS shorthand background for modern email clients
 		shorthandBg := fmt.Sprintf("%s url('%s') %s %s / cover", backgroundColor, backgroundUrl, backgroundRepeat, backgroundPosition)
 		tdTag.AddStyle(constants.CSSBackground, shorthandBg)
@@ -297,7 +297,9 @@ func (c *MJHeroComponent) calculateEffectiveHeight(height, padding string) strin
 	paddingPx := strings.TrimSuffix(padding, "px")
 	paddingVal := 0
 	if paddingPx != "" && paddingPx != "0" {
-		fmt.Sscanf(paddingPx, "%d", &paddingVal)
+		if _, err := fmt.Sscanf(paddingPx, "%d", &paddingVal); err != nil {
+			paddingVal = 0 // Default to 0 if parsing fails
+		}
 	}
 
 	// Get individual padding overrides
@@ -306,12 +308,16 @@ func (c *MJHeroComponent) calculateEffectiveHeight(height, padding string) strin
 
 	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
 		topPaddingPx := strings.TrimSuffix(*paddingTopAttr, "px")
-		fmt.Sscanf(topPaddingPx, "%d", &topPadding)
+		if _, err := fmt.Sscanf(topPaddingPx, "%d", &topPadding); err != nil {
+			topPadding = paddingVal // Fallback to general padding if parsing fails
+		}
 	}
 
 	if paddingBottomAttr := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottomAttr != nil {
 		bottomPaddingPx := strings.TrimSuffix(*paddingBottomAttr, "px")
-		fmt.Sscanf(bottomPaddingPx, "%d", &bottomPadding)
+		if _, err := fmt.Sscanf(bottomPaddingPx, "%d", &bottomPadding); err != nil {
+			bottomPadding = paddingVal // Fallback to general padding if parsing fails
+		}
 	}
 
 	// Calculate effective height = original height - top padding - bottom padding

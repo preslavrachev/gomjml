@@ -153,7 +153,7 @@ func (c *MJNavbarComponent) renderHamburgerLabel(w io.StringWriter, checkboxID s
 
 	labelTag := html.NewHTMLTag("label").
 		AddAttribute(constants.AttrAlign, icoAlign).
-		AddAttribute("for", checkboxID).
+		AddAttribute(constants.AttrFor, checkboxID).
 		AddAttribute(constants.AttrClass, "mj-menu-label").
 		AddStyle(constants.CSSDisplay, constants.DisplayBlock).
 		AddStyle("cursor", "pointer").

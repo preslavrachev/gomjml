@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -123,7 +124,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 	// Add bgcolor to MSO table if background-color is set
 	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute("bgcolor", bgColor)
+		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
 	}
 
 	msoTable.AddAttribute("align", "center").
@@ -257,7 +258,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 	// Add bgcolor to MSO table if background-color is set
 	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute("bgcolor", bgColor)
+		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
 	}
 
 	msoTable.AddAttribute("align", "center").
