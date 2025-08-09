@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -65,7 +66,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Add attributes in MRML order: bgcolor, align, width
 	if backgroundColor != "" {
-		msoTable.AddAttribute("bgcolor", backgroundColor)
+		msoTable.AddAttribute(constants.AttrBgcolor, backgroundColor)
 	}
 
 	msoTable.AddAttribute("align", "center").

@@ -99,6 +99,17 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{"mj-navbar-ico", "testdata/mj-navbar-ico.mjml"},
 		{"mj-navbar-align-class", "testdata/mj-navbar-align-class.mjml"},
 		{"mj-navbar-multiple", "testdata/mj-navbar-multiple.mjml"},
+		// MJ-HERO tests
+		{"mj-hero", "testdata/mj-hero.mjml"},
+		{"mj-hero-background-color", "testdata/mj-hero-background-color.mjml"},
+		{"mj-hero-background-height", "testdata/mj-hero-background-height.mjml"},
+		{"mj-hero-background-position", "testdata/mj-hero-background-position.mjml"},
+		{"mj-hero-background-url", "testdata/mj-hero-background-url.mjml"},
+		{"mj-hero-background-width", "testdata/mj-hero-background-width.mjml"},
+		{"mj-hero-class", "testdata/mj-hero-class.mjml"},
+		{"mj-hero-height", "testdata/mj-hero-height.mjml"},
+		{"mj-hero-mode", "testdata/mj-hero-mode.mjml"},
+		{"mj-hero-vertical-align", "testdata/mj-hero-vertical-align.mjml"},
 	}
 
 	for _, tc := range testCases {

@@ -134,6 +134,8 @@ const (
 	MJMLBackgroundSize     = "background-size"
 	MJMLBackgroundPosition = "background-position"
 	MJMLBackgroundRepeat   = "background-repeat"
+	MJMLBackgroundUrl      = "background-url"
+	MJMLBackgroundHeight   = "background-height"
 
 	// Border attributes
 	MJMLBorder       = "border"
