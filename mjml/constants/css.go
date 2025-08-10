@@ -35,6 +35,7 @@ const (
 	CSSTextTransform  = "text-transform"
 	CSSLetterSpacing  = "letter-spacing"
 	CSSWordSpacing    = "word-spacing"
+	CSSWordBreak      = "word-break"
 	CSSColor          = "color"
 
 	// Background & Visual
