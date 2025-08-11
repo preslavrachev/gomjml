@@ -86,6 +86,8 @@ func (c *MJSpacerComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add thin space character (&#8202;)
+	// The thin space character is used here to ensure the spacer div renders with the correct height in email clients.
+	// Some clients ignore empty divs or collapse whitespace, and using &nbsp; or a regular space may result in unwanted extra height or layout issues.
 	if _, err := w.WriteString("&#8202;"); err != nil {
 		return err
 	}
