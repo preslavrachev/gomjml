@@ -2,7 +2,7 @@
 
 A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML. See some [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations. 
 
-![status](https://img.shields.io/badge/status-not_ready_for_production-red) 
+![status](https://img.shields.io/badge/status-in_active_development-blueviolet)
 ![Tests](https://github.com/preslavrachev/gomjml/actions/workflows/test.yml/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/preslavrachev/gomjml)
 
@@ -12,7 +12,7 @@ A native Go implementation of the MJML email framework, providing fast compilati
 
 ## 🚀 Features
 
-- **NOT Production Ready Yet!!!**: The current code implementation is about 80% feature-complete with MRML (the Rust implementation of MJML). When it is done, it will be a professionally structured Go library with clean package separation
+- The current code implementation is about 90% feature-complete with MJML and MRML (the Rust implementation of MJML). When it is done, it will be a professionally structured Go library with clean package separation
 - **Email Compatible**: Generates HTML that works across email clients (Outlook, Gmail, Apple Mail, etc.)
 - **Fast Performance**: Native Go performance, comparable to Rust MRML implementation
 - **Complete Component System**: Support for essential MJML components with proper inheritance
