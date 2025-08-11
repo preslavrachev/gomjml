@@ -6,7 +6,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
@@ -56,12 +55,11 @@ func calculateOptimalBufferSize(mjmlContent string) int {
 	}
 }
 
-// cachedAST wraps an MJML AST with an expiration timestamp in nanoseconds.
-// The expiration is updated atomically to avoid races between render and
-// cleanup goroutines.
+// cachedAST wraps an MJML AST with a fixed expiration time.
+// Entries are immutable once stored in the cache to avoid concurrent mutation.
 type cachedAST struct {
 	node    *MJMLNode
-	expires int64 // unix nano timestamp
+	expires time.Time
 }
 
 // astCache stores parsed MJML ASTs keyed by the original template string. This
@@ -86,8 +84,7 @@ func init() {
 				now := time.Now()
 				astCache.Range(func(key, value interface{}) bool {
 					entry := value.(*cachedAST)
-					expires := time.Unix(0, atomic.LoadInt64(&entry.expires))
-					if now.After(expires) {
+					if now.After(entry.expires) {
 						astCache.Delete(key)
 					}
 					return true
@@ -142,10 +139,8 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	)
 	if cached, found := astCache.Load(mjmlContent); found {
 		entry := cached.(*cachedAST)
-		expires := time.Unix(0, atomic.LoadInt64(&entry.expires))
-		if time.Now().Before(expires) {
+		if time.Now().Before(entry.expires) {
 			ast = entry.node
-			atomic.StoreInt64(&entry.expires, time.Now().Add(astCacheTTL).UnixNano())
 			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
 		} else {
 			astCache.Delete(mjmlContent)
@@ -159,7 +154,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 			return nil, err
 		}
 		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-		astCache.Store(mjmlContent, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL).UnixNano()})
+		astCache.Store(mjmlContent, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL)})
 	}
 
 	// Initialize global attributes
