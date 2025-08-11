@@ -41,15 +41,12 @@ jobs:
       run: go test -v ./mjml -run TestMJMLAgainstExpected
       
     - name: Check test coverage
-      run: go test -coverprofile=coverage.out ./...
+      run: go test -coverprofile=coverage.txt ./...
       
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
       with:
-        file: ./coverage.out
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   # TODO: Enable linting once codebase is cleaned up
   # lint:
