@@ -55,7 +55,9 @@ func calculateOptimalBufferSize(mjmlContent string) int {
 	}
 }
 
-// cachedAST wraps an MJML AST with an expiration timestamp.
+// cachedAST wraps an MJML AST with an expiration timestamp. Entries are
+// immutable; to refresh an item, a new struct is stored in the cache with an
+// updated expiry.
 type cachedAST struct {
 	node    *MJMLNode
 	expires time.Time
@@ -140,7 +142,10 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		entry := cached.(*cachedAST)
 		if time.Now().Before(entry.expires) {
 			ast = entry.node
-			entry.expires = time.Now().Add(astCacheTTL)
+			// Store a fresh entry with an updated expiration instead of
+			// mutating the existing one. This keeps cache entries
+			// immutable and avoids data races with the cleanup goroutine.
+			astCache.Store(mjmlContent, &cachedAST{node: entry.node, expires: time.Now().Add(astCacheTTL)})
 			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
 		} else {
 			astCache.Delete(mjmlContent)
