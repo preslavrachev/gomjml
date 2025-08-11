@@ -65,17 +65,17 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add specific padding overrides if they exist (following MRML/section pattern)
-	if paddingTopAttr := c.GetAttribute("padding-top"); paddingTopAttr != nil {
-		tdTag.AddStyle("padding-top", *paddingTopAttr)
+	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
 	}
-	if paddingBottomAttr := c.GetAttribute("padding-bottom"); paddingBottomAttr != nil {
-		tdTag.AddStyle("padding-bottom", *paddingBottomAttr)
+	if paddingBottomAttr := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottomAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingBottom, *paddingBottomAttr)
 	}
-	if paddingLeftAttr := c.GetAttribute("padding-left"); paddingLeftAttr != nil {
-		tdTag.AddStyle("padding-left", *paddingLeftAttr)
+	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingLeft, *paddingLeftAttr)
 	}
-	if paddingRightAttr := c.GetAttribute("padding-right"); paddingRightAttr != nil {
-		tdTag.AddStyle("padding-right", *paddingRightAttr)
+	if paddingRightAttr := c.GetAttribute(constants.MJMLPaddingRight); paddingRightAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingRight, *paddingRightAttr)
 	}
 
 	tdTag.AddStyle("word-break", "break-word")

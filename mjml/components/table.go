@@ -50,16 +50,16 @@ func (c *MJTableComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add specific padding overrides if they exist
-	if paddingTop := c.GetAttribute("padding-top"); paddingTop != nil {
+	if paddingTop := c.GetAttribute(constants.MJMLPaddingTop); paddingTop != nil {
 		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTop)
 	}
-	if paddingBottom := c.GetAttribute("padding-bottom"); paddingBottom != nil {
+	if paddingBottom := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottom != nil {
 		tdTag.AddStyle(constants.CSSPaddingBottom, *paddingBottom)
 	}
-	if paddingLeft := c.GetAttribute("padding-left"); paddingLeft != nil {
+	if paddingLeft := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeft != nil {
 		tdTag.AddStyle(constants.CSSPaddingLeft, *paddingLeft)
 	}
-	if paddingRight := c.GetAttribute("padding-right"); paddingRight != nil {
+	if paddingRight := c.GetAttribute(constants.MJMLPaddingRight); paddingRight != nil {
 		tdTag.AddStyle(constants.CSSPaddingRight, *paddingRight)
 	}
 
