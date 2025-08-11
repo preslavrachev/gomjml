@@ -110,6 +110,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{"mj-hero-height", "testdata/mj-hero-height.mjml"},
 		{"mj-hero-mode", "testdata/mj-hero-mode.mjml"},
 		{"mj-hero-vertical-align", "testdata/mj-hero-vertical-align.mjml"},
+		// MJ-SPACER test
+		{"mj-spacer", "testdata/mj-spacer.mjml"},
 	}
 
 	for _, tc := range testCases {
