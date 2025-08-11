@@ -1,6 +1,7 @@
 package mjml
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -65,24 +66,40 @@ type cachedAST struct {
 // times, which is common in benchmarks or high-throughput scenarios. Items are
 // automatically expired and cleaned up to avoid unbounded memory growth.
 var (
-	astCache    sync.Map // map[string]*cachedAST
-	astCacheTTL = 5 * time.Minute
+	astCache      sync.Map // map[string]*cachedAST
+	astCacheTTL   = 5 * time.Minute
+	cleanupCancel context.CancelFunc
 )
 
 func init() {
+	var ctx context.Context
+	ctx, cleanupCancel = context.WithCancel(context.Background())
 	go func() {
 		ticker := time.NewTicker(time.Minute)
-		for range ticker.C {
-			now := time.Now()
-			astCache.Range(func(key, value interface{}) bool {
-				entry := value.(*cachedAST)
-				if now.After(entry.expires) {
-					astCache.Delete(key)
-				}
-				return true
-			})
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				now := time.Now()
+				astCache.Range(func(key, value interface{}) bool {
+					entry := value.(*cachedAST)
+					if now.After(entry.expires) {
+						astCache.Delete(key)
+					}
+					return true
+				})
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
+}
+
+// StopASTCacheCleanup stops the background cache cleanup goroutine.
+func StopASTCacheCleanup() {
+	if cleanupCancel != nil {
+		cleanupCancel()
+	}
 }
 
 // WithDebugTags enables or disables debug tag inclusion in the rendered output
