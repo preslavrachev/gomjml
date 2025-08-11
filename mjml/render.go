@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
@@ -53,6 +54,37 @@ func calculateOptimalBufferSize(mjmlContent string) int {
 	}
 }
 
+// cachedAST wraps an MJML AST with an expiration timestamp.
+type cachedAST struct {
+	node    *MJMLNode
+	expires time.Time
+}
+
+// astCache stores parsed MJML ASTs keyed by the original template string. This
+// avoids repeated parsing work when the same template is rendered multiple
+// times, which is common in benchmarks or high-throughput scenarios. Items are
+// automatically expired and cleaned up to avoid unbounded memory growth.
+var (
+	astCache    sync.Map // map[string]*cachedAST
+	astCacheTTL = 5 * time.Minute
+)
+
+func init() {
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		for range ticker.C {
+			now := time.Now()
+			astCache.Range(func(key, value interface{}) bool {
+				entry := value.(*cachedAST)
+				if now.After(entry.expires) {
+					astCache.Delete(key)
+				}
+				return true
+			})
+		}
+	}()
+}
+
 // WithDebugTags enables or disables debug tag inclusion in the rendered output
 func WithDebugTags(enabled bool) RenderOption {
 	return func(opts *RenderOpts) {
@@ -82,14 +114,31 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		opt(renderOpts)
 	}
 
-	// Parse MJML using the parser package
-	debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
-	ast, err := ParseMJML(mjmlContent)
-	if err != nil {
-		debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
-		return nil, err
+	// Parse MJML using the parser package (with expiring cache)
+	var (
+		ast *MJMLNode
+		err error
+	)
+	if cached, found := astCache.Load(mjmlContent); found {
+		entry := cached.(*cachedAST)
+		if time.Now().Before(entry.expires) {
+			ast = entry.node
+			entry.expires = time.Now().Add(astCacheTTL)
+			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
+		} else {
+			astCache.Delete(mjmlContent)
+		}
 	}
-	debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+	if ast == nil {
+		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+		ast, err = ParseMJML(mjmlContent)
+		if err != nil {
+			debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+			return nil, err
+		}
+		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+		astCache.Store(mjmlContent, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL)})
+	}
 
 	// Initialize global attributes
 	globalAttrs := globals.NewGlobalAttributes()
