@@ -252,11 +252,11 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-carousel-image` | ❌ **Not Implemented** | Images within carousel |
 | `mj-hero` | ✅ **Implemented** | Header/banner sections with background images |
 | `mj-spacer` | ✅ **Implemented** | Layout spacing control |
-| `mj-table` | ❌ **Not Implemented** | Email-safe table component |
+| `mj-table` | ✅ **Implemented** | Email-safe table component with border and styling support |
 
 ### Implementation Summary
-- **✅ Implemented: 23 components** - All essential layout, content, head components, accordion, navbar, hero, and spacer work
-- **❌ Not Implemented: 3 components** - Advanced interactive components return `NotImplementedError`
+- **✅ Implemented: 24 components** - All essential layout, content, head components, accordion, navbar, hero, spacer, and table work
+- **❌ Not Implemented: 2 components** - Advanced interactive components return `NotImplementedError`
 - **Total MJML Components: 26** - Covers all major MJML specification components
 
 ### Integration Test Status

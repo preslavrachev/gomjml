@@ -182,11 +182,11 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddStyle("padding", padding)
 
 	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
-	if paddingBottom := c.getAttribute("padding-bottom"); paddingBottom != "" {
-		innerTd.AddStyle("padding-bottom", paddingBottom)
+	if paddingBottom := c.getAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
+		innerTd.AddStyle(constants.CSSPaddingBottom, paddingBottom)
 	}
-	if paddingTop := c.getAttribute("padding-top"); paddingTop != "" {
-		innerTd.AddStyle("padding-top", paddingTop)
+	if paddingTop := c.getAttribute(constants.MJMLPaddingTop); paddingTop != "" {
+		innerTd.AddStyle(constants.CSSPaddingTop, paddingTop)
 	}
 
 	innerTd.AddStyle("text-align", textAlign)
@@ -342,11 +342,11 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		AddStyle("padding", padding)
 
 	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
-	if paddingBottom := c.getAttribute("padding-bottom"); paddingBottom != "" {
-		mainTd.AddStyle("padding-bottom", paddingBottom)
+	if paddingBottom := c.getAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
+		mainTd.AddStyle(constants.CSSPaddingBottom, paddingBottom)
 	}
-	if paddingTop := c.getAttribute("padding-top"); paddingTop != "" {
-		mainTd.AddStyle("padding-top", paddingTop)
+	if paddingTop := c.getAttribute(constants.MJMLPaddingTop); paddingTop != "" {
+		mainTd.AddStyle(constants.CSSPaddingTop, paddingTop)
 	}
 
 	mainTd.AddStyle("text-align", textAlign)

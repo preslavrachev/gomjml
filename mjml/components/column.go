@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
@@ -276,7 +277,7 @@ func (c *MJColumnComponent) GetMSOTDStyles() map[string]string {
 
 // hasGutter checks if the column has any padding attributes
 func (c *MJColumnComponent) hasGutter() bool {
-	paddingAttrs := []string{"padding", "padding-top", "padding-right", "padding-bottom", "padding-left"}
+	paddingAttrs := []string{constants.MJMLPadding, constants.MJMLPaddingTop, constants.MJMLPaddingRight, constants.MJMLPaddingBottom, constants.MJMLPaddingLeft}
 	for _, attr := range paddingAttrs {
 		if c.GetAttribute(attr) != nil {
 			return true
@@ -314,17 +315,17 @@ func (c *MJColumnComponent) renderGutter(w io.StringWriter) error {
 	if padding := c.GetAttribute("padding"); padding != nil {
 		gutterTd.AddStyle("padding", *padding)
 	}
-	if paddingTop := c.GetAttribute("padding-top"); paddingTop != nil {
-		gutterTd.AddStyle("padding-top", *paddingTop)
+	if paddingTop := c.GetAttribute(constants.MJMLPaddingTop); paddingTop != nil {
+		gutterTd.AddStyle(constants.CSSPaddingTop, *paddingTop)
 	}
-	if paddingRight := c.GetAttribute("padding-right"); paddingRight != nil {
-		gutterTd.AddStyle("padding-right", *paddingRight)
+	if paddingRight := c.GetAttribute(constants.MJMLPaddingRight); paddingRight != nil {
+		gutterTd.AddStyle(constants.CSSPaddingRight, *paddingRight)
 	}
-	if paddingBottom := c.GetAttribute("padding-bottom"); paddingBottom != nil {
-		gutterTd.AddStyle("padding-bottom", *paddingBottom)
+	if paddingBottom := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottom != nil {
+		gutterTd.AddStyle(constants.CSSPaddingBottom, *paddingBottom)
 	}
-	if paddingLeft := c.GetAttribute("padding-left"); paddingLeft != nil {
-		gutterTd.AddStyle("padding-left", *paddingLeft)
+	if paddingLeft := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeft != nil {
+		gutterTd.AddStyle(constants.CSSPaddingLeft, *paddingLeft)
 	}
 
 	if err := gutterTd.RenderOpen(w); err != nil {
