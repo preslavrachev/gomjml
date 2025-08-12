@@ -147,6 +147,8 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 func Render(mjmlContent string, opts ...RenderOption) (string, error) {
 	// Reset navbar ID counter for deterministic IDs within each render
 	components.ResetNavbarIDCounter()
+	// Reset carousel ID counter for deterministic IDs within each render
+	components.ResetCarouselIDCounter()
 
 	result, err := RenderWithAST(mjmlContent, opts...)
 	if err != nil {
@@ -191,11 +193,75 @@ type MJMLComponent struct {
 	Body           *components.MJBodyComponent
 	mobileCSSAdded bool                   // Track if mobile CSS has been added
 	columnClasses  map[string]styles.Size // Track column classes used in the document
+	carouselCSS    strings.Builder        // Collect carousel CSS from components
 }
 
 // RequestMobileCSS allows components to request mobile CSS to be added
 func (c *MJMLComponent) RequestMobileCSS() {
 	c.mobileCSSAdded = true
+}
+
+// RegisterCarouselCSS allows carousel components to register their CSS
+func (c *MJMLComponent) RegisterCarouselCSS(css string) {
+	c.carouselCSS.WriteString(css)
+}
+
+// collectCarouselCSS recursively collects carousel CSS from all components
+func (c *MJMLComponent) collectCarouselCSS() {
+	if c.Body != nil {
+		c.collectCarouselCSSFromComponent(c.Body)
+	}
+}
+
+// collectCarouselCSSFromComponent recursively collects carousel CSS from a component and its children
+func (c *MJMLComponent) collectCarouselCSSFromComponent(comp Component) {
+	// Check if this is a carousel component
+	if carouselComp, ok := comp.(*components.MJCarouselComponent); ok {
+		css := carouselComp.GenerateCSS()
+		if css != "" {
+			c.carouselCSS.WriteString(css)
+		}
+	}
+
+	// Recursively process children based on component type
+	switch v := comp.(type) {
+	case *components.MJBodyComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJSectionComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJColumnComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJWrapperComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJGroupComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJSocialComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJAccordionComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJNavbarComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	case *components.MJCarouselComponent:
+		for _, child := range v.Children {
+			c.collectCarouselCSSFromComponent(child)
+		}
+	}
 }
 
 // hasCustomGlobalFonts checks if global attributes specify custom fonts
@@ -447,6 +513,14 @@ func (c *MJMLComponent) generateNavbarCSS() string {
         </style>`
 }
 
+// generateCarouselCSS generates the CSS styles needed for carousel functionality
+func (c *MJMLComponent) generateCarouselCSS() string {
+	if c.carouselCSS.Len() == 0 {
+		return ""
+	}
+	return "<style type=\"text/css\">\n" + c.carouselCSS.String() + "</style>\n"
+}
+
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS
 func (c *MJMLComponent) hasMobileCSSComponents() bool {
 	if c.Body == nil {
@@ -509,6 +583,20 @@ func (c *MJMLComponent) hasNavbarComponents() bool {
 	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
 		switch comp.GetTagName() {
 		case "mj-navbar", "mj-navbar-link":
+			return true
+		}
+		return false
+	})
+}
+
+// hasCarouselComponents checks if the MJML contains any carousel components
+func (c *MJMLComponent) hasCarouselComponents() bool {
+	if c.Body == nil {
+		return false
+	}
+	return c.checkChildrenForCondition(c.Body, func(comp Component) bool {
+		switch comp.GetTagName() {
+		case "mj-carousel", "mj-carousel-image":
 			return true
 		}
 		return false
@@ -614,6 +702,10 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	debug.DebugLogWithData("mjml-root", "column-classes-collected", "Column classes collected", map[string]interface{}{
 		"class_count": len(c.columnClasses),
 	})
+
+	// Collect carousel CSS from all carousel components
+	debug.DebugLog("mjml-root", "collect-carousel-css", "Collecting carousel CSS")
+	c.collectCarouselCSS()
 
 	// Generate body content once for both font detection and final output
 	debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
@@ -813,6 +905,14 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	if c.hasNavbarComponents() {
 		navbarCSSText := c.generateNavbarCSS()
 		if _, err := w.WriteString(navbarCSSText); err != nil {
+			return err
+		}
+	}
+
+	// Carousel CSS - add only if components need it (following MRML pattern)
+	if c.hasCarouselComponents() {
+		carouselCSSText := c.generateCarouselCSS()
+		if _, err := w.WriteString(carouselCSSText); err != nil {
 			return err
 		}
 	}

@@ -15,6 +15,8 @@ import (
 func TestMJMLAgainstExpected(t *testing.T) {
 	// Reset navbar ID counter for deterministic testing
 	components.ResetNavbarIDCounter()
+	// Reset carousel ID counter for deterministic testing
+	components.ResetCarouselIDCounter()
 	testCases := []struct {
 		name     string
 		filename string
@@ -117,6 +119,12 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{"mj-table-other", "testdata/mj-table-other.mjml"},
 		{"mj-table-table", "testdata/mj-table-table.mjml"},
 		{"mj-table-text", "testdata/mj-table-text.mjml"},
+		// MJ-CAROUSEL tests
+		{"mj-carousel", "testdata/mj-carousel.mjml"},
+		{"mj-carousel-align-border-radius-class", "testdata/mj-carousel-align-border-radius-class.mjml"},
+		{"mj-carousel-icon", "testdata/mj-carousel-icon.mjml"},
+		{"mj-carousel-tb", "testdata/mj-carousel-tb.mjml"},
+		{"mj-carousel-thumbnails", "testdata/mj-carousel-thumbnails.mjml"},
 	}
 
 	for _, tc := range testCases {
