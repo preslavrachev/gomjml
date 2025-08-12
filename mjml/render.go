@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
@@ -68,15 +69,20 @@ type cachedAST struct {
 // multiple times while keeping map keys small. Items are automatically expired
 // and cleaned up to avoid unbounded memory growth.
 var (
-	astCache      sync.Map // map[uint64]*cachedAST
-	astCacheTTL   = 5 * time.Minute
-	cleanupMu     sync.Mutex
-	cleanupCancel context.CancelFunc
-	cleanupOnce   sync.Once
-	hashSeed      = maphash.MakeSeed()
+	astCache       sync.Map // map[uint64]*cachedAST
+	astCacheTTL    = 5 * time.Minute
+	cleanupMu      sync.Mutex
+	cleanupCancel  context.CancelFunc
+	cleanupStarted uint32
+	hashSeed       maphash.Seed
+	hashSeedOnce   sync.Once
+	parseLocks     sync.Map // map[uint64]*sync.Mutex
 )
 
 func hashTemplate(s string) uint64 {
+	hashSeedOnce.Do(func() {
+		hashSeed = maphash.MakeSeed()
+	})
 	var h maphash.Hash
 	h.SetSeed(hashSeed)
 	h.WriteString(s)
@@ -84,31 +90,36 @@ func hashTemplate(s string) uint64 {
 }
 
 func startASTCacheCleanup() {
-	cleanupOnce.Do(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		cleanupMu.Lock()
-		cleanupCancel = cancel
-		cleanupMu.Unlock()
-		go func() {
-			ticker := time.NewTicker(time.Minute)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					now := time.Now()
-					astCache.Range(func(key, value interface{}) bool {
-						entry := value.(*cachedAST)
-						if now.After(entry.expires) {
-							astCache.Delete(key)
-						}
-						return true
-					})
-				case <-ctx.Done():
-					return
-				}
+	if atomic.LoadUint32(&cleanupStarted) == 1 {
+		return
+	}
+	cleanupMu.Lock()
+	defer cleanupMu.Unlock()
+	if atomic.LoadUint32(&cleanupStarted) == 1 {
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cleanupCancel = cancel
+	atomic.StoreUint32(&cleanupStarted, 1)
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				now := time.Now()
+				astCache.Range(func(key, value interface{}) bool {
+					entry := value.(*cachedAST)
+					if now.After(entry.expires) {
+						astCache.Delete(key)
+					}
+					return true
+				})
+			case <-ctx.Done():
+				return
 			}
-		}()
-	})
+		}
+	}()
 }
 
 // StopASTCacheCleanup stops the background cache cleanup goroutine.
@@ -118,7 +129,7 @@ func StopASTCacheCleanup() {
 	if cleanupCancel != nil {
 		cleanupCancel()
 		cleanupCancel = nil
-		cleanupOnce = sync.Once{}
+		atomic.StoreUint32(&cleanupStarted, 0)
 	}
 }
 
@@ -176,14 +187,33 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 			}
 		}
 		if ast == nil {
-			debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
-			ast, err = ParseMJML(mjmlContent)
-			if err != nil {
-				debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
-				return nil, err
+			muIface, _ := parseLocks.LoadOrStore(hash, &sync.Mutex{})
+			mu := muIface.(*sync.Mutex)
+			mu.Lock()
+			if cached, found := astCache.Load(hash); found {
+				entry := cached.(*cachedAST)
+				if time.Now().Before(entry.expires) {
+					ast = entry.node
+					debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
+				} else {
+					astCache.Delete(hash)
+				}
 			}
-			debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-			astCache.Store(hash, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL)})
+			if ast == nil {
+				debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+				node, err := ParseMJML(mjmlContent)
+				if err != nil {
+					mu.Unlock()
+					parseLocks.Delete(hash)
+					debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+					return nil, err
+				}
+				debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+				astCache.Store(hash, &cachedAST{node: node, expires: time.Now().Add(astCacheTTL)})
+				ast = node
+			}
+			mu.Unlock()
+			parseLocks.Delete(hash)
 		}
 	} else {
 		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
