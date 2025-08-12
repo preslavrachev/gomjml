@@ -215,3 +215,33 @@ func TestCacheSeparateTemplates(t *testing.T) {
 		t.Fatalf("expected 2 cache entries, got %d", entries)
 	}
 }
+
+func TestParseLockRefcount(t *testing.T) {
+	resetASTCache()
+	defer resetASTCache()
+
+	hash := uint64(123)
+	e1 := acquireParseLock(hash)
+	e2 := acquireParseLock(hash)
+	if e1 != e2 {
+		t.Fatalf("expected same entry for identical hash")
+	}
+	releaseParseLock(hash, e1)
+	entries := 0
+	parseLocks.Range(func(_, _ interface{}) bool {
+		entries++
+		return true
+	})
+	if entries != 1 {
+		t.Fatalf("expected lock to remain with one reference, got %d", entries)
+	}
+	releaseParseLock(hash, e2)
+	entries = 0
+	parseLocks.Range(func(_, _ interface{}) bool {
+		entries++
+		return true
+	})
+	if entries != 0 {
+		t.Fatalf("expected lock to be removed after releasing last reference")
+	}
+}

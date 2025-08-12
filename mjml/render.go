@@ -76,8 +76,28 @@ var (
 	cleanupStarted uint32
 	hashSeed       maphash.Seed
 	hashSeedOnce   sync.Once
-	parseLocks     sync.Map // map[uint64]*sync.Mutex
+	parseLocks     sync.Map // map[uint64]*parseLockEntry
 )
+
+// parseLockEntry synchronizes parsing for a given template hash while tracking
+// active users so the lock can be safely removed when no longer needed.
+type parseLockEntry struct {
+	mu   sync.Mutex
+	refs atomic.Int64
+}
+
+func acquireParseLock(hash uint64) *parseLockEntry {
+	v, _ := parseLocks.LoadOrStore(hash, &parseLockEntry{})
+	e := v.(*parseLockEntry)
+	e.refs.Add(1)
+	return e
+}
+
+func releaseParseLock(hash uint64, e *parseLockEntry) {
+	if e.refs.Add(-1) == 0 {
+		parseLocks.CompareAndDelete(hash, e)
+	}
+}
 
 func hashTemplate(s string) uint64 {
 	hashSeedOnce.Do(func() {
@@ -187,13 +207,12 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 			}
 		}
 		if ast == nil {
-			muIface, _ := parseLocks.LoadOrStore(hash, &sync.Mutex{})
-			mu := muIface.(*sync.Mutex)
-			mu.Lock()
+			entry := acquireParseLock(hash)
+			entry.mu.Lock()
 			if cached, found := astCache.Load(hash); found {
-				entry := cached.(*cachedAST)
-				if time.Now().Before(entry.expires) {
-					ast = entry.node
+				c := cached.(*cachedAST)
+				if time.Now().Before(c.expires) {
+					ast = c.node
 					debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
 				} else {
 					astCache.Delete(hash)
@@ -203,8 +222,8 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 				debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
 				node, err := ParseMJML(mjmlContent)
 				if err != nil {
-					mu.Unlock()
-					parseLocks.Delete(hash)
+					entry.mu.Unlock()
+					releaseParseLock(hash, entry)
 					debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
 					return nil, err
 				}
@@ -212,8 +231,8 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 				astCache.Store(hash, &cachedAST{node: node, expires: time.Now().Add(astCacheTTL)})
 				ast = node
 			}
-			mu.Unlock()
-			parseLocks.Delete(hash)
+			entry.mu.Unlock()
+			releaseParseLock(hash, entry)
 		}
 	} else {
 		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
