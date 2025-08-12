@@ -14,6 +14,7 @@ func NewCompileCommand() *cobra.Command {
 		outputFile string
 		stdout     bool
 		debug      bool
+		cache      bool
 	)
 
 	cmd := &cobra.Command{
@@ -37,12 +38,14 @@ Examples:
 			}
 
 			// Render MJML to HTML using library
-			var html string
+			opts := []mjml.RenderOption{}
 			if debug {
-				html, err = mjml.Render(string(mjmlContent), mjml.WithDebugTags(true))
-			} else {
-				html, err = mjml.Render(string(mjmlContent))
+				opts = append(opts, mjml.WithDebugTags(true))
 			}
+			if cache {
+				opts = append(opts, mjml.WithCache(true))
+			}
+			html, err := mjml.Render(string(mjmlContent), opts...)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error rendering MJML: %v\n", err)
 				os.Exit(1)
@@ -65,6 +68,7 @@ Examples:
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "output file path")
 	cmd.Flags().BoolVarP(&stdout, "stdout", "s", false, "output to stdout")
 	cmd.Flags().BoolVar(&debug, "debug", false, "include debug attributes in output")
+	cmd.Flags().BoolVar(&cache, "cache", false, "enable experimental AST caching")
 
 	return cmd
 }

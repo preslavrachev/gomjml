@@ -45,4 +45,5 @@ type RenderOpts struct {
 	InsideGroup bool         // Whether the component is being rendered inside a group
 	InsideHero  bool         // Whether the component is being rendered inside a hero
 	FontTracker *FontTracker // Tracks fonts used during rendering
+	UseCache    bool         // Whether to enable AST caching
 }

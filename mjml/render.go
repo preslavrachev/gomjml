@@ -72,6 +72,7 @@ var (
 	astCacheTTL   = 5 * time.Minute
 	cleanupMu     sync.Mutex
 	cleanupCancel context.CancelFunc
+	cleanupOnce   sync.Once
 	hashSeed      = maphash.MakeSeed()
 )
 
@@ -82,30 +83,32 @@ func hashTemplate(s string) uint64 {
 	return h.Sum64()
 }
 
-func init() {
-	ctx, cancel := context.WithCancel(context.Background())
-	cleanupMu.Lock()
-	cleanupCancel = cancel
-	cleanupMu.Unlock()
-	go func() {
-		ticker := time.NewTicker(time.Minute)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				now := time.Now()
-				astCache.Range(func(key, value interface{}) bool {
-					entry := value.(*cachedAST)
-					if now.After(entry.expires) {
-						astCache.Delete(key)
-					}
-					return true
-				})
-			case <-ctx.Done():
-				return
+func startASTCacheCleanup() {
+	cleanupOnce.Do(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		cleanupMu.Lock()
+		cleanupCancel = cancel
+		cleanupMu.Unlock()
+		go func() {
+			ticker := time.NewTicker(time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					now := time.Now()
+					astCache.Range(func(key, value interface{}) bool {
+						entry := value.(*cachedAST)
+						if now.After(entry.expires) {
+							astCache.Delete(key)
+						}
+						return true
+					})
+				case <-ctx.Done():
+					return
+				}
 			}
-		}
-	}()
+		}()
+	})
 }
 
 // StopASTCacheCleanup stops the background cache cleanup goroutine.
@@ -115,6 +118,7 @@ func StopASTCacheCleanup() {
 	if cleanupCancel != nil {
 		cleanupCancel()
 		cleanupCancel = nil
+		cleanupOnce = sync.Once{}
 	}
 }
 
@@ -122,6 +126,13 @@ func StopASTCacheCleanup() {
 func WithDebugTags(enabled bool) RenderOption {
 	return func(opts *RenderOpts) {
 		opts.DebugTags = enabled
+	}
+}
+
+// WithCache enables or disables AST caching
+func WithCache(enabled bool) RenderOption {
+	return func(opts *RenderOpts) {
+		opts.UseCache = enabled
 	}
 }
 
@@ -147,22 +158,34 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		opt(renderOpts)
 	}
 
-	// Parse MJML using the parser package (with expiring cache)
+	// Parse MJML using the parser package (with optional cache)
 	var (
-		ast  *MJMLNode
-		err  error
-		hash = hashTemplate(mjmlContent)
+		ast *MJMLNode
+		err error
 	)
-	if cached, found := astCache.Load(hash); found {
-		entry := cached.(*cachedAST)
-		if time.Now().Before(entry.expires) {
-			ast = entry.node
-			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
-		} else {
-			astCache.Delete(hash)
+	if renderOpts.UseCache {
+		startASTCacheCleanup()
+		hash := hashTemplate(mjmlContent)
+		if cached, found := astCache.Load(hash); found {
+			entry := cached.(*cachedAST)
+			if time.Now().Before(entry.expires) {
+				ast = entry.node
+				debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
+			} else {
+				astCache.Delete(hash)
+			}
 		}
-	}
-	if ast == nil {
+		if ast == nil {
+			debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+			ast, err = ParseMJML(mjmlContent)
+			if err != nil {
+				debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+				return nil, err
+			}
+			debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+			astCache.Store(hash, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL)})
+		}
+	} else {
 		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
 		ast, err = ParseMJML(mjmlContent)
 		if err != nil {
@@ -170,7 +193,6 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 			return nil, err
 		}
 		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-		astCache.Store(hash, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL)})
 	}
 
 	// Initialize global attributes
