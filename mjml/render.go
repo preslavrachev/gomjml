@@ -7,7 +7,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
@@ -69,34 +68,42 @@ type cachedAST struct {
 // multiple times while keeping map keys small. Items are automatically expired
 // and cleaned up to avoid unbounded memory growth.
 var (
-	astCache       sync.Map // map[uint64]*cachedAST
-	astCacheTTL    = 5 * time.Minute
-	cleanupMu      sync.Mutex
-	cleanupCancel  context.CancelFunc
-	cleanupStarted uint32
-	hashSeed       maphash.Seed
-	hashSeedOnce   sync.Once
-	parseLocks     sync.Map // map[uint64]*parseLockEntry
+	astCache      sync.Map // map[uint64]*cachedAST
+	astCacheTTL   = 5 * time.Minute
+	cleanupMu     sync.Mutex
+	cleanupCancel context.CancelFunc
+	hashSeed      maphash.Seed
+	hashSeedOnce  sync.Once
+	sfMu          sync.Mutex
+	sfCalls       = make(map[uint64]*sfCall)
 )
 
-// parseLockEntry synchronizes parsing for a given template hash while tracking
-// active users so the lock can be safely removed when no longer needed.
-type parseLockEntry struct {
-	mu   sync.Mutex
-	refs atomic.Int64
+type sfCall struct {
+	wg  sync.WaitGroup
+	res *MJMLNode
+	err error
 }
 
-func acquireParseLock(hash uint64) *parseLockEntry {
-	v, _ := parseLocks.LoadOrStore(hash, &parseLockEntry{})
-	e := v.(*parseLockEntry)
-	e.refs.Add(1)
-	return e
-}
-
-func releaseParseLock(hash uint64, e *parseLockEntry) {
-	if e.refs.Add(-1) == 0 {
-		parseLocks.CompareAndDelete(hash, e)
+func singleflightDo(hash uint64, fn func() (*MJMLNode, error)) (*MJMLNode, error) {
+	sfMu.Lock()
+	if c, ok := sfCalls[hash]; ok {
+		sfMu.Unlock()
+		c.wg.Wait()
+		return c.res, c.err
 	}
+	c := &sfCall{}
+	c.wg.Add(1)
+	sfCalls[hash] = c
+	sfMu.Unlock()
+
+	c.res, c.err = fn()
+	c.wg.Done()
+
+	sfMu.Lock()
+	delete(sfCalls, hash)
+	sfMu.Unlock()
+
+	return c.res, c.err
 }
 
 func hashTemplate(s string) uint64 {
@@ -109,18 +116,66 @@ func hashTemplate(s string) uint64 {
 	return h.Sum64()
 }
 
-func startASTCacheCleanup() {
-	if atomic.LoadUint32(&cleanupStarted) == 1 {
-		return
+// parseAST handles MJML parsing with optional caching.
+func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
+	if !useCache {
+		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+		node, err := ParseMJML(mjmlContent)
+		if err != nil {
+			debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+			return nil, err
+		}
+		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+		return node, nil
 	}
+
+	startASTCacheCleanup()
+	hash := hashTemplate(mjmlContent)
+	if cached, found := astCache.Load(hash); found {
+		entry := cached.(*cachedAST)
+		if time.Now().Before(entry.expires) {
+			astCache.Store(hash, &cachedAST{node: entry.node, expires: time.Now().Add(astCacheTTL)})
+			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
+			return entry.node, nil
+		}
+		astCache.Delete(hash)
+	}
+
+	node, err := singleflightDo(hash, func() (*MJMLNode, error) {
+		if cached, found := astCache.Load(hash); found {
+			entry := cached.(*cachedAST)
+			if time.Now().Before(entry.expires) {
+				astCache.Store(hash, &cachedAST{node: entry.node, expires: time.Now().Add(astCacheTTL)})
+				debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
+				return entry.node, nil
+			}
+			astCache.Delete(hash)
+		}
+
+		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+		node, err := ParseMJML(mjmlContent)
+		if err != nil {
+			debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+			return nil, err
+		}
+		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+		astCache.Store(hash, &cachedAST{node: node, expires: time.Now().Add(astCacheTTL)})
+		return node, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+func startASTCacheCleanup() {
 	cleanupMu.Lock()
 	defer cleanupMu.Unlock()
-	if atomic.LoadUint32(&cleanupStarted) == 1 {
+	if cleanupCancel != nil {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cleanupCancel = cancel
-	atomic.StoreUint32(&cleanupStarted, 1)
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
@@ -149,7 +204,6 @@ func StopASTCacheCleanup() {
 	if cleanupCancel != nil {
 		cleanupCancel()
 		cleanupCancel = nil
-		atomic.StoreUint32(&cleanupStarted, 0)
 	}
 }
 
@@ -190,58 +244,9 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	}
 
 	// Parse MJML using the parser package (with optional cache)
-	var (
-		ast *MJMLNode
-		err error
-	)
-	if renderOpts.UseCache {
-		startASTCacheCleanup()
-		hash := hashTemplate(mjmlContent)
-		if cached, found := astCache.Load(hash); found {
-			entry := cached.(*cachedAST)
-			if time.Now().Before(entry.expires) {
-				ast = entry.node
-				debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
-			} else {
-				astCache.Delete(hash)
-			}
-		}
-		if ast == nil {
-			entry := acquireParseLock(hash)
-			entry.mu.Lock()
-			if cached, found := astCache.Load(hash); found {
-				c := cached.(*cachedAST)
-				if time.Now().Before(c.expires) {
-					ast = c.node
-					debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
-				} else {
-					astCache.Delete(hash)
-				}
-			}
-			if ast == nil {
-				debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
-				node, err := ParseMJML(mjmlContent)
-				if err != nil {
-					entry.mu.Unlock()
-					releaseParseLock(hash, entry)
-					debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
-					return nil, err
-				}
-				debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-				astCache.Store(hash, &cachedAST{node: node, expires: time.Now().Add(astCacheTTL)})
-				ast = node
-			}
-			entry.mu.Unlock()
-			releaseParseLock(hash, entry)
-		}
-	} else {
-		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
-		ast, err = ParseMJML(mjmlContent)
-		if err != nil {
-			debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
-			return nil, err
-		}
-		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+	ast, err := parseAST(mjmlContent, renderOpts.UseCache)
+	if err != nil {
+		return nil, err
 	}
 
 	// Initialize global attributes

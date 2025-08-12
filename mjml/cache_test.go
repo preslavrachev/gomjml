@@ -13,10 +13,6 @@ func resetASTCache() {
 		astCache.Delete(key)
 		return true
 	})
-	parseLocks.Range(func(key, _ interface{}) bool {
-		parseLocks.Delete(key)
-		return true
-	})
 	StopASTCacheCleanup()
 }
 
@@ -148,8 +144,8 @@ func TestCacheConcurrentParsingSingleParse(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
-				t.Errorf("render: %v", err)
+			if _, err := parseAST(tpl, true); err != nil {
+				t.Errorf("parse: %v", err)
 			}
 		}()
 	}
@@ -170,12 +166,12 @@ func TestStopASTCacheCleanup(t *testing.T) {
 	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
 		t.Fatalf("render: %v", err)
 	}
-	if atomic.LoadUint32(&cleanupStarted) != 1 {
+	if cleanupCancel == nil {
 		t.Fatalf("expected cleanup goroutine to start")
 	}
 
 	StopASTCacheCleanup()
-	if atomic.LoadUint32(&cleanupStarted) != 0 {
+	if cleanupCancel != nil {
 		t.Fatalf("expected cleanup goroutine to stop")
 	}
 }
@@ -213,35 +209,5 @@ func TestCacheSeparateTemplates(t *testing.T) {
 	astCache.Range(func(_, _ interface{}) bool { entries++; return true })
 	if entries != 2 {
 		t.Fatalf("expected 2 cache entries, got %d", entries)
-	}
-}
-
-func TestParseLockRefcount(t *testing.T) {
-	resetASTCache()
-	defer resetASTCache()
-
-	hash := uint64(123)
-	e1 := acquireParseLock(hash)
-	e2 := acquireParseLock(hash)
-	if e1 != e2 {
-		t.Fatalf("expected same entry for identical hash")
-	}
-	releaseParseLock(hash, e1)
-	entries := 0
-	parseLocks.Range(func(_, _ interface{}) bool {
-		entries++
-		return true
-	})
-	if entries != 1 {
-		t.Fatalf("expected lock to remain with one reference, got %d", entries)
-	}
-	releaseParseLock(hash, e2)
-	entries = 0
-	parseLocks.Range(func(_, _ interface{}) bool {
-		entries++
-		return true
-	})
-	if entries != 0 {
-		t.Fatalf("expected lock to be removed after releasing last reference")
 	}
 }
