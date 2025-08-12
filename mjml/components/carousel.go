@@ -108,10 +108,76 @@ func (c *MJCarouselComponent) GenerateCSS() string {
 		return ""
 	}
 
+	return c.buildCarouselCSS(carouselID, len(carouselImages))
+}
+
+func (c *MJCarouselComponent) GetDefaultAttribute(name string) string {
+	// TODO: Consider more performant approaches to attribute matching than switch statements,
+	// such as static map[string]string lookups or compile-time generated code for components
+	// with many default attributes (10+ attributes). Switch statements may have O(n) lookup
+	// time while map lookups are O(1) average case.
+	switch name {
+	case "align":
+		return "center"
+	case "border-radius":
+		return "6px"
+	case "icon-width":
+		return "44px"
+	case "left-icon":
+		return "https://i.imgur.com/xTh3hln.png"
+	case "right-icon":
+		return "https://i.imgur.com/os7o9kz.png"
+	case "tb-border":
+		return "2px solid transparent"
+	case "tb-border-radius":
+		return "6px"
+	case "tb-hover-border-color":
+		return "#fead0d"
+	case "tb-selected-border-color":
+		return "#cccccc"
+	case "tb-width":
+		return "110px"
+	case "thumbnails":
+		return "visible"
+	default:
+		return ""
+	}
+}
+
+// MJCarouselImageComponent represents the mj-carousel-image component
+type MJCarouselImageComponent struct {
+	*BaseComponent
+}
+
+func NewMJCarouselImageComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJCarouselImageComponent {
+	return &MJCarouselImageComponent{
+		BaseComponent: NewBaseComponent(node, opts),
+	}
+}
+
+func (c *MJCarouselImageComponent) Render(w io.StringWriter) error {
+	// mj-carousel-image doesn't render standalone - it's rendered by parent mj-carousel
+	return fmt.Errorf("mj-carousel-image cannot render standalone - must be child of mj-carousel")
+}
+
+func (c *MJCarouselImageComponent) GetTagName() string {
+	return "mj-carousel-image"
+}
+
+func (c *MJCarouselImageComponent) GetDefaultAttribute(name string) string {
+	switch name {
+	case "target":
+		return "_blank"
+	default:
+		return ""
+	}
+}
+
+// buildCarouselCSS builds the carousel CSS content as a string
+func (c *MJCarouselComponent) buildCarouselCSS(carouselID string, imageCount int) string {
 	iconWidth := c.GetAttributeWithDefault(c, "icon-width")
 	tbHoverBorderColor := c.GetAttributeWithDefault(c, "tb-hover-border-color")
 	tbSelectedBorderColor := c.GetAttributeWithDefault(c, "tb-selected-border-color")
-	imageCount := len(carouselImages)
 
 	var css strings.Builder
 
@@ -238,68 +304,6 @@ func (c *MJCarouselComponent) GenerateCSS() string {
 	return css.String()
 }
 
-func (c *MJCarouselComponent) GetDefaultAttribute(name string) string {
-	// TODO: Consider more performant approaches to attribute matching than switch statements,
-	// such as static map[string]string lookups or compile-time generated code for components
-	// with many default attributes (10+ attributes). Switch statements may have O(n) lookup
-	// time while map lookups are O(1) average case.
-	switch name {
-	case "align":
-		return "center"
-	case "border-radius":
-		return "6px"
-	case "icon-width":
-		return "44px"
-	case "left-icon":
-		return "https://i.imgur.com/xTh3hln.png"
-	case "right-icon":
-		return "https://i.imgur.com/os7o9kz.png"
-	case "tb-border":
-		return "2px solid transparent"
-	case "tb-border-radius":
-		return "6px"
-	case "tb-hover-border-color":
-		return "#fead0d"
-	case "tb-selected-border-color":
-		return "#cccccc"
-	case "tb-width":
-		return "110px"
-	case "thumbnails":
-		return "visible"
-	default:
-		return ""
-	}
-}
-
-// MJCarouselImageComponent represents the mj-carousel-image component
-type MJCarouselImageComponent struct {
-	*BaseComponent
-}
-
-func NewMJCarouselImageComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJCarouselImageComponent {
-	return &MJCarouselImageComponent{
-		BaseComponent: NewBaseComponent(node, opts),
-	}
-}
-
-func (c *MJCarouselImageComponent) Render(w io.StringWriter) error {
-	// mj-carousel-image doesn't render standalone - it's rendered by parent mj-carousel
-	return fmt.Errorf("mj-carousel-image cannot render standalone - must be child of mj-carousel")
-}
-
-func (c *MJCarouselImageComponent) GetTagName() string {
-	return "mj-carousel-image"
-}
-
-func (c *MJCarouselImageComponent) GetDefaultAttribute(name string) string {
-	switch name {
-	case "target":
-		return "_blank"
-	default:
-		return ""
-	}
-}
-
 // generateCarouselID generates a unique ID for the carousel
 func (c *MJCarouselComponent) generateCarouselID() string {
 	if c.id != "" {
@@ -324,147 +328,11 @@ func (c *MJCarouselComponent) getCarouselImages() []*MJCarouselImageComponent {
 
 // renderCarouselCSS renders the CSS required for carousel functionality directly to the writer
 func (c *MJCarouselComponent) renderCarouselCSS(w io.StringWriter, carouselID string, imageCount int) error {
-	iconWidth := c.GetAttributeWithDefault(c, "icon-width")
-	tbHoverBorderColor := c.GetAttributeWithDefault(c, "tb-hover-border-color")
-	tbSelectedBorderColor := c.GetAttributeWithDefault(c, "tb-selected-border-color")
-
-	var css strings.Builder
-
-	// Base carousel styles
-	css.WriteString(".mj-carousel { -webkit-user-select: none;\n")
-	css.WriteString("-moz-user-select: none;\n")
-	css.WriteString("user-select: none; }\n")
-
-	// Icon cell styles
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-icons-cell { display: table-cell !important;\n", carouselID))
-	css.WriteString(fmt.Sprintf("width: %s !important; }\n", iconWidth))
-
-	// Hide radio buttons and navigation by default
-	css.WriteString(".mj-carousel-radio,\n")
-	css.WriteString(".mj-carousel-next,\n")
-	css.WriteString(".mj-carousel-previous { display: none !important; }\n")
-
-	// Touch action for thumbnails and navigation
-	css.WriteString(".mj-carousel-thumbnail,\n")
-	css.WriteString(".mj-carousel-next,\n")
-	css.WriteString(".mj-carousel-previous { touch-action: manipulation; }\n")
-
-	// Hide all images by default when radio button is checked
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio:checked + .mj-carousel-content .mj-carousel-image,\n", carouselID))
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio:checked + * + .mj-carousel-content .mj-carousel-image,\n", carouselID))
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio:checked + * + * + .mj-carousel-content .mj-carousel-image { display: none !important; }\n", carouselID))
-
-	// Show specific images when their radio button is checked
-	for i := 1; i <= imageCount; i++ {
-		padding := ""
-		if i == 1 {
-			padding = " + * + * +"
-		} else if i == 2 {
-			padding = " + * +"
-		} else {
-			padding = " +"
-		}
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-image-%d", carouselID, i, padding, i))
-		if i < imageCount {
-			css.WriteString(",\n")
-		}
-	}
-	css.WriteString(" { display: block !important; }\n")
-
-	// Navigation icons visibility
-	css.WriteString(".mj-carousel-previous-icons,\n")
-	css.WriteString(".mj-carousel-next-icons")
-	for i := 1; i <= imageCount; i++ {
-		nextImage := i%imageCount + 1
-		prevImage := imageCount
-		if i > 1 {
-			prevImage = i - 1
-		}
-
-		padding := ""
-		if i == 1 {
-			padding = " + * + * +"
-		} else if i == 2 {
-			padding = " + * +"
-		} else {
-			padding = " +"
-		}
-
-		css.WriteString(fmt.Sprintf(",\n.mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-next-%d", carouselID, i, padding, nextImage))
-		css.WriteString(fmt.Sprintf(",\n.mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-previous-%d", carouselID, i, padding, prevImage))
-	}
-	css.WriteString(" { display: block !important; }\n")
-
-	// Thumbnail selection styles
-	for i := 1; i <= imageCount; i++ {
-		padding := ""
-		if i == 1 {
-			padding = " + * + * +"
-		} else if i == 2 {
-			padding = " + * +"
-		} else {
-			padding = " +"
-		}
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-%s-thumbnail-%d", carouselID, i, padding, carouselID, i))
-		if i < imageCount {
-			css.WriteString(",\n")
-		}
-	}
-	css.WriteString(fmt.Sprintf(" { border-color: %s !important; }\n", tbSelectedBorderColor))
-
-	// Hide div after images
-	css.WriteString(".mj-carousel-image img + div,\n")
-	css.WriteString(".mj-carousel-thumbnail img + div { display: none !important; }\n")
-
-	// Hover effects for thumbnails
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-thumbnail:hover + * + * + .mj-carousel-main .mj-carousel-image,\n", carouselID))
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-thumbnail:hover + * + .mj-carousel-main .mj-carousel-image,\n", carouselID))
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-thumbnail:hover + .mj-carousel-main .mj-carousel-image { display: none !important; }\n", carouselID))
-
-	css.WriteString(fmt.Sprintf(".mj-carousel-thumbnail:hover { border-color: %s !important; }\n", tbHoverBorderColor))
-
-	// Show image on thumbnail hover
-	for i := 1; i <= imageCount; i++ {
-		padding := ""
-		if i == 1 {
-			padding = " + * + * +"
-		} else if i == 2 {
-			padding = " + * +"
-		} else {
-			padding = " +"
-		}
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-thumbnail-%d:hover%s .mj-carousel-main .mj-carousel-image-%d", carouselID, i, padding, i))
-		if i < imageCount {
-			css.WriteString(",\n")
-		}
-	}
-	css.WriteString(" { display: block !important; }\n")
-
-	// Fallback styles for no input support
-	css.WriteString(".mj-carousel noinput { display:block !important; }\n")
-	css.WriteString(".mj-carousel noinput .mj-carousel-image-1 { display: block !important;  }\n")
-	css.WriteString(".mj-carousel noinput .mj-carousel-arrows, .mj-carousel noinput .mj-carousel-thumbnails { display: none !important; }\n")
-
-	// Outlook Web App thumbnail hiding
-	css.WriteString("[owa] .mj-carousel-thumbnail { display: none !important; }\n")
-
-	// Media query for screen and yahoo
-	css.WriteString("\n        @media screen, yahoo {\n")
-	css.WriteString(fmt.Sprintf("            .mj-carousel-%s-icons-cell,\n", carouselID))
-	css.WriteString("            .mj-carousel-previous-icons,\n")
-	css.WriteString("            .mj-carousel-next-icons {\n")
-	css.WriteString("                display: none !important;\n")
-	css.WriteString("            }\n\n")
-	css.WriteString(fmt.Sprintf("            .mj-carousel-%s-radio-1:checked + *+ *+ .mj-carousel-content .mj-carousel-%s-thumbnail-1 {\n", carouselID, carouselID))
-	css.WriteString("                border-color: transparent;\n")
-	css.WriteString("            }\n")
-	css.WriteString("        }")
-
 	// Write the CSS directly to the output as a style tag
 	if _, err := w.WriteString("<style type=\"text/css\">\n"); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(css.String()); err != nil {
+	if _, err := w.WriteString(c.buildCarouselCSS(carouselID, imageCount)); err != nil {
 		return err
 	}
 	if _, err := w.WriteString("</style>\n"); err != nil {
