@@ -3,6 +3,7 @@ package mjml
 import (
 	"context"
 	"fmt"
+	"hash/maphash"
 	"io"
 	"strings"
 	"sync"
@@ -62,16 +63,24 @@ type cachedAST struct {
 	expires time.Time
 }
 
-// astCache stores parsed MJML ASTs keyed by the original template string. This
-// avoids repeated parsing work when the same template is rendered multiple
-// times, which is common in benchmarks or high-throughput scenarios. Items are
-// automatically expired and cleaned up to avoid unbounded memory growth.
+// astCache stores parsed MJML ASTs keyed by a 64-bit hash of the template
+// string. This avoids repeated parsing work when the same template is rendered
+// multiple times while keeping map keys small. Items are automatically expired
+// and cleaned up to avoid unbounded memory growth.
 var (
-	astCache      sync.Map // map[string]*cachedAST
+	astCache      sync.Map // map[uint64]*cachedAST
 	astCacheTTL   = 5 * time.Minute
 	cleanupMu     sync.Mutex
 	cleanupCancel context.CancelFunc
+	hashSeed      = maphash.MakeSeed()
 )
+
+func hashTemplate(s string) uint64 {
+	var h maphash.Hash
+	h.SetSeed(hashSeed)
+	h.WriteString(s)
+	return h.Sum64()
+}
 
 func init() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -140,16 +149,17 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 	// Parse MJML using the parser package (with expiring cache)
 	var (
-		ast *MJMLNode
-		err error
+		ast  *MJMLNode
+		err  error
+		hash = hashTemplate(mjmlContent)
 	)
-	if cached, found := astCache.Load(mjmlContent); found {
+	if cached, found := astCache.Load(hash); found {
 		entry := cached.(*cachedAST)
 		if time.Now().Before(entry.expires) {
 			ast = entry.node
 			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
 		} else {
-			astCache.Delete(mjmlContent)
+			astCache.Delete(hash)
 		}
 	}
 	if ast == nil {
@@ -160,7 +170,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 			return nil, err
 		}
 		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-		astCache.Store(mjmlContent, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL)})
+		astCache.Store(hash, &cachedAST{node: ast, expires: time.Now().Add(astCacheTTL)})
 	}
 
 	// Initialize global attributes
