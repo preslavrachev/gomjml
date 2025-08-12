@@ -69,12 +69,15 @@ type cachedAST struct {
 var (
 	astCache      sync.Map // map[string]*cachedAST
 	astCacheTTL   = 5 * time.Minute
+	cleanupMu     sync.Mutex
 	cleanupCancel context.CancelFunc
 )
 
 func init() {
-	var ctx context.Context
-	ctx, cleanupCancel = context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	cleanupMu.Lock()
+	cleanupCancel = cancel
+	cleanupMu.Unlock()
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
@@ -98,8 +101,11 @@ func init() {
 
 // StopASTCacheCleanup stops the background cache cleanup goroutine.
 func StopASTCacheCleanup() {
+	cleanupMu.Lock()
+	defer cleanupMu.Unlock()
 	if cleanupCancel != nil {
 		cleanupCancel()
+		cleanupCancel = nil
 	}
 }
 
