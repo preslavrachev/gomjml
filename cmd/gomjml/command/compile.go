@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/preslavrachev/gomjml/mjml"
 	"github.com/spf13/cobra"
@@ -11,10 +12,12 @@ import (
 // NewCompileCommand creates the compile command
 func NewCompileCommand() *cobra.Command {
 	var (
-		outputFile string
-		stdout     bool
-		debug      bool
-		cache      bool
+		outputFile    string
+		stdout        bool
+		debug         bool
+		cache         bool
+		cacheTTL      time.Duration
+		cacheInterval time.Duration
 	)
 
 	cmd := &cobra.Command{
@@ -35,6 +38,13 @@ Examples:
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
 				os.Exit(1)
+			}
+
+			if cacheTTL > 0 {
+				mjml.SetASTCacheTTLOnce(cacheTTL)
+			}
+			if cacheInterval > 0 {
+				mjml.SetASTCacheCleanupIntervalOnce(cacheInterval)
 			}
 
 			// Render MJML to HTML using library
@@ -69,6 +79,8 @@ Examples:
 	cmd.Flags().BoolVarP(&stdout, "stdout", "s", false, "output to stdout")
 	cmd.Flags().BoolVar(&debug, "debug", false, "include debug attributes in output")
 	cmd.Flags().BoolVar(&cache, "cache", false, "enable experimental AST caching")
+	cmd.Flags().DurationVar(&cacheTTL, "cache-ttl", 0, "AST cache TTL (e.g. 10m)")
+	cmd.Flags().DurationVar(&cacheInterval, "cache-cleanup-interval", 0, "AST cache cleanup interval")
 
 	return cmd
 }

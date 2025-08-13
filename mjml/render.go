@@ -68,15 +68,39 @@ type cachedAST struct {
 // multiple times while keeping map keys small. Items are automatically expired
 // and cleaned up to avoid unbounded memory growth.
 var (
-	astCache      sync.Map // map[uint64]*cachedAST
-	astCacheTTL   = 5 * time.Minute
-	cleanupMu     sync.Mutex
-	cleanupCancel context.CancelFunc
-	hashSeed      maphash.Seed
-	hashSeedOnce  sync.Once
-	sfMu          sync.Mutex
-	sfCalls       = make(map[uint64]*sfCall)
+	astCache                sync.Map // map[uint64]*cachedAST
+	astCacheTTL             = 5 * time.Minute
+	astCacheTTLOnce         sync.Once
+	astCacheCleanupInterval = astCacheTTL / 2
+	astCacheCleanupOnce     sync.Once
+	cleanupMu               sync.Mutex
+	cleanupCancel           context.CancelFunc
+	hashSeed                maphash.Seed
+	hashSeedOnce            sync.Once
+	sfMu                    sync.Mutex
+	sfCalls                 = make(map[uint64]*sfCall)
 )
+
+// SetASTCacheTTLOnce sets the time-to-live for cached AST entries.
+// Only the first call has an effect; subsequent calls are ignored.
+// The cleanup interval defaults to half of this value unless explicitly set.
+func SetASTCacheTTLOnce(d time.Duration) {
+	astCacheTTLOnce.Do(func() {
+		astCacheTTL = d
+		astCacheCleanupOnce.Do(func() {
+			astCacheCleanupInterval = d / 2
+		})
+	})
+}
+
+// SetASTCacheCleanupIntervalOnce sets how often expired AST cache entries
+// are removed. Only the first call has an effect. By default this is half of
+// the AST cache TTL.
+func SetASTCacheCleanupIntervalOnce(d time.Duration) {
+	astCacheCleanupOnce.Do(func() {
+		astCacheCleanupInterval = d
+	})
+}
 
 type sfCall struct {
 	wg  sync.WaitGroup
@@ -175,7 +199,7 @@ func startASTCacheCleanup() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cleanupCancel = cancel
 	go func() {
-		ticker := time.NewTicker(time.Minute)
+		ticker := time.NewTicker(astCacheCleanupInterval)
 		defer ticker.Stop()
 		for {
 			select {

@@ -246,3 +246,44 @@ func TestCacheSeparateTemplates(t *testing.T) {
 		t.Fatalf("expected 2 cache entries, got %d", entries)
 	}
 }
+
+func TestSetASTCacheTTLOnce(t *testing.T) {
+	resetASTCache()
+	defer resetASTCache()
+
+	astCacheTTLOnce = sync.Once{}
+	astCacheCleanupOnce = sync.Once{}
+	astCacheTTL = 5 * time.Minute
+	astCacheCleanupInterval = astCacheTTL / 2
+
+	SetASTCacheTTLOnce(100 * time.Millisecond)
+	if astCacheTTL != 100*time.Millisecond {
+		t.Fatalf("expected TTL 100ms, got %v", astCacheTTL)
+	}
+	if astCacheCleanupInterval != 50*time.Millisecond {
+		t.Fatalf("expected cleanup interval 50ms, got %v", astCacheCleanupInterval)
+	}
+
+	SetASTCacheTTLOnce(200 * time.Millisecond)
+	if astCacheTTL != 100*time.Millisecond {
+		t.Fatalf("second TTL set should be ignored, got %v", astCacheTTL)
+	}
+}
+
+func TestSetASTCacheCleanupIntervalOnce(t *testing.T) {
+	resetASTCache()
+	defer resetASTCache()
+
+	astCacheCleanupOnce = sync.Once{}
+	astCacheCleanupInterval = time.Second
+
+	SetASTCacheCleanupIntervalOnce(100 * time.Millisecond)
+	if astCacheCleanupInterval != 100*time.Millisecond {
+		t.Fatalf("expected cleanup interval 100ms, got %v", astCacheCleanupInterval)
+	}
+
+	SetASTCacheCleanupIntervalOnce(200 * time.Millisecond)
+	if astCacheCleanupInterval != 100*time.Millisecond {
+		t.Fatalf("second cleanup interval set should be ignored, got %v", astCacheCleanupInterval)
+	}
+}
