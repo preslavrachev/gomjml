@@ -121,6 +121,41 @@ func TestCacheExpiration(t *testing.T) {
 	}
 }
 
+func TestCacheHitDoesNotExtendExpiration(t *testing.T) {
+	resetASTCache()
+	defer resetASTCache()
+
+	origTTL := astCacheTTL
+	astCacheTTL = 100 * time.Millisecond
+	defer func() { astCacheTTL = origTTL }()
+
+	var calls int32
+	origParse := ParseMJML
+	ParseMJML = func(s string) (*MJMLNode, error) {
+		atomic.AddInt32(&calls, 1)
+		return origParse(s)
+	}
+	defer func() { ParseMJML = origParse }()
+
+	tpl := `<mjml><mj-body><mj-section><mj-column><mj-text>hi</mj-text></mj-column></mj-section></mj-body></mjml>`
+
+	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
+		t.Fatalf("render1: %v", err)
+	}
+	time.Sleep(60 * time.Millisecond)
+	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
+		t.Fatalf("render2: %v", err)
+	}
+	time.Sleep(60 * time.Millisecond)
+	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
+		t.Fatalf("render3: %v", err)
+	}
+
+	if calls != 2 {
+		t.Fatalf("expected expiration without refresh, got %d parses", calls)
+	}
+}
+
 func TestCacheConcurrentParsingSingleParse(t *testing.T) {
 	resetASTCache()
 	defer resetASTCache()

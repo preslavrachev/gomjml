@@ -134,7 +134,6 @@ func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 	if cached, found := astCache.Load(hash); found {
 		entry := cached.(*cachedAST)
 		if time.Now().Before(entry.expires) {
-			astCache.Store(hash, &cachedAST{node: entry.node, expires: time.Now().Add(astCacheTTL)})
 			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
 			return entry.node, nil
 		}
@@ -145,7 +144,6 @@ func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 		if cached, found := astCache.Load(hash); found {
 			entry := cached.(*cachedAST)
 			if time.Now().Before(entry.expires) {
-				astCache.Store(hash, &cachedAST{node: entry.node, expires: time.Now().Add(astCacheTTL)})
 				debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
 				return entry.node, nil
 			}
