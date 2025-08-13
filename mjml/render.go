@@ -123,13 +123,14 @@ func singleflightDo(hash uint64, fn func() (*MJMLNode, error)) (*MJMLNode, error
 	sfCalls[hash] = c
 	sfMu.Unlock()
 
+	defer func() {
+		c.wg.Done()
+		sfMu.Lock()
+		delete(sfCalls, hash)
+		sfMu.Unlock()
+	}()
+
 	c.res, c.err = fn()
-	c.wg.Done()
-
-	sfMu.Lock()
-	delete(sfCalls, hash)
-	sfMu.Unlock()
-
 	return c.res, c.err
 }
 
