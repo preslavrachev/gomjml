@@ -165,15 +165,6 @@ func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 	}
 
 	node, err := singleflightDo(hash, func() (*MJMLNode, error) {
-		if cached, found := astCache.Load(hash); found {
-			entry := cached.(*cachedAST)
-			if time.Now().Before(entry.expires) {
-				debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
-				return entry.node, nil
-			}
-			astCache.Delete(hash)
-		}
-
 		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
 		node, err := ParseMJML(mjmlContent)
 		if err != nil {
