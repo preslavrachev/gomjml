@@ -76,6 +76,20 @@ func BenchmarkMJMLRender_10_Sections(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		_, err := Render(template)
+		if err != nil {
+			b.Fatalf("Render failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkMJMLRender_10_Sections_Cache benchmarks rendering with 10 sections
+// using the AST cache.
+func BenchmarkMJMLRender_10_Sections_Cache(b *testing.B) {
+	template := generateMJMLTemplate(10)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		_, err := Render(template, WithCache(true))
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
@@ -85,6 +99,20 @@ func BenchmarkMJMLRender_10_Sections(b *testing.B) {
 
 // BenchmarkMJMLRender_100_Sections benchmarks rendering with 100 sections
 func BenchmarkMJMLRender_100_Sections(b *testing.B) {
+	template := generateMJMLTemplate(100)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Render(template)
+		if err != nil {
+			b.Fatalf("Render failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkMJMLRender_100_Sections_Cache benchmarks rendering with 100 sections
+// using the AST cache.
+func BenchmarkMJMLRender_100_Sections_Cache(b *testing.B) {
 	template := generateMJMLTemplate(100)
 
 	b.ResetTimer()
@@ -102,6 +130,20 @@ func BenchmarkMJMLRender_1000_Sections(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		_, err := Render(template)
+		if err != nil {
+			b.Fatalf("Render failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkMJMLRender_1000_Sections_Cache benchmarks rendering with 1000
+// sections using the AST cache.
+func BenchmarkMJMLRender_1000_Sections_Cache(b *testing.B) {
+	template := generateMJMLTemplate(1000)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		_, err := Render(template, WithCache(true))
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
@@ -111,6 +153,20 @@ func BenchmarkMJMLRender_1000_Sections(b *testing.B) {
 
 // BenchmarkMJMLRender_Memory benchmarks memory allocations with 10 sections
 func BenchmarkMJMLRender_10_Sections_Memory(b *testing.B) {
+	template := generateMJMLTemplate(10)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Render(template)
+		if err != nil {
+			b.Fatalf("Render failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkMJMLRender_10_Sections_Memory_Cache benchmarks memory allocations with 10 sections when caching is enabled.
+func BenchmarkMJMLRender_10_Sections_Memory_Cache(b *testing.B) {
 	template := generateMJMLTemplate(10)
 
 	b.ReportAllocs()
@@ -130,6 +186,20 @@ func BenchmarkMJMLRender_100_Sections_Memory(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		_, err := Render(template)
+		if err != nil {
+			b.Fatalf("Render failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkMJMLRender_100_Sections_Memory_Cache benchmarks memory allocations with 100 sections when caching is enabled.
+func BenchmarkMJMLRender_100_Sections_Memory_Cache(b *testing.B) {
+	template := generateMJMLTemplate(100)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		_, err := Render(template, WithCache(true))
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
@@ -139,6 +209,20 @@ func BenchmarkMJMLRender_100_Sections_Memory(b *testing.B) {
 
 // BenchmarkMJMLRender_1000_Sections_Memory benchmarks memory allocations with 1000 sections
 func BenchmarkMJMLRender_1000_Sections_Memory(b *testing.B) {
+	template := generateMJMLTemplate(1000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Render(template)
+		if err != nil {
+			b.Fatalf("Render failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkMJMLRender_1000_Sections_Memory_Cache benchmarks memory allocations with 1000 sections when caching is enabled.
+func BenchmarkMJMLRender_1000_Sections_Memory_Cache(b *testing.B) {
 	template := generateMJMLTemplate(1000)
 
 	b.ReportAllocs()
@@ -217,6 +301,41 @@ func BenchmarkMJMLRender_100_Sections_Writer(b *testing.B) {
 
 // BenchmarkMJMLRender_vs_RenderString_100_Sections compares Writer vs String approaches
 func BenchmarkMJMLRender_vs_RenderString_100_Sections(b *testing.B) {
+	template := generateMJMLTemplate(100)
+
+	b.Run("String-based", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_, err := Render(template)
+			if err != nil {
+				b.Fatalf("Render failed: %v", err)
+			}
+		}
+	})
+
+	b.Run("Writer-based", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			ast, err := ParseMJML(template)
+			if err != nil {
+				b.Fatalf("Parse failed: %v", err)
+			}
+			component, err := NewFromAST(ast)
+			if err != nil {
+				b.Fatalf("Component creation failed: %v", err)
+			}
+
+			var buf strings.Builder
+			err = component.Render(&buf)
+			if err != nil {
+				b.Fatalf("Render failed: %v", err)
+			}
+		}
+	})
+}
+
+// BenchmarkMJMLRender_vs_RenderString_100_Sections_Cache compares Writer vs String approaches when caching is enabled.
+func BenchmarkMJMLRender_vs_RenderString_100_Sections_Cache(b *testing.B) {
 	template := generateMJMLTemplate(100)
 
 	b.Run("String-based", func(b *testing.B) {

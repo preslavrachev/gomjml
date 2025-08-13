@@ -108,6 +108,9 @@ type sfCall struct {
 	err error
 }
 
+// singleflightDo executes fn while ensuring only one execution per hash at a
+// time. Calls with the same hash wait for the first invocation to complete and
+// receive its result.
 func singleflightDo(hash uint64, fn func() (*MJMLNode, error)) (*MJMLNode, error) {
 	sfMu.Lock()
 	if c, ok := sfCalls[hash]; ok {
@@ -130,6 +133,9 @@ func singleflightDo(hash uint64, fn func() (*MJMLNode, error)) (*MJMLNode, error
 	return c.res, c.err
 }
 
+// hashTemplate returns a 64-bit hash of the MJML template using a package-wide
+// seed. It avoids storing and comparing large strings when indexing cached
+// entries.
 func hashTemplate(s string) uint64 {
 	hashSeedOnce.Do(func() {
 		hashSeed = maphash.MakeSeed()
