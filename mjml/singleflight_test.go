@@ -7,9 +7,9 @@ import (
 
 // helper to clear singleflight state between tests
 func resetSingleflight() {
-	sfMu.Lock()
+	sfMutex.Lock()
 	sfCalls = make(map[uint64]*sfCall)
-	sfMu.Unlock()
+	sfMutex.Unlock()
 }
 
 func TestSingleflightDoPanicCleanup(t *testing.T) {

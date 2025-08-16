@@ -63,22 +63,59 @@ type cachedAST struct {
 	expires time.Time
 }
 
-// astCache stores parsed MJML ASTs keyed by a 64-bit hash of the template
-// string. This avoids repeated parsing work when the same template is rendered
-// multiple times while keeping map keys small. Items are automatically expired
-// and cleaned up to avoid unbounded memory growth.
+// Global cache state and synchronization primitives.
+//
+// DESIGN PHILOSOPHY:
+// The caching system uses global state to share parsed templates across all render
+// operations within a process. This provides maximum cache efficiency but requires
+// careful synchronization for thread safety.
+//
+// MEMORY MANAGEMENT STRATEGY:
+// - Fixed TTL expiration (no LRU) keeps implementation simple and predictable
+// - Background cleanup prevents unbounded memory growth
+// - No size limits - monitor memory usage in production environments
+// - Cache grows between cleanup cycles, then shrinks during cleanup
+//
+// CONCURRENCY ARCHITECTURE:
+// - sync.Map for the cache itself (optimized for high read/low write workloads)
+// - Singleflight pattern prevents duplicate parsing under high concurrency
+// - Multiple mutexes to minimize lock contention and prevent deadlocks
+//
+// WHY global state: Template parsing is expensive and templates are often reused.
+// Process-wide caching maximizes efficiency when multiple parts of an application
+// render the same templates (e.g., web servers, batch processors).
+//
+// When to Use Caching:
+//   - High-volume applications rendering the same templates repeatedly
+//   - Web servers with template reuse patterns
+//   - Batch processing with repeated template rendering
+//   - Applications where parsing time > rendering time
+//
+// When NOT to Use Caching:
+//   - Single-use template rendering
+//   - Memory-constrained environments
+//   - Applications with constantly changing templates
+//   - Short-lived processes where cache warmup overhead > benefits
 var (
-	astCache                sync.Map // map[uint64]*cachedAST
-	astCacheTTL             = 5 * time.Minute
-	astCacheTTLOnce         sync.Once
-	astCacheCleanupInterval = astCacheTTL / 2
-	astCacheCleanupOnce     sync.Once
-	cleanupMu               sync.Mutex
-	cleanupCancel           context.CancelFunc
-	hashSeed                maphash.Seed
-	hashSeedOnce            sync.Once
-	sfMu                    sync.Mutex
-	sfCalls                 = make(map[uint64]*sfCall)
+	// Cache storage and configuration
+	astCache                sync.Map          // map[uint64]*cachedAST - main cache storage
+	astCacheTTL             = 5 * time.Minute // default expiration time
+	astCacheTTLOnce         sync.Once         // ensures TTL is set only once
+	astCacheCleanupInterval = astCacheTTL / 2 // how often to run cleanup
+	astCacheCleanupOnce     sync.Once         // ensures cleanup interval set only once
+
+	// Cache lifecycle management
+	cacheCleanupMutex sync.Mutex         // protects cleanup goroutine lifecycle
+	cleanupCancel     context.CancelFunc // cancels background cleanup
+	cacheConfigMutex  sync.RWMutex       // protects TTL/interval reads during startup
+
+	// Template hashing for cache keys
+	hashSeed             maphash.Seed // random seed for DoS protection
+	templateHashSeedOnce sync.Once    // ensures seed is set only once
+
+	// Singleflight deduplication
+	sfMutex sync.Mutex                 // protects singleflight map operations
+	sfCalls = make(map[uint64]*sfCall) // tracks in-progress parse operations
 )
 
 // SetASTCacheTTLOnce sets the time-to-live for cached AST entries.
@@ -86,10 +123,12 @@ var (
 // The cleanup interval defaults to half of this value unless explicitly set.
 func SetASTCacheTTLOnce(d time.Duration) {
 	astCacheTTLOnce.Do(func() {
+		cacheConfigMutex.Lock()
 		astCacheTTL = d
 		astCacheCleanupOnce.Do(func() {
 			astCacheCleanupInterval = d / 2
 		})
+		cacheConfigMutex.Unlock()
 	})
 }
 
@@ -98,7 +137,9 @@ func SetASTCacheTTLOnce(d time.Duration) {
 // the AST cache TTL.
 func SetASTCacheCleanupIntervalOnce(d time.Duration) {
 	astCacheCleanupOnce.Do(func() {
+		cacheConfigMutex.Lock()
 		astCacheCleanupInterval = d
+		cacheConfigMutex.Unlock()
 	})
 }
 
@@ -108,37 +149,55 @@ type sfCall struct {
 	err error
 }
 
-// singleflightDo executes fn while ensuring only one execution per hash at a
-// time. Calls with the same hash wait for the first invocation to complete and
-// receive its result.
+// singleflightDo executes fn while ensuring only one execution per hash at a time.
+// Calls with the same hash wait for the first invocation to complete and receive its result.
+//
+// WHY this pattern: Template parsing is expensive (XML parsing + AST creation).
+// Without singleflight, if 100 concurrent goroutines request the same template,
+// all 100 would perform identical parsing work, wasting CPU and memory.
+//
+// HOW it works: The first caller to request a hash becomes the "worker" and executes fn.
+// Subsequent callers with the same hash become "waiters" that block on a WaitGroup
+// until the worker completes. All waiters then receive the worker's result (success or error).
+//
+// This prevents the "thundering herd" problem and ensures expensive operations
+// are performed only once per unique input, regardless of concurrency level.
+//
+// Thread safety: Protected by sfMu mutex for map operations. Each sfCall uses
+// a WaitGroup to coordinate between the worker and waiters.
 func singleflightDo(hash uint64, fn func() (*MJMLNode, error)) (*MJMLNode, error) {
-	sfMu.Lock()
+	sfMutex.Lock()
 	if c, ok := sfCalls[hash]; ok {
-		sfMu.Unlock()
+		sfMutex.Unlock()
 		c.wg.Wait()
 		return c.res, c.err
 	}
 	c := &sfCall{}
 	c.wg.Add(1)
 	sfCalls[hash] = c
-	sfMu.Unlock()
+	sfMutex.Unlock()
 
 	defer func() {
 		c.wg.Done()
-		sfMu.Lock()
+		sfMutex.Lock()
 		delete(sfCalls, hash)
-		sfMu.Unlock()
+		sfMutex.Unlock()
 	}()
 
 	c.res, c.err = fn()
 	return c.res, c.err
 }
 
-// hashTemplate returns a 64-bit hash of the MJML template using a package-wide
-// seed. It avoids storing and comparing large strings when indexing cached
-// entries.
+// hashTemplate returns a 64-bit hash of the MJML template using a package-wide seed.
+// It avoids storing and comparing large strings when indexing cached entries.
+//
+// Security note: The package-wide seed prevents malicious inputs from causing
+// hash collisions that could degrade cache performance to O(n) lookup times.
+//
+// Thread safety: Reading hashSeed is safe after templateHashSeedOnce.Do() completes.
+// The seed is set once and never modified.
 func hashTemplate(s string) uint64 {
-	hashSeedOnce.Do(func() {
+	templateHashSeedOnce.Do(func() {
 		hashSeed = maphash.MakeSeed()
 	})
 	var h maphash.Hash
@@ -179,7 +238,13 @@ func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 			return nil, err
 		}
 		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-		astCache.Store(hash, &cachedAST{node: node, expires: time.Now().Add(astCacheTTL)})
+
+		// Read TTL with proper synchronization for cache storage
+		cacheConfigMutex.RLock()
+		ttl := astCacheTTL
+		cacheConfigMutex.RUnlock()
+
+		astCache.Store(hash, &cachedAST{node: node, expires: time.Now().Add(ttl)})
 		return node, nil
 	})
 	if err != nil {
@@ -188,16 +253,30 @@ func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 	return node, nil
 }
 
+// startASTCacheCleanup launches a background goroutine to periodically remove expired cache entries.
+//
+// HOW it works: Starts a single goroutine with a ticker that scans the entire
+// cache at regular intervals (default: half of cache TTL). Uses context cancellation
+// for graceful shutdown via StopASTCacheCleanup().
+//
+// Thread safety: Uses cacheCleanupMutex to ensure only one cleanup goroutine runs.
+// The goroutine reads configuration with cacheConfigMutex to avoid races with
+// configuration changes during startup.
 func startASTCacheCleanup() {
-	cleanupMu.Lock()
-	defer cleanupMu.Unlock()
+	cacheCleanupMutex.Lock()
+	defer cacheCleanupMutex.Unlock()
 	if cleanupCancel != nil {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cleanupCancel = cancel
 	go func() {
-		ticker := time.NewTicker(astCacheCleanupInterval)
+		// Read cleanup interval with proper synchronization
+		cacheConfigMutex.RLock()
+		interval := astCacheCleanupInterval
+		cacheConfigMutex.RUnlock()
+
+		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
 			select {
@@ -219,8 +298,8 @@ func startASTCacheCleanup() {
 
 // StopASTCacheCleanup stops the background cache cleanup goroutine.
 func StopASTCacheCleanup() {
-	cleanupMu.Lock()
-	defer cleanupMu.Unlock()
+	cacheCleanupMutex.Lock()
+	defer cacheCleanupMutex.Unlock()
 	if cleanupCancel != nil {
 		cleanupCancel()
 		cleanupCancel = nil
