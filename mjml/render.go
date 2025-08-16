@@ -313,10 +313,10 @@ func WithDebugTags(enabled bool) RenderOption {
 	}
 }
 
-// WithCache enables or disables AST caching
-func WithCache(enabled bool) RenderOption {
+// WithCache enables AST caching
+func WithCache() RenderOption {
 	return func(opts *RenderOpts) {
-		opts.UseCache = enabled
+		opts.UseCache = true
 	}
 }
 

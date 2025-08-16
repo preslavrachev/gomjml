@@ -53,7 +53,7 @@ Examples:
 				opts = append(opts, mjml.WithDebugTags(true))
 			}
 			if cache {
-				opts = append(opts, mjml.WithCache(true))
+				opts = append(opts, mjml.WithCache())
 			}
 			html, err := mjml.Render(string(mjmlContent), opts...)
 			if err != nil {

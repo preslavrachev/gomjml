@@ -131,7 +131,7 @@ func main() {
 	fmt.Println(htmlWithDebug) // Includes data-mj-debug-* attributes
 
 	// Method 1c: Enable caching for performance (opt-in feature)
-	htmlWithCache, err := mjml.Render(mjmlContent, mjml.WithCache(true))
+	htmlWithCache, err := mjml.Render(mjmlContent, mjml.WithCache())
 	if err != nil {
 		log.Fatal("Render error:", err)
 	}

@@ -90,7 +90,7 @@ func BenchmarkMJMLRender_10_Sections_Cache(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template, WithCache(true))
+		_, err := Render(template, WithCache())
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
 		}
@@ -117,7 +117,7 @@ func BenchmarkMJMLRender_100_Sections_Cache(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template, WithCache(true))
+		_, err := Render(template, WithCache())
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
 		}
@@ -144,7 +144,7 @@ func BenchmarkMJMLRender_1000_Sections_Cache(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template, WithCache(true))
+		_, err := Render(template, WithCache())
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
 		}
@@ -172,7 +172,7 @@ func BenchmarkMJMLRender_10_Sections_Memory_Cache(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template, WithCache(true))
+		_, err := Render(template, WithCache())
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
 		}
@@ -200,7 +200,7 @@ func BenchmarkMJMLRender_100_Sections_Memory_Cache(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template, WithCache(true))
+		_, err := Render(template, WithCache())
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
 		}
@@ -228,7 +228,7 @@ func BenchmarkMJMLRender_1000_Sections_Memory_Cache(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Render(template, WithCache(true))
+		_, err := Render(template, WithCache())
 		if err != nil {
 			b.Fatalf("Render failed: %v", err)
 		}
@@ -341,7 +341,7 @@ func BenchmarkMJMLRender_vs_RenderString_100_Sections_Cache(b *testing.B) {
 	b.Run("String-based", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			_, err := Render(template, WithCache(true))
+			_, err := Render(template, WithCache())
 			if err != nil {
 				b.Fatalf("Render failed: %v", err)
 			}

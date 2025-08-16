@@ -62,11 +62,11 @@ func TestCachingStoresAndReusesAST(t *testing.T) {
 
 	tpl := `<mjml><mj-body><mj-section><mj-column><mj-text>hi</mj-text></mj-column></mj-section></mj-body></mjml>`
 
-	r1, err := RenderWithAST(tpl, WithCache(true))
+	r1, err := RenderWithAST(tpl, WithCache())
 	if err != nil {
 		t.Fatalf("render1: %v", err)
 	}
-	r2, err := RenderWithAST(tpl, WithCache(true))
+	r2, err := RenderWithAST(tpl, WithCache())
 	if err != nil {
 		t.Fatalf("render2: %v", err)
 	}
@@ -103,12 +103,12 @@ func TestCacheExpiration(t *testing.T) {
 
 	tpl := `<mjml><mj-body><mj-section><mj-column><mj-text>hi</mj-text></mj-column></mj-section></mj-body></mjml>`
 
-	r1, err := RenderWithAST(tpl, WithCache(true))
+	r1, err := RenderWithAST(tpl, WithCache())
 	if err != nil {
 		t.Fatalf("render1: %v", err)
 	}
 	time.Sleep(astCacheTTL + 10*time.Millisecond)
-	r2, err := RenderWithAST(tpl, WithCache(true))
+	r2, err := RenderWithAST(tpl, WithCache())
 	if err != nil {
 		t.Fatalf("render2: %v", err)
 	}
@@ -139,15 +139,15 @@ func TestCacheHitDoesNotExtendExpiration(t *testing.T) {
 
 	tpl := `<mjml><mj-body><mj-section><mj-column><mj-text>hi</mj-text></mj-column></mj-section></mj-body></mjml>`
 
-	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
+	if _, err := RenderWithAST(tpl, WithCache()); err != nil {
 		t.Fatalf("render1: %v", err)
 	}
 	time.Sleep(60 * time.Millisecond)
-	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
+	if _, err := RenderWithAST(tpl, WithCache()); err != nil {
 		t.Fatalf("render2: %v", err)
 	}
 	time.Sleep(60 * time.Millisecond)
-	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
+	if _, err := RenderWithAST(tpl, WithCache()); err != nil {
 		t.Fatalf("render3: %v", err)
 	}
 
@@ -198,7 +198,7 @@ func TestStopASTCacheCleanup(t *testing.T) {
 
 	tpl := `<mjml><mj-body><mj-section><mj-column><mj-text>hi</mj-text></mj-column></mj-section></mj-body></mjml>`
 
-	if _, err := RenderWithAST(tpl, WithCache(true)); err != nil {
+	if _, err := RenderWithAST(tpl, WithCache()); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	if cleanupCancel == nil {
@@ -226,13 +226,13 @@ func TestCacheSeparateTemplates(t *testing.T) {
 	tpl1 := `<mjml><mj-body><mj-section><mj-column><mj-text>one</mj-text></mj-column></mj-section></mj-body></mjml>`
 	tpl2 := `<mjml><mj-body><mj-section><mj-column><mj-text>two</mj-text></mj-column></mj-section></mj-body></mjml>`
 
-	if _, err := RenderWithAST(tpl1, WithCache(true)); err != nil {
+	if _, err := RenderWithAST(tpl1, WithCache()); err != nil {
 		t.Fatalf("render tpl1: %v", err)
 	}
-	if _, err := RenderWithAST(tpl2, WithCache(true)); err != nil {
+	if _, err := RenderWithAST(tpl2, WithCache()); err != nil {
 		t.Fatalf("render tpl2: %v", err)
 	}
-	if _, err := RenderWithAST(tpl1, WithCache(true)); err != nil {
+	if _, err := RenderWithAST(tpl1, WithCache()); err != nil {
 		t.Fatalf("render tpl1 again: %v", err)
 	}
 
