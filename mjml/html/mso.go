@@ -460,5 +460,5 @@ func RenderMSOGroupTDClose(w io.StringWriter) error {
 
 // RenderMSOGroupTableClose renders MSO group table closing directly to Writer
 func RenderMSOGroupTableClose(w io.StringWriter) error {
-	return RenderMSOConditional(w, "</tr></table>")
+	return RenderMSOConditional(w, "</td></tr></table>")
 }
