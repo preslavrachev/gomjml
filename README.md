@@ -288,15 +288,21 @@ Based on the integration test suite in `mjml/integration_test.go`, the implement
 
 ### Performance Benchmarks
 
-| Benchmark                                  |  Time   | Memory  | Allocs |
-| :----------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8          | 0.41ms  | 0.56MB  |  4.9K  |
-| BenchmarkMJMLRender_100_Sections-8         | 4.67ms  | 5.83MB  | 46.2K  |
-| BenchmarkMJMLRender_1000_Sections-8        | 41.39ms | 59.23MB | 459.4K |
-| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.41ms  | 0.56MB  |  4.9K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.64ms  | 5.83MB  | 46.2K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8 | 41.64ms | 59.23MB | 459.4K |
-| BenchmarkMJMLRender_100_Sections_Writer-8  | 2.39ms  | 4.68MB  | 21.2K  |
+| Benchmark                                        |  Time   | Memory  | Allocs |
+| :----------------------------------------------- | :-----: | :-----: | :----: |
+| BenchmarkMJMLRender_10_Sections-8                | 0.42ms  | 0.56MB  |  4.9K  |
+| BenchmarkMJMLRender_10_Sections_Cache-8          | 0.22ms  | 0.49MB  |  2.8K  |
+| BenchmarkMJMLRender_100_Sections-8               | 4.59ms  | 5.83MB  | 46.2K  |
+| BenchmarkMJMLRender_100_Sections_Cache-8         | 2.73ms  | 5.13MB  | 26.9K  |
+| BenchmarkMJMLRender_1000_Sections-8              | 42.68ms | 59.23MB | 459.4K |
+| BenchmarkMJMLRender_1000_Sections_Cache-8        | 23.66ms | 52.20MB | 267.2K |
+| BenchmarkMJMLRender_10_Sections_Memory-8         | 0.50ms  | 0.56MB  |  4.9K  |
+| BenchmarkMJMLRender_10_Sections_Memory_Cache-8   | 0.28ms  | 0.49MB  |  2.8K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8        | 4.65ms  | 5.83MB  | 46.2K  |
+| BenchmarkMJMLRender_100_Sections_Memory_Cache-8  | 2.65ms  | 5.13MB  | 26.9K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8       | 41.93ms | 59.23MB | 459.4K |
+| BenchmarkMJMLRender_1000_Sections_Memory_Cache-8 | 23.34ms | 52.20MB | 267.2K |
+| BenchmarkMJMLRender_100_Sections_Writer-8        | 2.44ms  | 4.69MB  | 21.2K  |
 
 For comprehensive performance analysis including comparisons with other MJML implementations, see our dedicated [performance benchmarks documentation](docs/benchmarks.md).
 
