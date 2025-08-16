@@ -15,6 +15,7 @@ A native Go implementation of the MJML email framework, providing fast compilati
 - **Complete MJML Implementation**: 100% feature-complete with all 26 MJML components implemented and tested against MRML (the Rust implementation of MJML). A well-structured Go library with clean package separation
 - **Email Compatible**: Generates HTML that works across email clients (Outlook, Gmail, Apple Mail, etc.)
 - **Fast Performance**: Native Go performance, comparable to Rust MRML implementation
+- **Optional AST Caching**: Opt-in template caching for speedup on repeated renders
 - **Complete Component System**: Support for essential MJML components with proper inheritance
 - **CLI & Library**: Use as command-line tool or importable Go package
 - **Tested Against MRML**: Integration tests validate output compatibility with reference implementation
@@ -56,6 +57,12 @@ The CLI provides a structured command system with individual commands:
 # Include debug attributes for component traceability
 ./bin/gomjml compile input.mjml -s --debug
 
+# Enable caching for better performance on repeated renders
+./bin/gomjml compile input.mjml -o output.html --cache
+
+# Configure cache with custom TTL
+./bin/gomjml compile input.mjml -o output.html --cache --cache-ttl=10m
+
 # Run test suite
 ./bin/gomjml test
 
@@ -75,6 +82,9 @@ The CLI provides a structured command system with individual commands:
 - `-o, --output string`: Output file path
 - `-s, --stdout`: Output to stdout  
 - `--debug`: Include debug attributes for component traceability (default: false)
+- `--cache`: Enable AST caching for performance (default: false)
+- `--cache-ttl`: Cache TTL duration (default: 5m)
+- `--cache-cleanup-interval`: Cache cleanup interval (default: `cache-ttl/2`)
 
 ### Go Package API
 
@@ -119,6 +129,20 @@ func main() {
 		log.Fatal("Render error:", err)
 	}
 	fmt.Println(htmlWithDebug) // Includes data-mj-debug-* attributes
+
+	// Method 1c: Enable caching for performance (opt-in feature)
+	htmlWithCache, err := mjml.Render(mjmlContent, mjml.WithCache())
+	if err != nil {
+		log.Fatal("Render error:", err)
+	}
+	fmt.Println(htmlWithCache) // Uses cached AST if available
+
+	// For long-running applications, configure cache TTL before first use
+	mjml.SetASTCacheTTLOnce(10 * time.Minute)
+	
+	// For graceful shutdown in long-running applications (optional)
+	// Not needed for CLI tools or short-lived processes
+	defer mjml.StopASTCacheCleanup()
 
 	// Method 2: Step-by-step processing
 	ast, err := parser.ParseMJML(mjmlContent)
@@ -264,15 +288,21 @@ Based on the integration test suite in `mjml/integration_test.go`, the implement
 
 ### Performance Benchmarks
 
-| Benchmark                                  |  Time   | Memory  | Allocs |
-| :----------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8          | 0.41ms  | 0.56MB  |  4.9K  |
-| BenchmarkMJMLRender_100_Sections-8         | 4.67ms  | 5.83MB  | 46.2K  |
-| BenchmarkMJMLRender_1000_Sections-8        | 41.39ms | 59.23MB | 459.4K |
-| BenchmarkMJMLRender_10_Sections_Memory-8   | 0.41ms  | 0.56MB  |  4.9K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8  | 4.64ms  | 5.83MB  | 46.2K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8 | 41.64ms | 59.23MB | 459.4K |
-| BenchmarkMJMLRender_100_Sections_Writer-8  | 2.39ms  | 4.68MB  | 21.2K  |
+| Benchmark                                        |  Time   | Memory  | Allocs |
+| :----------------------------------------------- | :-----: | :-----: | :----: |
+| BenchmarkMJMLRender_10_Sections-8                | 0.42ms  | 0.56MB  |  4.9K  |
+| BenchmarkMJMLRender_10_Sections_Cache-8          | 0.22ms  | 0.49MB  |  2.8K  |
+| BenchmarkMJMLRender_100_Sections-8               | 4.59ms  | 5.83MB  | 46.2K  |
+| BenchmarkMJMLRender_100_Sections_Cache-8         | 2.73ms  | 5.13MB  | 26.9K  |
+| BenchmarkMJMLRender_1000_Sections-8              | 42.68ms | 59.23MB | 459.4K |
+| BenchmarkMJMLRender_1000_Sections_Cache-8        | 23.66ms | 52.20MB | 267.2K |
+| BenchmarkMJMLRender_10_Sections_Memory-8         | 0.50ms  | 0.56MB  |  4.9K  |
+| BenchmarkMJMLRender_10_Sections_Memory_Cache-8   | 0.28ms  | 0.49MB  |  2.8K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8        | 4.65ms  | 5.83MB  | 46.2K  |
+| BenchmarkMJMLRender_100_Sections_Memory_Cache-8  | 2.65ms  | 5.13MB  | 26.9K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8       | 41.93ms | 59.23MB | 459.4K |
+| BenchmarkMJMLRender_1000_Sections_Memory_Cache-8 | 23.34ms | 52.20MB | 267.2K |
+| BenchmarkMJMLRender_100_Sections_Writer-8        | 2.44ms  | 4.69MB  | 21.2K  |
 
 For comprehensive performance analysis including comparisons with other MJML implementations, see our dedicated [performance benchmarks documentation](docs/benchmarks.md).
 
@@ -379,6 +409,44 @@ cd mjml && go test -v
 - **Fast Compilation**: Native Go performance, typically sub-millisecond for basic templates
 - **Memory Efficient**: Minimal allocations during parsing and rendering
 - **Scalable**: Handles complex MJML documents with multiple sections and components
+
+### AST Caching (Opt-in Performance Feature)
+
+**When to Enable Caching:**
+- High-volume applications rendering the same templates repeatedly
+- Web servers with template reuse patterns
+- Batch processing where templates are rendered multiple times
+- Applications where parsing time > rendering time
+
+**Memory Management:**
+- **Default TTL**: 5 minutes per cached template
+- **Memory Usage**: ~5-50KB per cached template (varies by complexity)
+- **Growth Pattern**: Cache grows between cleanup cycles, shrinks during cleanup
+- **No Size Limits**: Monitor memory usage in production environments
+
+**Thread Safety:**
+- All cache operations are safe for concurrent use
+- Singleflight pattern prevents duplicate parsing under high load
+- Background cleanup runs automatically every 2.5 minutes (default)
+
+**Configuration:**
+```go
+// Set cache TTL before first use (call only once)
+mjml.SetASTCacheTTLOnce(10 * time.Minute)
+
+// Set cleanup interval (call only once) 
+mjml.SetASTCacheCleanupIntervalOnce(5 * time.Minute)
+
+// For graceful shutdown in long-running applications (optional)
+// Not needed for CLI tools or short-lived processes
+defer mjml.StopASTCacheCleanup()
+```
+
+**When NOT to Use Caching:**
+- Single-use template rendering
+- Memory-constrained environments  
+- Applications with constantly changing templates
+- Short-lived processes where cache warmup overhead > benefits
 
 ### Email Client Compatibility
 

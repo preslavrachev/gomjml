@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/preslavrachev/gomjml/mjml"
 	"github.com/spf13/cobra"
@@ -11,9 +12,12 @@ import (
 // NewCompileCommand creates the compile command
 func NewCompileCommand() *cobra.Command {
 	var (
-		outputFile string
-		stdout     bool
-		debug      bool
+		outputFile    string
+		stdout        bool
+		debug         bool
+		cache         bool
+		cacheTTL      time.Duration
+		cacheInterval time.Duration
 	)
 
 	cmd := &cobra.Command{
@@ -36,13 +40,22 @@ Examples:
 				os.Exit(1)
 			}
 
-			// Render MJML to HTML using library
-			var html string
-			if debug {
-				html, err = mjml.Render(string(mjmlContent), mjml.WithDebugTags(true))
-			} else {
-				html, err = mjml.Render(string(mjmlContent))
+			if cacheTTL > 0 {
+				mjml.SetASTCacheTTLOnce(cacheTTL)
 			}
+			if cacheInterval > 0 {
+				mjml.SetASTCacheCleanupIntervalOnce(cacheInterval)
+			}
+
+			// Render MJML to HTML using library
+			opts := []mjml.RenderOption{}
+			if debug {
+				opts = append(opts, mjml.WithDebugTags(true))
+			}
+			if cache {
+				opts = append(opts, mjml.WithCache())
+			}
+			html, err := mjml.Render(string(mjmlContent), opts...)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error rendering MJML: %v\n", err)
 				os.Exit(1)
@@ -65,6 +78,9 @@ Examples:
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "output file path")
 	cmd.Flags().BoolVarP(&stdout, "stdout", "s", false, "output to stdout")
 	cmd.Flags().BoolVar(&debug, "debug", false, "include debug attributes in output")
+	cmd.Flags().BoolVar(&cache, "cache", false, "enable experimental AST caching")
+	cmd.Flags().DurationVar(&cacheTTL, "cache-ttl", 0, "AST cache TTL (e.g. 10m)")
+	cmd.Flags().DurationVar(&cacheInterval, "cache-cleanup-interval", 0, "AST cache cleanup interval")
 
 	return cmd
 }
