@@ -13,6 +13,10 @@ func resetASTCache() {
 		astCache.Delete(key)
 		return true
 	})
+	renderCache.Range(func(key, _ interface{}) bool {
+		renderCache.Delete(key)
+		return true
+	})
 	StopASTCacheCleanup()
 }
 

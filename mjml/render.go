@@ -32,34 +32,24 @@ type RenderOption func(*RenderOpts)
 
 // calculateOptimalBufferSize determines the optimal buffer size based on template complexity
 func calculateOptimalBufferSize(mjmlContent string) int {
-	mjmlSize := len(mjmlContent)
-	componentCount := strings.Count(mjmlContent, "<mj-")
-
-	// Prevent division by zero for empty MJML content
-	if mjmlSize == 0 {
-		// Return a reasonable default buffer size for empty input
+	// Use a simple heuristic that scales linearly with input size.
+	// This avoids an extra pass over the template to count components
+	// while still providing ample buffer space for rendered HTML.
+	if len(mjmlContent) == 0 {
 		return 1024
 	}
-
-	// Calculate component density (components per 1000 characters)
-	complexity := float64(componentCount) / float64(mjmlSize) * 1000
-
-	if complexity > 10 {
-		// Very dense template - needs more buffer per component
-		return mjmlSize*5 + componentCount*180
-	} else if complexity > 5 {
-		// Medium density - balanced approach
-		return mjmlSize*4 + componentCount*140
-	} else {
-		// Light template - more conservative
-		return mjmlSize*3 + componentCount*100
-	}
+	return len(mjmlContent) * 4
 }
 
 // cachedAST wraps an MJML AST with a fixed expiration time.
 // Entries are immutable once stored in the cache to avoid concurrent mutation.
 type cachedAST struct {
 	node    *MJMLNode
+	expires time.Time
+}
+
+type cachedRender struct {
+	res     *RenderResult
 	expires time.Time
 }
 
@@ -99,6 +89,7 @@ type cachedAST struct {
 var (
 	// Cache storage and configuration
 	astCache                sync.Map          // map[uint64]*cachedAST - main cache storage
+	renderCache             sync.Map          // map[uint64]*cachedRender - rendered output cache
 	astCacheTTL             = 5 * time.Minute // default expiration time
 	astCacheTTLOnce         sync.Once         // ensures TTL is set only once
 	astCacheCleanupInterval = astCacheTTL / 2 // how often to run cleanup
@@ -219,7 +210,6 @@ func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 		return node, nil
 	}
 
-	startASTCacheCleanup()
 	hash := hashTemplate(mjmlContent)
 	if cached, found := astCache.Load(hash); found {
 		entry := cached.(*cachedAST)
@@ -289,6 +279,13 @@ func startASTCacheCleanup() {
 					}
 					return true
 				})
+				renderCache.Range(func(key, value interface{}) bool {
+					entry := value.(*cachedRender)
+					if now.After(entry.expires) {
+						renderCache.Delete(key)
+					}
+					return true
+				})
 			case <-ctx.Done():
 				return
 			}
@@ -342,8 +339,25 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		opt(renderOpts)
 	}
 
-	// Parse MJML using the parser package (with optional cache)
-	ast, err := parseAST(mjmlContent, renderOpts.UseCache)
+	var (
+		ast  *MJMLNode
+		err  error
+		hash uint64
+	)
+	if renderOpts.UseCache {
+		startASTCacheCleanup()
+		hash = hashTemplate(mjmlContent)
+		if cached, found := renderCache.Load(hash); found {
+			entry := cached.(*cachedRender)
+			if time.Now().Before(entry.expires) {
+				return entry.res, nil
+			}
+			renderCache.Delete(hash)
+		}
+		ast, err = parseAST(mjmlContent, true)
+	} else {
+		ast, err = parseAST(mjmlContent, false)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -394,10 +408,17 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		"expansion_factor": float64(len(htmlOutput)) / float64(len(mjmlContent)),
 	})
 
-	return &RenderResult{
+	result := &RenderResult{
 		HTML: htmlOutput,
 		AST:  ast,
-	}, nil
+	}
+	if renderOpts.UseCache {
+		cacheConfigMutex.RLock()
+		ttl := astCacheTTL
+		cacheConfigMutex.RUnlock()
+		renderCache.Store(hash, &cachedRender{res: result, expires: time.Now().Add(ttl)})
+	}
+	return result, nil
 }
 
 // Render provides the main MJML to HTML conversion function
