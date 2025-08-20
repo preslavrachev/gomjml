@@ -268,7 +268,7 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-style` | ✅ **Implemented** | Custom CSS styles |
 | `mj-attributes` | ✅ **Implemented** | Global attribute definitions |
 | `mj-all` | ✅ **Implemented** | Global attributes for all components |
-| **Not Implemented** | | |
+| **Other Components** | | |
 | `mj-accordion` | ✅ **Implemented** | Collapsible content sections |
 | `mj-accordion-text` | ✅ **Implemented** | Text content within accordion |
 | `mj-accordion-title` | ✅ **Implemented** | Title for accordion sections |
