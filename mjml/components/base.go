@@ -286,7 +286,11 @@ func getPixelWidthString(widthPx int) string {
 		return width50px
 	default:
 		// Fallback using strconv for uncommon widths without fmt overhead
-		return strconv.Itoa(widthPx) + "px"
+		var b strings.Builder
+		b.Grow(8) // Pre-allocate reasonable size for most width values
+		b.WriteString(strconv.Itoa(widthPx))
+		b.WriteString("px")
+		return b.String()
 	}
 }
 

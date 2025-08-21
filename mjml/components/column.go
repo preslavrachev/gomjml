@@ -191,7 +191,7 @@ func (c *MJColumnComponent) GetColumnClass() (string, styles.Size) {
 	if parsedWidth.IsPercent() {
 		// Format: mj-column-per-{width} where dots are replaced with dashes
 		f32Value := float32(parsedWidth.Value())
-		widthStr := strconv.FormatFloat(float64(f32Value), 'f', -1, 32)
+		widthStr := strconv.FormatFloat(float64(f32Value), 'g', -1, 32)
 		className = "mj-column-per-" + strings.ReplaceAll(widthStr, ".", "-")
 	} else {
 		// Format: mj-column-px-{width} for pixel values
