@@ -49,7 +49,15 @@ BEGIN {
         printf "%-35s %8s %8s %10s\n", "Benchmark", "Time", "Memory", "Allocs"
         printf "%-35s %8s %8s %10s\n", "---------", "----", "------", "------"
     }
-}' | if [[ "$MARKDOWN" == "false" ]]; then column -t; else cat; fi
+}' | if [[ "$MARKDOWN" == "false" ]]; then
+    if command -v column >/dev/null 2>&1; then
+        column -t
+    else
+        cat
+    fi
+else
+    cat
+fi
 
 
 if [[ "$MARKDOWN" == "true" ]]; then
