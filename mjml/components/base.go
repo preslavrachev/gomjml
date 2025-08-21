@@ -27,6 +27,10 @@ var (
 	width50px  = "50px"
 )
 
+// pixelWidthStringBufSize is the pre-allocated buffer size for pixel width strings
+// Calculation: max 4-5 digits + "px" suffix = ~7-8 chars
+const pixelWidthStringBufSize = 8
+
 // NotImplementedError indicates a component is not yet implemented
 type NotImplementedError struct {
 	ComponentName string
@@ -287,7 +291,7 @@ func getPixelWidthString(widthPx int) string {
 	default:
 		// Fallback using strconv for uncommon widths without fmt overhead
 		var b strings.Builder
-		b.Grow(8) // Pre-allocate reasonable size for most width values
+		b.Grow(pixelWidthStringBufSize) // Pre-allocate reasonable size for most width values
 		b.WriteString(strconv.Itoa(widthPx))
 		b.WriteString("px")
 		return b.String()

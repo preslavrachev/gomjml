@@ -163,7 +163,10 @@ func (c *MJColumnComponent) getAutoWidthPercent() string {
 		nonRawSiblings = 1
 	}
 	widthPercent := 100.0 / float64(nonRawSiblings)
-	return strconv.FormatFloat(widthPercent, 'f', 0, 64) + "%"
+	var b strings.Builder
+	b.WriteString(strconv.FormatFloat(widthPercent, 'f', 0, 64))
+	b.WriteString("%")
+	return b.String()
 }
 
 // GetParsedWidth returns the parsed width following MRML logic
@@ -213,7 +216,10 @@ func (c *MJColumnComponent) GetWidthAsPixel() string {
 		if parsedWidth.IsPercent() {
 			// Convert percentage to pixels
 			pixelValue := float64(containerWidth) * parsedWidth.Value() / 100.0
-			return strconv.FormatFloat(pixelValue, 'f', 0, 64) + "px"
+			var b strings.Builder
+			b.WriteString(strconv.FormatFloat(pixelValue, 'f', 0, 64))
+			b.WriteString("px")
+			return b.String()
 		} else {
 			// Already in pixels
 			return parsedWidth.String()
