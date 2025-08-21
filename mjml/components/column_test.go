@@ -108,6 +108,49 @@ func TestGetColumnClass(t *testing.T) {
 			rawSiblings:   0,
 			expectedClass: "mj-column-per-10",
 		},
+		// Explicit width test cases - tests our strconv.FormatFloat fix
+		{
+			name:          "Explicit 33.333% width",
+			width:         "33.333%",
+			siblings:      1, // siblings don't matter for explicit width
+			rawSiblings:   0,
+			expectedClass: "mj-column-per-33-333",
+		},
+		{
+			name:          "Explicit 25.5% width",
+			width:         "25.5%",
+			siblings:      1,
+			rawSiblings:   0,
+			expectedClass: "mj-column-per-25-5",
+		},
+		{
+			name:          "Explicit 16.666666% width (f32 precision test)",
+			width:         "16.666666%",
+			siblings:      1,
+			rawSiblings:   0,
+			expectedClass: "mj-column-per-16-666666",
+		},
+		{
+			name:          "Explicit 12.25% width",
+			width:         "12.25%",
+			siblings:      1,
+			rawSiblings:   0,
+			expectedClass: "mj-column-per-12-25",
+		},
+		{
+			name:          "Explicit 200px width",
+			width:         "200px",
+			siblings:      1,
+			rawSiblings:   0,
+			expectedClass: "mj-column-px-200",
+		},
+		{
+			name:          "Explicit 150px width",
+			width:         "150px",
+			siblings:      1,
+			rawSiblings:   0,
+			expectedClass: "mj-column-px-150",
+		},
 	}
 
 	for _, tt := range tests {

@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
@@ -25,6 +26,10 @@ var (
 	width150px = "150px"
 	width50px  = "50px"
 )
+
+// pixelWidthStringBufSize is the pre-allocated buffer size for pixel width strings
+// Calculation: max 4-5 digits + "px" suffix = ~7-8 chars
+const pixelWidthStringBufSize = 8
 
 // NotImplementedError indicates a component is not yet implemented
 type NotImplementedError struct {
@@ -61,7 +66,7 @@ type BaseComponent struct {
 
 // NewBaseComponent creates a new base component
 func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComponent {
-	attrs := make(map[string]string)
+	attrs := make(map[string]string, len(node.Attrs))
 	for _, attr := range node.Attrs {
 		attrs[attr.Name.Local] = attr.Value
 	}
@@ -73,7 +78,7 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 	return &BaseComponent{
 		Node:           node,
 		Attrs:          attrs,
-		Children:       make([]Component, 0),
+		Children:       make([]Component, 0, len(node.Children)),
 		ContainerWidth: 0, // 0 means use default body width
 		Siblings:       1,
 		RawSiblings:    0,
@@ -284,8 +289,12 @@ func getPixelWidthString(widthPx int) string {
 	case 50:
 		return width50px
 	default:
-		// Fallback to fmt.Sprintf for uncommon widths
-		return fmt.Sprintf("%dpx", widthPx)
+		// Fallback using strconv for uncommon widths without fmt overhead
+		var b strings.Builder
+		b.Grow(pixelWidthStringBufSize) // Pre-allocate reasonable size for most width values
+		b.WriteString(strconv.Itoa(widthPx))
+		b.WriteString("px")
+		return b.String()
 	}
 }
 
@@ -381,7 +390,7 @@ func (bc *BaseComponent) ApplyDimensionStyles(tag *html.HTMLTag) *html.HTMLTag {
 func (bc *BaseComponent) AddDebugAttribute(tag *html.HTMLTag, componentType string) {
 	// Only add debug attributes if enabled in render options
 	if bc.RenderOpts != nil && bc.RenderOpts.DebugTags {
-		debugAttr := fmt.Sprintf("data-mj-debug-%s", componentType)
+		debugAttr := "data-mj-debug-" + componentType
 		tag.AddAttribute(debugAttr, "true")
 	}
 }
@@ -424,7 +433,7 @@ func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
 // Returns empty string if no css-class is set, or " class=\"css-class-outlook\"" if set
 func (bc *BaseComponent) GetMSOClassAttribute() string {
 	if cssClass := bc.GetCSSClass(); cssClass != "" {
-		return fmt.Sprintf(` class="%s-outlook"`, cssClass)
+		return " class=\"" + cssClass + "-outlook\""
 	}
 	return ""
 }

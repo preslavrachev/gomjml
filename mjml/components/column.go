@@ -1,8 +1,8 @@
 package components
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
@@ -163,7 +163,10 @@ func (c *MJColumnComponent) getAutoWidthPercent() string {
 		nonRawSiblings = 1
 	}
 	widthPercent := 100.0 / float64(nonRawSiblings)
-	return fmt.Sprintf("%.0f%%", widthPercent)
+	var b strings.Builder
+	b.WriteString(strconv.FormatFloat(widthPercent, 'f', 0, 64))
+	b.WriteString("%")
+	return b.String()
 }
 
 // GetParsedWidth returns the parsed width following MRML logic
@@ -190,14 +193,13 @@ func (c *MJColumnComponent) GetColumnClass() (string, styles.Size) {
 
 	if parsedWidth.IsPercent() {
 		// Format: mj-column-per-{width} where dots are replaced with dashes
-		// Use float32 precision to match MRML's Rust f32 behavior
 		f32Value := float32(parsedWidth.Value())
-		widthStr := fmt.Sprintf("%g", f32Value)
-		className = fmt.Sprintf("mj-column-per-%s", strings.ReplaceAll(widthStr, ".", "-"))
+		widthStr := strconv.FormatFloat(float64(f32Value), 'g', -1, 32)
+		className = "mj-column-per-" + strings.ReplaceAll(widthStr, ".", "-")
 	} else {
 		// Format: mj-column-px-{width} for pixel values
-		widthStr := fmt.Sprintf("%.0f", parsedWidth.Value())
-		className = fmt.Sprintf("mj-column-px-%s", strings.ReplaceAll(widthStr, ".", "-"))
+		widthStr := strconv.FormatFloat(parsedWidth.Value(), 'f', 0, 64)
+		className = "mj-column-px-" + strings.ReplaceAll(widthStr, ".", "-")
 	}
 
 	return className, parsedWidth
@@ -214,7 +216,10 @@ func (c *MJColumnComponent) GetWidthAsPixel() string {
 		if parsedWidth.IsPercent() {
 			// Convert percentage to pixels
 			pixelValue := float64(containerWidth) * parsedWidth.Value() / 100.0
-			return fmt.Sprintf("%.0fpx", pixelValue)
+			var b strings.Builder
+			b.WriteString(strconv.FormatFloat(pixelValue, 'f', 0, 64))
+			b.WriteString("px")
+			return b.String()
 		} else {
 			// Already in pixels
 			return parsedWidth.String()
