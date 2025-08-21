@@ -1,10 +1,10 @@
 package components
 
 import (
-        "fmt"
-        "io"
-        "strconv"
-        "strings"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
@@ -62,7 +62,7 @@ type BaseComponent struct {
 
 // NewBaseComponent creates a new base component
 func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComponent {
-    attrs := make(map[string]string, len(node.Attrs))
+	attrs := make(map[string]string, len(node.Attrs))
 	for _, attr := range node.Attrs {
 		attrs[attr.Name.Local] = attr.Value
 	}
@@ -72,9 +72,9 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 	}
 
 	return &BaseComponent{
-                Node:           node,
-                Attrs:          attrs,
-                Children:       make([]Component, 0, len(node.Children)),
+		Node:           node,
+		Attrs:          attrs,
+		Children:       make([]Component, 0, len(node.Children)),
 		ContainerWidth: 0, // 0 means use default body width
 		Siblings:       1,
 		RawSiblings:    0,
@@ -285,8 +285,8 @@ func getPixelWidthString(widthPx int) string {
 	case 50:
 		return width50px
 	default:
-            // Fallback using strconv for uncommon widths without fmt overhead
-            return strconv.Itoa(widthPx) + "px"
+		// Fallback using strconv for uncommon widths without fmt overhead
+		return strconv.Itoa(widthPx) + "px"
 	}
 }
 
@@ -382,7 +382,7 @@ func (bc *BaseComponent) ApplyDimensionStyles(tag *html.HTMLTag) *html.HTMLTag {
 func (bc *BaseComponent) AddDebugAttribute(tag *html.HTMLTag, componentType string) {
 	// Only add debug attributes if enabled in render options
 	if bc.RenderOpts != nil && bc.RenderOpts.DebugTags {
-            debugAttr := "data-mj-debug-" + componentType
+		debugAttr := "data-mj-debug-" + componentType
 		tag.AddAttribute(debugAttr, "true")
 	}
 }
@@ -425,7 +425,7 @@ func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
 // Returns empty string if no css-class is set, or " class=\"css-class-outlook\"" if set
 func (bc *BaseComponent) GetMSOClassAttribute() string {
 	if cssClass := bc.GetCSSClass(); cssClass != "" {
-            return " class=\"" + cssClass + "-outlook\""
+		return " class=\"" + cssClass + "-outlook\""
 	}
 	return ""
 }

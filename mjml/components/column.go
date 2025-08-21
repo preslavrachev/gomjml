@@ -1,9 +1,9 @@
 package components
 
 import (
-        "io"
-        "strconv"
-        "strings"
+	"io"
+	"strconv"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -162,8 +162,8 @@ func (c *MJColumnComponent) getAutoWidthPercent() string {
 	if nonRawSiblings <= 0 {
 		nonRawSiblings = 1
 	}
-        widthPercent := 100.0 / float64(nonRawSiblings)
-        return strconv.FormatFloat(widthPercent, 'f', 0, 64) + "%"
+	widthPercent := 100.0 / float64(nonRawSiblings)
+	return strconv.FormatFloat(widthPercent, 'f', 0, 64) + "%"
 }
 
 // GetParsedWidth returns the parsed width following MRML logic
@@ -188,16 +188,16 @@ func (c *MJColumnComponent) GetColumnClass() (string, styles.Size) {
 	parsedWidth := c.GetParsedWidth()
 	var className string
 
-        if parsedWidth.IsPercent() {
-                // Format: mj-column-per-{width} where dots are replaced with dashes
-                f32Value := float32(parsedWidth.Value())
-                widthStr := strconv.FormatFloat(float64(f32Value), 'f', -1, 32)
-                className = "mj-column-per-" + strings.ReplaceAll(widthStr, ".", "-")
-        } else {
-                // Format: mj-column-px-{width} for pixel values
-                widthStr := strconv.FormatFloat(parsedWidth.Value(), 'f', 0, 64)
-                className = "mj-column-px-" + strings.ReplaceAll(widthStr, ".", "-")
-        }
+	if parsedWidth.IsPercent() {
+		// Format: mj-column-per-{width} where dots are replaced with dashes
+		f32Value := float32(parsedWidth.Value())
+		widthStr := strconv.FormatFloat(float64(f32Value), 'f', -1, 32)
+		className = "mj-column-per-" + strings.ReplaceAll(widthStr, ".", "-")
+	} else {
+		// Format: mj-column-px-{width} for pixel values
+		widthStr := strconv.FormatFloat(parsedWidth.Value(), 'f', 0, 64)
+		className = "mj-column-px-" + strings.ReplaceAll(widthStr, ".", "-")
+	}
 
 	return className, parsedWidth
 }
@@ -212,8 +212,8 @@ func (c *MJColumnComponent) GetWidthAsPixel() string {
 	if containerWidth > 0 {
 		if parsedWidth.IsPercent() {
 			// Convert percentage to pixels
-                        pixelValue := float64(containerWidth) * parsedWidth.Value() / 100.0
-                        return strconv.FormatFloat(pixelValue, 'f', 0, 64) + "px"
+			pixelValue := float64(containerWidth) * parsedWidth.Value() / 100.0
+			return strconv.FormatFloat(pixelValue, 'f', 0, 64) + "px"
 		} else {
 			// Already in pixels
 			return parsedWidth.String()
