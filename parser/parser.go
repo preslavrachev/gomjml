@@ -178,8 +178,8 @@ func parseRawContent(decoder *xml.Decoder) (string, error) {
 				builder.WriteString(" />")
 			} else {
 				builder.WriteString(">")
-				depth++
 			}
+			depth++
 		case xml.EndElement:
 			if len(tagStack) > 0 {
 				lastTag := tagStack[len(tagStack)-1]
