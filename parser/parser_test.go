@@ -147,3 +147,105 @@ func TestMJMLNode_GetTextContent(t *testing.T) {
 		t.Errorf("GetTextContent() = %q, want %q", got, want)
 	}
 }
+
+func TestMJMLRaw_SingleVoidElement(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<p>Text before void element</p>
+		<img src="test.jpg" alt="test">
+		<p>Text after void element</p>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("MJML with single void element should parse without error: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	if !contains(rawElement.Text, "<img") {
+		t.Error("Raw content should preserve img tag")
+	}
+}
+
+func TestMJMLRaw_MultipleVoidElements(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<p>Paragraph with <br> line break</p>
+		<hr>
+		<img src="test.jpg" alt="test">
+		<input type="text" name="test">
+		<p>End paragraph</p>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("MJML with multiple void elements should parse without error: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	voidTags := []string{"<br", "<hr", "<img", "<input"}
+	for _, tag := range voidTags {
+		if !contains(rawElement.Text, tag) {
+			t.Errorf("Raw content should preserve %s tag", tag)
+		}
+	}
+}
+
+func TestMJMLRaw_NestedVoidElements(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<div>
+			<p>Text <img src="icon.png" alt="icon"> with image</p>
+			<p>Another <br> paragraph</p>
+		</div>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("MJML with nested void elements should parse without error: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	if !contains(rawElement.Text, "<div>") || !contains(rawElement.Text, "</div>") {
+		t.Error("Raw content should preserve div nesting")
+	}
+
+	if !contains(rawElement.Text, "<img") {
+		t.Error("Raw content should preserve img tag")
+	}
+
+	if !contains(rawElement.Text, "<br") {
+		t.Error("Raw content should preserve br tag")
+	}
+}
+
+// Helper function to check if a string contains a substring
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if len(s) >= len(substr) && s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
