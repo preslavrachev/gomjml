@@ -15,6 +15,32 @@ import (
 // Compiled regex for robust text splitting in mixed content
 var mixedContentSplitRegex = regexp.MustCompile(`\s*[\r\n]+\s*`)
 
+// htmlVoidElements contains HTML elements that do not require closing tags.
+//
+// Reference: https://html.spec.whatwg.org/\#void-elements
+var htmlVoidElements = map[string]struct{}{
+	"area":   {},
+	"base":   {},
+	"br":     {},
+	"col":    {},
+	"embed":  {},
+	"hr":     {},
+	"img":    {},
+	"input":  {},
+	"link":   {},
+	"meta":   {},
+	"param":  {},
+	"source": {},
+	"track":  {},
+	"wbr":    {},
+}
+
+// isVoidHTMLElement reports whether the provided tag name is an HTML void element.
+func isVoidHTMLElement(tag string) bool {
+	_, ok := htmlVoidElements[strings.ToLower(tag)]
+	return ok
+}
+
 // MJMLNode represents a node in the MJML AST
 type MJMLNode struct {
 	XMLName  xml.Name
@@ -82,7 +108,7 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 	// Special handling for mj-raw: capture original inner content including comments
 	if node.XMLName.Local == "mj-raw" {
-		raw, err := parseRawContent(decoder, node.XMLName)
+		raw, err := parseRawContent(decoder)
 		if err != nil {
 			return nil, err
 		}
@@ -125,17 +151,10 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 }
 
 // parseRawContent reads tokens until the matching end tag and returns the raw HTML content
-func parseRawContent(decoder *xml.Decoder, name xml.Name) (string, error) {
+func parseRawContent(decoder *xml.Decoder) (string, error) {
 	var builder strings.Builder
 	depth := 1
 	voidStack := make([]bool, 0)
-	isVoid := func(tag string) bool {
-		switch tag {
-		case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
-			return true
-		}
-		return false
-	}
 	for depth > 0 {
 		tok, err := decoder.Token()
 		if err != nil {
@@ -143,11 +162,9 @@ func parseRawContent(decoder *xml.Decoder, name xml.Name) (string, error) {
 		}
 		switch t := tok.(type) {
 		case xml.StartElement:
-			depth++
-			void := isVoid(t.Name.Local)
-			voidStack = append(voidStack, void)
+			tagName := t.Name.Local
 			builder.WriteString("<")
-			builder.WriteString(t.Name.Local)
+			builder.WriteString(tagName)
 			for _, attr := range t.Attr {
 				builder.WriteString(" ")
 				builder.WriteString(attr.Name.Local)
@@ -155,25 +172,30 @@ func parseRawContent(decoder *xml.Decoder, name xml.Name) (string, error) {
 				builder.WriteString(attr.Value)
 				builder.WriteString("\"")
 			}
+			void := isVoidHTMLElement(tagName)
+			voidStack = append(voidStack, void)
 			if void {
 				builder.WriteString(" />")
 			} else {
 				builder.WriteString(">")
+				depth++
 			}
 		case xml.EndElement:
+			if len(voidStack) > 0 {
+				void := voidStack[len(voidStack)-1]
+				voidStack = voidStack[:len(voidStack)-1]
+				if void {
+					// Ignore end token for self-closing void elements
+					continue
+				}
+			}
 			depth--
 			if depth == 0 {
 				break
 			}
-			if len(voidStack) > 0 {
-				void := voidStack[len(voidStack)-1]
-				voidStack = voidStack[:len(voidStack)-1]
-				if !void {
-					builder.WriteString("</")
-					builder.WriteString(t.Name.Local)
-					builder.WriteString(">")
-				}
-			}
+			builder.WriteString("</")
+			builder.WriteString(t.Name.Local)
+			builder.WriteString(">")
 		case xml.CharData:
 			builder.WriteString(string(t))
 		case xml.Comment:
