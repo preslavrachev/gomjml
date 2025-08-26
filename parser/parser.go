@@ -80,6 +80,16 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 		}
 	}
 
+	// Special handling for mj-raw: capture original inner content including comments
+	if node.XMLName.Local == "mj-raw" {
+		raw, err := parseRawContent(decoder, node.XMLName)
+		if err != nil {
+			return nil, err
+		}
+		node.Text = raw
+		return node, nil
+	}
+
 	var textBuilder strings.Builder
 
 	for {
@@ -105,8 +115,87 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 		case xml.CharData:
 			textBuilder.Write(t)
+		case xml.Comment:
+			// Preserve comments as part of text content
+			textBuilder.WriteString("<!--")
+			textBuilder.WriteString(string(t))
+			textBuilder.WriteString("-->")
 		}
 	}
+}
+
+// parseRawContent reads tokens until the matching end tag and returns the raw HTML content
+func parseRawContent(decoder *xml.Decoder, name xml.Name) (string, error) {
+	var builder strings.Builder
+	depth := 1
+	voidStack := make([]bool, 0)
+	isVoid := func(tag string) bool {
+		switch tag {
+		case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
+			return true
+		}
+		return false
+	}
+	for depth > 0 {
+		tok, err := decoder.Token()
+		if err != nil {
+			return "", err
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			depth++
+			void := isVoid(t.Name.Local)
+			voidStack = append(voidStack, void)
+			builder.WriteString("<")
+			builder.WriteString(t.Name.Local)
+			for _, attr := range t.Attr {
+				builder.WriteString(" ")
+				builder.WriteString(attr.Name.Local)
+				builder.WriteString("=\"")
+				builder.WriteString(attr.Value)
+				builder.WriteString("\"")
+			}
+			if void {
+				builder.WriteString(" />")
+			} else {
+				builder.WriteString(">")
+			}
+		case xml.EndElement:
+			depth--
+			if depth == 0 {
+				break
+			}
+			if len(voidStack) > 0 {
+				void := voidStack[len(voidStack)-1]
+				voidStack = voidStack[:len(voidStack)-1]
+				if !void {
+					builder.WriteString("</")
+					builder.WriteString(t.Name.Local)
+					builder.WriteString(">")
+				}
+			}
+		case xml.CharData:
+			builder.WriteString(string(t))
+		case xml.Comment:
+			builder.WriteString("<!--")
+			builder.WriteString(string(t))
+			builder.WriteString("-->")
+		case xml.Directive:
+			builder.WriteString("<!")
+			builder.WriteString(string(t))
+			builder.WriteString(">")
+		case xml.ProcInst:
+			builder.WriteString("<")
+			builder.WriteString("?")
+			builder.WriteString(t.Target)
+			if len(t.Inst) > 0 {
+				builder.WriteString(" ")
+				builder.Write(t.Inst)
+			}
+			builder.WriteString("?>")
+		}
+	}
+	return builder.String(), nil
 }
 
 // GetAttribute retrieves an attribute value by name

@@ -51,6 +51,7 @@ type Component interface {
 	SetRawSiblings(rawSiblings int)
 	GetSiblings() int
 	GetRawSiblings() int
+	IsRawElement() bool
 }
 
 // BaseComponent provides common functionality for all components
@@ -84,6 +85,12 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		RawSiblings:    0,
 		RenderOpts:     opts,
 	}
+}
+
+// IsRawElement returns whether this component should be treated as a raw element.
+// Base components are not raw by default.
+func (bc *BaseComponent) IsRawElement() bool {
+	return false
 }
 
 // GetAttribute gets an attribute value as a pointer, following the MRML attribute resolution order:

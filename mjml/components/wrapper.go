@@ -202,6 +202,12 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 	// Render children with standard body width
 	for _, child := range c.Children {
+		if child.IsRawElement() {
+			if err := child.Render(w); err != nil {
+				return err
+			}
+			continue
+		}
 		child.SetContainerWidth(GetDefaultBodyWidthPixels())
 		if err := child.Render(w); err != nil {
 			return err
@@ -363,6 +369,12 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 	// Render children - pass the effective width (600px - border width)
 	for _, child := range c.Children {
+		if child.IsRawElement() {
+			if err := child.Render(w); err != nil {
+				return err
+			}
+			continue
+		}
 		child.SetContainerWidth(effectiveWidth)
 		if err := child.Render(w); err != nil {
 			return err

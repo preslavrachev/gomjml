@@ -225,6 +225,13 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 
 	// Render child components
 	for _, child := range c.Children {
+		if child.IsRawElement() {
+			if err := child.Render(w); err != nil {
+				return err
+			}
+			continue
+		}
+
 		// Set container width for children
 		child.SetContainerWidth(containerWidth)
 
