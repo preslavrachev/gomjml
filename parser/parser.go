@@ -152,6 +152,10 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 // parseRawContent reads tokens until the matching end tag and returns the raw HTML content
 func parseRawContent(decoder *xml.Decoder) (string, error) {
+	origStrict := decoder.Strict
+	decoder.Strict = false
+	defer func() { decoder.Strict = origStrict }()
+
 	var builder strings.Builder
 	depth := 1
 	tagStack := make([]string, 0)
@@ -172,47 +176,43 @@ func parseRawContent(decoder *xml.Decoder) (string, error) {
 				builder.WriteString(attr.Value)
 				builder.WriteString("\"")
 			}
-			tagStack = append(tagStack, tagName)
-			void := isVoidHTMLElement(tagName)
-			if void {
-				builder.WriteString(" />")
-			} else {
-				builder.WriteString(">")
-			}
+			builder.WriteString(">")
+
+			// Track depth for all start elements
 			depth++
+
+			if !isVoidHTMLElement(tagName) {
+				// Only non-void elements participate in stack tracking
+				tagStack = append(tagStack, tagName)
+			}
+
 		case xml.EndElement:
-			if len(tagStack) > 0 {
-				lastTag := tagStack[len(tagStack)-1]
-				if lastTag == t.Name.Local {
-					void := isVoidHTMLElement(lastTag)
-					if void {
-						// Handle end token for self-closing void elements
-						tagStack = tagStack[:len(tagStack)-1]
-						depth--
-						if depth == 0 {
-							break
-						}
-						continue
-					}
-					tagStack = tagStack[:len(tagStack)-1]
-					depth--
-					if depth == 0 {
-						break
-					}
-					builder.WriteString("</")
-					builder.WriteString(t.Name.Local)
-					builder.WriteString(">")
-				}
-				// If the tag does not match, ignore (malformed XML)
-			} else {
+			tagName := t.Name.Local
+
+			if isVoidHTMLElement(tagName) {
+				// Ignore end tags for void elements
 				depth--
 				if depth == 0 {
 					break
 				}
-				builder.WriteString("</")
-				builder.WriteString(t.Name.Local)
-				builder.WriteString(">")
+				continue
 			}
+
+			depth--
+			if len(tagStack) > 0 {
+				lastTag := tagStack[len(tagStack)-1]
+				if lastTag == tagName {
+					tagStack = tagStack[:len(tagStack)-1]
+				}
+			}
+
+			if depth == 0 {
+				break
+			}
+
+			builder.WriteString("</")
+			builder.WriteString(tagName)
+			builder.WriteString(">")
 		case xml.CharData:
 			builder.WriteString(string(t))
 		case xml.Comment:
