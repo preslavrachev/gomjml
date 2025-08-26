@@ -154,7 +154,7 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 func parseRawContent(decoder *xml.Decoder) (string, error) {
 	var builder strings.Builder
 	depth := 1
-	voidStack := make([]bool, 0)
+	tagStack := make([]string, 0)
 	for depth > 0 {
 		tok, err := decoder.Token()
 		if err != nil {
@@ -172,8 +172,8 @@ func parseRawContent(decoder *xml.Decoder) (string, error) {
 				builder.WriteString(attr.Value)
 				builder.WriteString("\"")
 			}
+			tagStack = append(tagStack, tagName)
 			void := isVoidHTMLElement(tagName)
-			voidStack = append(voidStack, void)
 			if void {
 				builder.WriteString(" />")
 			} else {
@@ -181,21 +181,34 @@ func parseRawContent(decoder *xml.Decoder) (string, error) {
 				depth++
 			}
 		case xml.EndElement:
-			if len(voidStack) > 0 {
-				void := voidStack[len(voidStack)-1]
-				voidStack = voidStack[:len(voidStack)-1]
-				if void {
-					// Ignore end token for self-closing void elements
-					continue
+			if len(tagStack) > 0 {
+				lastTag := tagStack[len(tagStack)-1]
+				if lastTag == t.Name.Local {
+					void := isVoidHTMLElement(lastTag)
+					if void {
+						// Ignore end token for self-closing void elements
+						tagStack = tagStack[:len(tagStack)-1]
+						continue
+					}
+					tagStack = tagStack[:len(tagStack)-1]
+					depth--
+					if depth == 0 {
+						break
+					}
+					builder.WriteString("</")
+					builder.WriteString(t.Name.Local)
+					builder.WriteString(">")
 				}
+				// If the tag does not match, ignore (malformed XML)
+			} else {
+				depth--
+				if depth == 0 {
+					break
+				}
+				builder.WriteString("</")
+				builder.WriteString(t.Name.Local)
+				builder.WriteString(">")
 			}
-			depth--
-			if depth == 0 {
-				break
-			}
-			builder.WriteString("</")
-			builder.WriteString(t.Name.Local)
-			builder.WriteString(">")
 		case xml.CharData:
 			builder.WriteString(string(t))
 		case xml.Comment:
