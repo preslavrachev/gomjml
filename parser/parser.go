@@ -186,8 +186,12 @@ func parseRawContent(decoder *xml.Decoder) (string, error) {
 				if lastTag == t.Name.Local {
 					void := isVoidHTMLElement(lastTag)
 					if void {
-						// Ignore end token for self-closing void elements
+						// Handle end token for self-closing void elements
 						tagStack = tagStack[:len(tagStack)-1]
+						depth--
+						if depth == 0 {
+							break
+						}
 						continue
 					}
 					tagStack = tagStack[:len(tagStack)-1]
