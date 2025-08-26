@@ -11,7 +11,16 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/components"
 )
 
-// TestMJMLAgainstExpected compares Go implementation output with pre-generated expected HTML
+// TestMJMLAgainstExpected runs a suite of integration tests to verify that the MJML rendering
+// implementation produces HTML output matching the expected results for a variety of MJML input files, created using the MRML CLI.
+//
+// For each test case, it reads the corresponding MJML file, renders it to HTML using the Render function,
+// and compares the output to a pre-generated expected HTML file using DOM tree comparison.
+// If the expected HTML file is missing for certain special cases (e.g., conditional comments),
+// the test checks for specific output characteristics instead.
+//
+// On mismatch, the test provides a detailed DOM diff, logs style differences, and writes both
+// actual and expected outputs to temporary files for debugging purposes.
 func TestMJMLAgainstExpected(t *testing.T) {
 	// Reset navbar ID counter for deterministic testing
 	components.ResetNavbarIDCounter()
@@ -139,36 +148,6 @@ func TestMJMLAgainstExpected(t *testing.T) {
 			expectedFile := strings.Replace(tc.filename, ".mjml", ".html", 1)
 			expectedContent, err := os.ReadFile(expectedFile)
 			if err != nil {
-				// Handle special case for conditional comments
-				if tc.name == "mj-raw-conditional-comment" {
-					t.Logf(
-						"No expected HTML file for %s due to conditional comments, checking that our implementation works",
-						tc.name,
-					)
-
-					// Just verify our implementation doesn't crash and produces some output
-					actual, err := Render(string(mjmlContent))
-					if err != nil {
-						t.Fatalf("Failed to render MJML: %v", err)
-					}
-
-					if len(actual) == 0 {
-						t.Fatal("Expected non-empty output")
-					}
-
-					// Verify it contains the expected raw content
-					if !strings.Contains(actual, `<div>mso</div>`) {
-						t.Error("Expected output to contain <div>mso</div>")
-					}
-					if !strings.Contains(actual, `<span>general</span>`) {
-						t.Error("Expected output to contain <span>general</span>")
-					}
-					if !strings.Contains(actual, `<img src="bananas" alt=""`) {
-						t.Error("Expected output to contain img tag with bananas src")
-					}
-
-					return
-				}
 				t.Fatalf("Failed to read expected HTML file %s: %v", expectedFile, err)
 			}
 			expected := string(expectedContent)
