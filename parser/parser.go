@@ -6,14 +6,10 @@ package parser
 import (
 	"encoding/xml"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/debug"
 )
-
-// Compiled regex for robust text splitting in mixed content
-var mixedContentSplitRegex = regexp.MustCompile(`\s*[\r\n]+\s*`)
 
 // htmlVoidElements contains HTML elements that do not require closing tags.
 //
@@ -47,6 +43,17 @@ type MJMLNode struct {
 	Text     string
 	Attrs    []xml.Attr
 	Children []*MJMLNode
+	// MixedContent preserves the interleaving order of text nodes and child elements
+	// as they originally appeared in the MJML source. Each entry contains either
+	// a text segment or a pointer to a child node.
+	MixedContent []MixedContentPart
+}
+
+// MixedContentPart represents either a piece of text or a child node in the
+// mixed content sequence of an MJML node.
+type MixedContentPart struct {
+	Text string
+	Node *MJMLNode
 }
 
 // ParseMJML parses an MJML string into an AST
@@ -87,9 +94,10 @@ func preprocessHTMLEntities(content string) string {
 // parseNode recursively parses XML nodes
 func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) {
 	node := &MJMLNode{
-		XMLName:  start.Name,
-		Attrs:    start.Attr,
-		Children: make([]*MJMLNode, 0),
+		XMLName:      start.Name,
+		Attrs:        start.Attr,
+		Children:     make([]*MJMLNode, 0),
+		MixedContent: make([]MixedContentPart, 0),
 	}
 
 	// If this is called with empty start element, get the first element
@@ -113,10 +121,20 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 			return nil, err
 		}
 		node.Text = raw
+		node.MixedContent = []MixedContentPart{{Text: raw}}
 		return node, nil
 	}
 
 	var textBuilder strings.Builder
+	var segmentBuilder strings.Builder
+
+	flushSegment := func() {
+		if segmentBuilder.Len() > 0 {
+			text := segmentBuilder.String()
+			node.MixedContent = append(node.MixedContent, MixedContentPart{Text: text})
+			segmentBuilder.Reset()
+		}
+	}
 
 	for {
 		tok, err := decoder.Token()
@@ -126,14 +144,17 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 		switch t := tok.(type) {
 		case xml.StartElement:
+			flushSegment()
 			child, err := parseNode(decoder, t)
 			if err != nil {
 				return nil, err
 			}
 			node.Children = append(node.Children, child)
+			node.MixedContent = append(node.MixedContent, MixedContentPart{Node: child})
 
 		case xml.EndElement:
 			if t.Name == node.XMLName {
+				flushSegment()
 				node.Text = textBuilder.String()
 				return node, nil
 			}
@@ -141,11 +162,15 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 		case xml.CharData:
 			textBuilder.Write(t)
+			segmentBuilder.Write(t)
 		case xml.Comment:
 			// Preserve comments as part of text content
 			textBuilder.WriteString("<!--")
 			textBuilder.WriteString(string(t))
 			textBuilder.WriteString("-->")
+			segmentBuilder.WriteString("<!--")
+			segmentBuilder.WriteString(string(t))
+			segmentBuilder.WriteString("-->")
 		}
 	}
 }
@@ -267,7 +292,7 @@ func (n *MJMLNode) GetMixedContent() string {
 		"has_children":   len(n.Children) > 0,
 	})
 
-	if len(n.Children) == 0 {
+	if len(n.MixedContent) == 0 {
 		result := strings.TrimSpace(n.Text)
 		debug.DebugLogWithData("parser", "text-only", "Returning plain text content", map[string]interface{}{
 			"content": result,
@@ -276,53 +301,36 @@ func (n *MJMLNode) GetMixedContent() string {
 	}
 
 	var result strings.Builder
-
-	// For mixed content, we need to reconstruct the original structure
-	// The parser splits text at child elements, so we need to interleave them
-	textParts := mixedContentSplitRegex.Split(n.Text, -1)
-	cleanTextParts := make([]string, 0, len(textParts))
-
-	// Clean up text parts (remove excessive whitespace but preserve structure)
-	for _, part := range textParts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			cleanTextParts = append(cleanTextParts, trimmed)
-		}
-	}
-
-	// Write content with children interspersed
-	// Note: This assumes children are inline elements within the text flow
-	if len(cleanTextParts) > 0 {
-		result.WriteString(cleanTextParts[0])
-	}
-
-	// Add child elements with remaining text parts
-	for i, child := range n.Children {
-		// Render child element as HTML
-		result.WriteString("<")
-		result.WriteString(child.XMLName.Local)
-
-		// Add attributes if any
-		for _, attr := range child.Attrs {
-			result.WriteString(" ")
-			result.WriteString(attr.Name.Local)
-			result.WriteString("=\"")
-			result.WriteString(attr.Value)
-			result.WriteString("\"")
-		}
-		result.WriteString(">")
-
-		// Add child's content (recursively handle mixed content)
-		result.WriteString(child.GetMixedContent())
-
-		// Close tag
-		result.WriteString("</")
-		result.WriteString(child.XMLName.Local)
-		result.WriteString(">")
-
-		// Add remaining text part if available
-		if i+1 < len(cleanTextParts) {
-			result.WriteString(cleanTextParts[i+1])
+	for i, part := range n.MixedContent {
+		if part.Node != nil {
+			tag := part.Node.XMLName.Local
+			result.WriteString("<")
+			result.WriteString(tag)
+			for _, attr := range part.Node.Attrs {
+				result.WriteString(" ")
+				result.WriteString(attr.Name.Local)
+				result.WriteString("=\"")
+				result.WriteString(attr.Value)
+				result.WriteString("\"")
+			}
+			if isVoidHTMLElement(tag) {
+				result.WriteString(" />")
+				continue
+			}
+			result.WriteString(">")
+			result.WriteString(part.Node.GetMixedContent())
+			result.WriteString("</")
+			result.WriteString(tag)
+			result.WriteString(">")
+		} else {
+			text := part.Text
+			if i == 0 {
+				text = strings.TrimLeft(text, " \n\r\t")
+			}
+			if i == len(n.MixedContent)-1 {
+				text = strings.TrimRight(text, " \n\r\t")
+			}
+			result.WriteString(text)
 		}
 	}
 

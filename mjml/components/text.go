@@ -173,29 +173,33 @@ func (c *MJTextComponent) GetDefaultAttribute(name string) string {
 // writeRawInnerHTML writes the original inner HTML content of the mj-text element to the writer
 // This is needed because our parser splits content, but mj-text needs to preserve HTML
 func (c *MJTextComponent) writeRawInnerHTML(w io.StringWriter) error {
-	// If we have children (HTML elements), we need to reconstruct the original HTML
-	if len(c.Node.Children) > 0 {
-		// Add any text content before children (trimmed)
-		if c.Node.Text != "" {
-			trimmedText := strings.TrimSpace(c.Node.Text)
-			if trimmedText != "" {
-				if _, err := w.WriteString(c.restoreHTMLEntities(trimmedText)); err != nil {
+	// If we have mixed content, write parts in their original order
+	if len(c.Node.MixedContent) > 0 {
+		for i, part := range c.Node.MixedContent {
+			if part.Node != nil {
+				if err := c.reconstructHTMLElement(part.Node, w); err != nil {
+					return err
+				}
+				continue
+			}
+
+			text := part.Text
+			if i == 0 {
+				text = strings.TrimLeft(text, " \n\r\t")
+			}
+			if i == len(c.Node.MixedContent)-1 {
+				text = strings.TrimRight(text, " \n\r\t")
+			}
+			if text != "" {
+				if _, err := w.WriteString(c.restoreHTMLEntities(text)); err != nil {
 					return err
 				}
 			}
 		}
-
-		// Add children as HTML elements
-		for _, child := range c.Node.Children {
-			if err := c.reconstructHTMLElement(child, w); err != nil {
-				return err
-			}
-		}
-
 		return nil
 	}
 
-	// If no children, write the text content with HTML entities restored and whitespace trimmed
+	// Fallback: no mixed content, write trimmed text
 	_, err := w.WriteString(c.restoreHTMLEntities(strings.TrimSpace(c.Node.Text)))
 	return err
 }
@@ -251,16 +255,29 @@ func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode, w io.Str
 		return err
 	}
 
-	// Content (text + children)
-	if node.Text != "" {
-		if _, err := w.WriteString(c.restoreHTMLEntities(node.Text)); err != nil {
-			return err
+	// Content (text + children) preserving original order
+	if len(node.MixedContent) > 0 {
+		for _, part := range node.MixedContent {
+			if part.Node != nil {
+				if err := c.reconstructHTMLElement(part.Node, w); err != nil {
+					return err
+				}
+				continue
+			}
+			if _, err := w.WriteString(c.restoreHTMLEntities(part.Text)); err != nil {
+				return err
+			}
 		}
-	}
-
-	for _, child := range node.Children {
-		if err := c.reconstructHTMLElement(child, w); err != nil {
-			return err
+	} else {
+		if node.Text != "" {
+			if _, err := w.WriteString(c.restoreHTMLEntities(node.Text)); err != nil {
+				return err
+			}
+		}
+		for _, child := range node.Children {
+			if err := c.reconstructHTMLElement(child, w); err != nil {
+				return err
+			}
 		}
 	}
 
