@@ -4,8 +4,10 @@
 package parser
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/debug"
@@ -61,6 +63,9 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 	// Pre-process HTML entities that XML parser doesn't handle
 	processedContent := preprocessHTMLEntities(mjmlContent)
 
+	// Wrap mj-text inner content in CDATA to preserve raw HTML
+	processedContent = wrapMJTextContent(processedContent)
+
 	decoder := xml.NewDecoder(strings.NewReader(processedContent))
 	root, err := parseNode(decoder, xml.StartElement{})
 	if err != nil {
@@ -89,6 +94,176 @@ func preprocessHTMLEntities(content string) string {
 	result = strings.ReplaceAll(result, "&hellip;", "…")
 
 	return result
+}
+
+const (
+	openNeedle   = "<mj-text"
+	closeNeedle  = "</mj-text>"
+	cdataStart   = "<![CDATA["
+	cdataEnd     = "]]>"
+	cdataEndSafe = "]]]]><![CDATA[>"
+)
+
+// wrapMJTextContent wraps the inner content of every <mj-text>...</mj-text>
+// in a CDATA section and normalizes void tags inside. It is case-insensitive
+// on tag names, handles attributes with quotes, and supports self-closing tags.
+func wrapMJTextContent(content string) string {
+	if content == "" {
+		return ""
+	}
+
+	b := []byte(content)
+	var out strings.Builder
+	out.Grow(len(content) + 64)
+
+	pos := 0
+	for {
+		idx := indexCI(b, []byte(openNeedle), pos)
+		if idx < 0 {
+			out.Write(b[pos:])
+			break
+		}
+
+		out.Write(b[pos:idx])
+
+		endStart, selfClosing := findTagEnd(b, idx)
+		if endStart < 0 {
+			out.Write(b[idx:])
+			break
+		}
+
+		out.Write(b[idx:endStart])
+
+		if selfClosing {
+			pos = endStart
+			continue
+		}
+
+		closeIdx := indexCI(b, []byte(closeNeedle), endStart)
+		if closeIdx < 0 {
+			out.Write(b[endStart:])
+			break
+		}
+
+		inner := b[endStart:closeIdx]
+
+		alreadyCDATA := bytes.HasPrefix(bytes.TrimLeft(inner, " \t\r\n"), []byte(cdataStart))
+
+		inner = normalizeSelfClosingVoidTags(inner)
+
+		if alreadyCDATA {
+			out.Write(inner)
+		} else {
+			if bytes.Contains(inner, []byte(cdataEnd)) {
+				inner = bytes.ReplaceAll(inner, []byte(cdataEnd), []byte(cdataEndSafe))
+			}
+			out.WriteString(cdataStart)
+			out.Write(inner)
+			out.WriteString(cdataEnd)
+		}
+
+		out.WriteString(closeNeedle)
+
+		pos = closeIdx + len(closeNeedle)
+	}
+
+	return out.String()
+}
+
+// findTagEnd returns the index *after* the '>' of the start tag at 'start'
+// and whether it was self-closing (<.../>). Respects single/double quotes.
+func findTagEnd(b []byte, start int) (end int, selfClosing bool) {
+	i := start
+	inQuote := byte(0)
+	for i < len(b) {
+		c := b[i]
+		if inQuote != 0 {
+			if c == inQuote {
+				inQuote = 0
+			}
+			i++
+			continue
+		}
+		switch c {
+		case '"', '\'':
+			inQuote = c
+			i++
+		case '>':
+			selfClosing = i > start && previousNonSpace(b, i-1) == '/'
+			return i + 1, selfClosing
+		default:
+			i++
+		}
+	}
+	return -1, false
+}
+
+// previousNonSpace returns the previous non-space byte at or before idx; 0 if none.
+func previousNonSpace(b []byte, idx int) byte {
+	for i := idx; i >= 0; i-- {
+		if b[i] != ' ' && b[i] != '\t' && b[i] != '\n' && b[i] != '\r' {
+			return b[i]
+		}
+	}
+	return 0
+}
+
+// indexCI finds needle in haystack starting at 'from', ASCII case-insensitive.
+// Avoids allocating by not lowercasing the whole string.
+func indexCI(haystack, needle []byte, from int) int {
+	if from < 0 {
+		from = 0
+	}
+	n := len(needle)
+	if n == 0 {
+		return from
+	}
+	h := haystack
+	max := len(h) - n
+	for i := from; i <= max; i++ {
+		if equalFoldASCII(h[i:i+n], needle) {
+			return i
+		}
+	}
+	return -1
+}
+
+func equalFoldASCII(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		ai := a[i]
+		bi := b[i]
+		if ai == bi {
+			continue
+		}
+		if 'A' <= ai && ai <= 'Z' {
+			ai += 'a' - 'A'
+		}
+		if 'A' <= bi && bi <= 'Z' {
+			bi += 'a' - 'A'
+		}
+		if ai != bi {
+			return false
+		}
+	}
+	return true
+}
+
+// normalizeSelfClosingVoidTags ensures that void HTML elements use a space before the
+// closing slash (e.g., <br/> becomes <br />). This matches how XML parsers normalize
+// self-closing tags.
+var voidSelfClosingRe = regexp.MustCompile(`(?i)<(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)([^>]*?)/>`)
+
+func normalizeSelfClosingVoidTags(b []byte) []byte {
+	return voidSelfClosingRe.ReplaceAllFunc(b, func(m []byte) []byte {
+		base := bytes.TrimRight(m[:len(m)-2], " ")
+		res := make([]byte, len(base)+3)
+		copy(res, base)
+		copy(res[len(base):], []byte(" />"))
+		return res
+	})
 }
 
 // parseNode recursively parses XML nodes
