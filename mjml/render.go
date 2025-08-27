@@ -978,8 +978,23 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		"body_length": len(bodyContent),
 	})
 
-	// DOCTYPE and HTML opening
-	if _, err := w.WriteString(`<!doctype html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`); err != nil {
+	// DOCTYPE and HTML opening - include attributes from MJML root element
+	htmlTag := `<!doctype html><html`
+
+	// Add lang attribute if present on mjml element
+	if langAttr := c.GetAttribute("lang"); langAttr != nil {
+		htmlTag += ` lang="` + *langAttr + `"`
+	}
+
+	// Add dir attribute if present on mjml element
+	if dirAttr := c.GetAttribute("dir"); dirAttr != nil {
+		htmlTag += ` dir="` + *dirAttr + `"`
+	}
+
+	// Add standard xmlns attributes
+	htmlTag += ` xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`
+
+	if _, err := w.WriteString(htmlTag); err != nil {
 		return err
 	}
 
@@ -1187,8 +1202,10 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// Body with background-color support (matching MRML's get_body_tag)
 	var bodyStyles []string
 
-	// Always add word-spacing:normal to match MRML behavior
-	bodyStyles = append(bodyStyles, "word-spacing:normal")
+	// Only add word-spacing:normal if there's actual body content to match MRML behavior
+	if len(bodyContent) > 0 {
+		bodyStyles = append(bodyStyles, "word-spacing:normal")
+	}
 
 	if c.Body != nil {
 		if bgColor := c.Body.GetAttribute("background-color"); bgColor != nil && *bgColor != "" {

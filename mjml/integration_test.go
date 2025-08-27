@@ -33,6 +33,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 	// Reset carousel ID counter for deterministic testing
 	components.ResetCarouselIDCounter()
 	testCases := []string{
+		"mjml",
 		"basic",
 		"with-head",
 		"complex-layout",
