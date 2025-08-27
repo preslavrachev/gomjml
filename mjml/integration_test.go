@@ -11,164 +11,149 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/components"
 )
 
-// TestMJMLAgainstExpected compares Go implementation output with pre-generated expected HTML
+/*
+TestMJMLAgainstExpected runs a suite of integration tests to verify that the MJML rendering
+implementation produces HTML output matching the expected results for a variety of MJML input files,
+created using the MRML CLI.
+
+For each test case, it reads the corresponding MJML file from the "testdata" directory, using the test case name
+(e.g., "basic") to construct the filename "testdata/basic.mjml". It then renders the MJML to HTML using the Render function,
+and compares the output to a pre-generated expected HTML file named "testdata/basic.html".
+
+The mapping is:
+  - For test case "foo", the MJML input is at "testdata/foo.mjml"
+  - The expected HTML output is at "testdata/foo.html"
+
+On mismatch, the test provides a detailed DOM diff, logs style differences, and writes both
+actual and expected outputs to temporary files for debugging purposes.
+*/
 func TestMJMLAgainstExpected(t *testing.T) {
 	// Reset navbar ID counter for deterministic testing
 	components.ResetNavbarIDCounter()
 	// Reset carousel ID counter for deterministic testing
 	components.ResetCarouselIDCounter()
-	testCases := []struct {
-		name     string
-		filename string
-	}{
-		{"basic", "testdata/basic.mjml"},
-		{"with-head", "testdata/with-head.mjml"},
-		{"complex-layout", "testdata/complex-layout.mjml"},
-		{"wrapper-basic", "testdata/wrapper-basic.mjml"},
-		{"wrapper-background", "testdata/wrapper-background.mjml"},
-		{"wrapper-fullwidth", "testdata/wrapper-fullwidth.mjml"},
-		{"wrapper-border", "testdata/wrapper-border.mjml"},
-		{"group-footer-test", "testdata/group-footer-test.mjml"},
-		{"section-padding-top-zero", "testdata/section-padding-top-zero.mjml"},
-		//{"Austin layout from the MJML.io site", "testdata/austin-layout-from-mjml-io.mjml"},
+	testCases := []string{
+		"basic",
+		"with-head",
+		"complex-layout",
+		"wrapper-basic",
+		"wrapper-background",
+		"wrapper-fullwidth",
+		"wrapper-border",
+		"group-footer-test",
+		"section-padding-top-zero",
+		//"austin-layout-from-mjml-io", // Commented out
 		// Austin layout component tests
-		{"austin-header-section", "testdata/austin-header-section.mjml"},
-		{"austin-hero-images", "testdata/austin-hero-images.mjml"},
-		{"austin-wrapper-basic", "testdata/austin-wrapper-basic.mjml"},
-		{"austin-text-with-links", "testdata/austin-text-with-links.mjml"},
-		{"austin-buttons", "testdata/austin-buttons.mjml"},
-		{"austin-two-column-images", "testdata/austin-two-column-images.mjml"},
-		{"austin-divider", "testdata/austin-divider.mjml"},
-		{"austin-two-column-text", "testdata/austin-two-column-text.mjml"},
-		{"austin-full-width-wrapper", "testdata/austin-full-width-wrapper.mjml"},
-		//{"austin-social-media", "testdata/austin-social-media.mjml"},
-		{"austin-footer-text", "testdata/austin-footer-text.mjml"},
-		{"austin-group-component", "testdata/austin-group-component.mjml"},
-		{"austin-global-attributes", "testdata/austin-global-attributes.mjml"},
-		{"austin-map-image", "testdata/austin-map-image.mjml"},
+		"austin-header-section",
+		"austin-hero-images",
+		"austin-wrapper-basic",
+		"austin-text-with-links",
+		"austin-buttons",
+		"austin-two-column-images",
+		"austin-divider",
+		"austin-two-column-text",
+		"austin-full-width-wrapper",
+		//"austin-social-media", // Commented out
+		"austin-footer-text",
+		"austin-group-component",
+		"austin-global-attributes",
+		"austin-map-image",
 		// MRML reference tests
-		{"mrml-divider-basic", "testdata/mrml-divider-basic.mjml"},
-		{"mrml-text-basic", "testdata/mrml-text-basic.mjml"},
-		{"mrml-button-basic", "testdata/mrml-button-basic.mjml"},
-		{"body-wrapper-section", "testdata/body-wrapper-section.mjml"},
+		"mrml-divider-basic",
+		"mrml-text-basic",
+		"mrml-button-basic",
+		"body-wrapper-section",
 		// MJ-Group tests from MRML
-		{"mj-group", "testdata/mj-group.mjml"},
-		{"mj-group-background-color", "testdata/mj-group-background-color.mjml"},
-		{"mj-group-class", "testdata/mj-group-class.mjml"},
-		{"mj-group-direction", "testdata/mj-group-direction.mjml"},
-		{"mj-group-vertical-align", "testdata/mj-group-vertical-align.mjml"},
-		{"mj-group-width", "testdata/mj-group-width.mjml"},
+		"mj-group",
+		"mj-group-background-color",
+		"mj-group-class",
+		"mj-group-direction",
+		"mj-group-vertical-align",
+		"mj-group-width",
 		// Simple MJML components from MRML test suite
-		{"mj-text", "testdata/mj-text.mjml"},
-		{"mj-text-class", "testdata/mj-text-class.mjml"},
-		{"mj-button", "testdata/mj-button.mjml"},
-		{"mj-button-class", "testdata/mj-button-class.mjml"},
-		{"mj-image", "testdata/mj-image.mjml"},
-		{"mj-image-class", "testdata/mj-image-class.mjml"},
-		{"mj-section-with-columns", "testdata/mj-section-with-columns.mjml"},
-		{"mj-section", "testdata/mj-section.mjml"},
-		{"mj-section-class", "testdata/mj-section-class.mjml"},
-		{"mj-column", "testdata/mj-column.mjml"},
-		{"mj-column-padding", "testdata/mj-column-padding.mjml"},
-		{"mj-column-class", "testdata/mj-column-class.mjml"},
-		{"mj-wrapper", "testdata/mj-wrapper.mjml"},
+		"mj-text",
+		"mj-text-class",
+		"mj-button",
+		"mj-button-class",
+		"mj-image",
+		"mj-image-class",
+		"mj-section-with-columns",
+		"mj-section",
+		"mj-section-class",
+		"mj-column",
+		"mj-column-padding",
+		"mj-column-class",
+		"mj-wrapper",
 		// MJ-RAW tests
-		{"mj-raw", "testdata/mj-raw.mjml"},
-		{"mj-raw-conditional-comment", "testdata/mj-raw-conditional-comment.mjml"},
-		{"mj-raw-go-template", "testdata/mj-raw-go-template.mjml"},
+		"mj-raw",
+		"mj-raw-conditional-comment",
+		"mj-raw-go-template",
 		// MJ-SOCIAL tests
-		{"mj-social", "testdata/mj-social.mjml"},
-		{"mj-social-align", "testdata/mj-social-align.mjml"},
-		{"mj-social-border-radius", "testdata/mj-social-border-radius.mjml"},
-		{"mj-social-class", "testdata/mj-social-class.mjml"},
-		{"mj-social-color", "testdata/mj-social-color.mjml"},
-		{"mj-social-container-background-color", "testdata/mj-social-container-background-color.mjml"},
-		{"mj-social-element-ending", "testdata/mj-social-element-ending.mjml"},
-		{"mj-social-font-family", "testdata/mj-social-font-family.mjml"},
-		{"mj-social-font", "testdata/mj-social-font.mjml"},
-		{"mj-social-icon", "testdata/mj-social-icon.mjml"},
-		{"mj-social-link", "testdata/mj-social-link.mjml"},
-		{"mj-social-mode", "testdata/mj-social-mode.mjml"},
-		{"mj-social-padding", "testdata/mj-social-padding.mjml"},
-		{"mj-social-text", "testdata/mj-social-text.mjml"},
+		"mj-social",
+		"mj-social-align",
+		"mj-social-border-radius",
+		"mj-social-class",
+		"mj-social-color",
+		"mj-social-container-background-color",
+		"mj-social-element-ending",
+		"mj-social-font-family",
+		"mj-social-font",
+		"mj-social-icon",
+		"mj-social-link",
+		"mj-social-mode",
+		"mj-social-padding",
+		"mj-social-text",
 		// MJ-ACCORDION tests
-		{"mj-accordion", "testdata/mj-accordion.mjml"},
-		{"mj-accordion-font-padding", "testdata/mj-accordion-font-padding.mjml"},
-		{"mj-accordion-icon", "testdata/mj-accordion-icon.mjml"},
-		{"mj-accordion-other", "testdata/mj-accordion-other.mjml"},
+		"mj-accordion",
+		"mj-accordion-font-padding",
+		"mj-accordion-icon",
+		"mj-accordion-other",
 		// MJ-NAVBAR tests
-		{"mj-navbar", "testdata/mj-navbar.mjml"},
-		{"mj-navbar-ico", "testdata/mj-navbar-ico.mjml"},
-		{"mj-navbar-align-class", "testdata/mj-navbar-align-class.mjml"},
-		{"mj-navbar-multiple", "testdata/mj-navbar-multiple.mjml"},
+		"mj-navbar",
+		"mj-navbar-ico",
+		"mj-navbar-align-class",
+		"mj-navbar-multiple",
 		// MJ-HERO tests
-		{"mj-hero", "testdata/mj-hero.mjml"},
-		{"mj-hero-background-color", "testdata/mj-hero-background-color.mjml"},
-		{"mj-hero-background-height", "testdata/mj-hero-background-height.mjml"},
-		{"mj-hero-background-position", "testdata/mj-hero-background-position.mjml"},
-		{"mj-hero-background-url", "testdata/mj-hero-background-url.mjml"},
-		{"mj-hero-background-width", "testdata/mj-hero-background-width.mjml"},
-		{"mj-hero-class", "testdata/mj-hero-class.mjml"},
-		{"mj-hero-height", "testdata/mj-hero-height.mjml"},
-		{"mj-hero-mode", "testdata/mj-hero-mode.mjml"},
-		{"mj-hero-vertical-align", "testdata/mj-hero-vertical-align.mjml"},
+		"mj-hero",
+		"mj-hero-background-color",
+		"mj-hero-background-height",
+		"mj-hero-background-position",
+		"mj-hero-background-url",
+		"mj-hero-background-width",
+		"mj-hero-class",
+		"mj-hero-height",
+		"mj-hero-mode",
+		"mj-hero-vertical-align",
 		// MJ-SPACER test
-		{"mj-spacer", "testdata/mj-spacer.mjml"},
+		"mj-spacer",
 		// MJ-TABLE tests
-		{"mj-table", "testdata/mj-table.mjml"},
-		{"mj-table-other", "testdata/mj-table-other.mjml"},
-		{"mj-table-table", "testdata/mj-table-table.mjml"},
-		{"mj-table-text", "testdata/mj-table-text.mjml"},
+		"mj-table",
+		"mj-table-other",
+		"mj-table-table",
+		"mj-table-text",
 		// MJ-CAROUSEL tests
-		{"mj-carousel", "testdata/mj-carousel.mjml"},
-		{"mj-carousel-align-border-radius-class", "testdata/mj-carousel-align-border-radius-class.mjml"},
-		{"mj-carousel-icon", "testdata/mj-carousel-icon.mjml"},
-		{"mj-carousel-tb", "testdata/mj-carousel-tb.mjml"},
-		{"mj-carousel-thumbnails", "testdata/mj-carousel-thumbnails.mjml"},
+		"mj-carousel",
+		"mj-carousel-align-border-radius-class",
+		"mj-carousel-icon",
+		"mj-carousel-tb",
+		"mj-carousel-thumbnails",
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, testName := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			// Generate filename from test name
+			filename := getTestdataFilename(testName)
+
 			// Read test MJML file
-			mjmlContent, err := os.ReadFile(tc.filename)
+			mjmlContent, err := os.ReadFile(filename)
 			if err != nil {
-				t.Fatalf("Failed to read test file %s: %v", tc.filename, err)
+				t.Fatalf("Failed to read test file %s: %v", filename, err)
 			}
 
 			// Get expected output from cached HTML file
-			expectedFile := strings.Replace(tc.filename, ".mjml", ".html", 1)
+			expectedFile := strings.Replace(filename, ".mjml", ".html", 1)
 			expectedContent, err := os.ReadFile(expectedFile)
 			if err != nil {
-				// Handle special case for conditional comments
-				if tc.name == "mj-raw-conditional-comment" {
-					t.Logf(
-						"No expected HTML file for %s due to conditional comments, checking that our implementation works",
-						tc.name,
-					)
-
-					// Just verify our implementation doesn't crash and produces some output
-					actual, err := Render(string(mjmlContent))
-					if err != nil {
-						t.Fatalf("Failed to render MJML: %v", err)
-					}
-
-					if len(actual) == 0 {
-						t.Fatal("Expected non-empty output")
-					}
-
-					// Verify it contains the expected raw content
-					if !strings.Contains(actual, `<div>mso</div>`) {
-						t.Error("Expected output to contain <div>mso</div>")
-					}
-					if !strings.Contains(actual, `<span>general</span>`) {
-						t.Error("Expected output to contain <span>general</span>")
-					}
-					if !strings.Contains(actual, `<img src="bananas" alt=""`) {
-						t.Error("Expected output to contain img tag with bananas src")
-					}
-
-					return
-				}
 				t.Fatalf("Failed to read expected HTML file %s: %v", expectedFile, err)
 			}
 			expected := string(expectedContent)
@@ -186,15 +171,21 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				t.Errorf("\n%s", domDiff)
 
 				// Enhanced debugging: analyze style differences with precise element identification
-				t.Logf("Style differences for %s:", tc.name)
+				t.Logf("Style differences for %s:", testName)
 				compareStylesPrecise(t, expected, actual)
 
 				// For debugging: write both outputs to temp files
-				os.WriteFile("/tmp/expected_"+tc.name+".html", []byte(expected), 0o644)
-				os.WriteFile("/tmp/actual_"+tc.name+".html", []byte(actual), 0o644)
+				os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
+				os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
 			}
 		})
 	}
+}
+
+// getTestdataFilename returns the file path for a test MJML file located in the "testdata" directory,
+// using the provided testName as the base filename. The resulting path has the format "testdata/{testName}.mjml".
+func getTestdataFilename(testName string) string {
+	return fmt.Sprintf("testdata/%s.mjml", testName)
 }
 
 // TestDirectLibraryUsage demonstrates and tests direct library usage

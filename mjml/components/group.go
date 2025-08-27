@@ -133,6 +133,12 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 
 	// Render each column in the group
 	for _, child := range c.Children {
+		if child.IsRawElement() {
+			if err := child.Render(w); err != nil {
+				return err
+			}
+			continue
+		}
 		if columnComp, ok := child.(*MJColumnComponent); ok {
 			// Set the column width based on group's width distribution
 			if columnComp.GetAttribute("width") == nil {

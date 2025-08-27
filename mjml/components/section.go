@@ -160,15 +160,20 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	siblings := len(c.Children)
 	rawSiblings := 0
 	for _, child := range c.Children {
-		// Count raw siblings (components that don't participate in width calculations)
-		// For now, all our components are non-raw, but this matches MRML structure
-		if child.GetTagName() == "mj-raw" {
+		if child.IsRawElement() {
 			rawSiblings++
 		}
 	}
 
 	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
 	for _, child := range c.Children {
+		if child.IsRawElement() {
+			if err := child.Render(w); err != nil {
+				return err
+			}
+			continue
+		}
+
 		// Pass the effective width and sibling counts to the child
 		child.SetContainerWidth(c.GetEffectiveWidth())
 		child.SetSiblings(siblings)

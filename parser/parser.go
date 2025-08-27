@@ -15,6 +15,32 @@ import (
 // Compiled regex for robust text splitting in mixed content
 var mixedContentSplitRegex = regexp.MustCompile(`\s*[\r\n]+\s*`)
 
+// htmlVoidElements contains HTML elements that do not require closing tags.
+//
+// Reference: https://html.spec.whatwg.org/\#void-elements
+var htmlVoidElements = map[string]struct{}{
+	"area":   {},
+	"base":   {},
+	"br":     {},
+	"col":    {},
+	"embed":  {},
+	"hr":     {},
+	"img":    {},
+	"input":  {},
+	"link":   {},
+	"meta":   {},
+	"param":  {},
+	"source": {},
+	"track":  {},
+	"wbr":    {},
+}
+
+// isVoidHTMLElement reports whether the provided tag name is an HTML void element.
+func isVoidHTMLElement(tag string) bool {
+	_, ok := htmlVoidElements[strings.ToLower(tag)]
+	return ok
+}
+
 // MJMLNode represents a node in the MJML AST
 type MJMLNode struct {
 	XMLName  xml.Name
@@ -80,6 +106,16 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 		}
 	}
 
+	// Special handling for mj-raw: capture original inner content including comments
+	if node.XMLName.Local == "mj-raw" {
+		raw, err := parseRawContent(decoder)
+		if err != nil {
+			return nil, err
+		}
+		node.Text = raw
+		return node, nil
+	}
+
 	var textBuilder strings.Builder
 
 	for {
@@ -105,8 +141,100 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 		case xml.CharData:
 			textBuilder.Write(t)
+		case xml.Comment:
+			// Preserve comments as part of text content
+			textBuilder.WriteString("<!--")
+			textBuilder.WriteString(string(t))
+			textBuilder.WriteString("-->")
 		}
 	}
+}
+
+// parseRawContent reads tokens until the matching end tag and returns the raw HTML content
+func parseRawContent(decoder *xml.Decoder) (string, error) {
+	origStrict := decoder.Strict
+	decoder.Strict = false
+	defer func() { decoder.Strict = origStrict }()
+
+	var builder strings.Builder
+	depth := 1
+	tagStack := make([]string, 0)
+	for depth > 0 {
+		tok, err := decoder.Token()
+		if err != nil {
+			return "", err
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			tagName := t.Name.Local
+			builder.WriteString("<")
+			builder.WriteString(tagName)
+			for _, attr := range t.Attr {
+				builder.WriteString(" ")
+				builder.WriteString(attr.Name.Local)
+				builder.WriteString("=\"")
+				builder.WriteString(attr.Value)
+				builder.WriteString("\"")
+			}
+			builder.WriteString(">")
+
+			// Track depth for all start elements
+			depth++
+
+			if !isVoidHTMLElement(tagName) {
+				// Only non-void elements participate in stack tracking
+				tagStack = append(tagStack, tagName)
+			}
+
+		case xml.EndElement:
+			tagName := t.Name.Local
+
+			if isVoidHTMLElement(tagName) {
+				// Ignore end tags for void elements
+				depth--
+				if depth == 0 {
+					break
+				}
+				continue
+			}
+
+			depth--
+			if len(tagStack) > 0 {
+				lastTag := tagStack[len(tagStack)-1]
+				if lastTag == tagName {
+					tagStack = tagStack[:len(tagStack)-1]
+				}
+			}
+
+			if depth == 0 {
+				break
+			}
+
+			builder.WriteString("</")
+			builder.WriteString(tagName)
+			builder.WriteString(">")
+		case xml.CharData:
+			builder.WriteString(string(t))
+		case xml.Comment:
+			builder.WriteString("<!--")
+			builder.WriteString(string(t))
+			builder.WriteString("-->")
+		case xml.Directive:
+			builder.WriteString("<!")
+			builder.WriteString(string(t))
+			builder.WriteString(">")
+		case xml.ProcInst:
+			builder.WriteString("<")
+			builder.WriteString("?")
+			builder.WriteString(t.Target)
+			if len(t.Inst) > 0 {
+				builder.WriteString(" ")
+				builder.Write(t.Inst)
+			}
+			builder.WriteString("?>")
+		}
+	}
+	return builder.String(), nil
 }
 
 // GetAttribute retrieves an attribute value by name

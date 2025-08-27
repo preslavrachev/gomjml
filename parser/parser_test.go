@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -145,5 +146,142 @@ func TestMJMLNode_GetTextContent(t *testing.T) {
 
 	if got != want {
 		t.Errorf("GetTextContent() = %q, want %q", got, want)
+	}
+}
+
+func TestMJMLRaw_SingleVoidElement(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<p>Text before void element</p>
+		<img src="test.jpg" alt="test">
+		<p>Text after void element</p>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("MJML with single void element should parse without error: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	if !strings.Contains(rawElement.Text, "<img") {
+		t.Error("Raw content should preserve img tag")
+	}
+}
+
+func TestMJMLRaw_MultipleVoidElements(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<p>Paragraph with <br> line break</p>
+		<hr>
+		<img src="test.jpg" alt="test">
+		<input type="text" name="test">
+		<p>End paragraph</p>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("MJML with multiple void elements should parse without error: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	voidTags := []string{"<br", "<hr", "<img", "<input"}
+	for _, tag := range voidTags {
+		if !strings.Contains(rawElement.Text, tag) {
+			t.Errorf("Raw content should preserve %s tag", tag)
+		}
+	}
+}
+
+func TestMJMLRaw_NestedVoidElements(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<div>
+			<p>Text <img src="icon.png" alt="icon"> with image</p>
+			<p>Another <br> paragraph</p>
+		</div>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("MJML with nested void elements should parse without error: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	if !strings.Contains(rawElement.Text, "<div>") || !strings.Contains(rawElement.Text, "</div>") {
+		t.Error("Raw content should preserve div nesting")
+	}
+
+	if !strings.Contains(rawElement.Text, "<img") {
+		t.Error("Raw content should preserve img tag")
+	}
+
+	if !strings.Contains(rawElement.Text, "<br") {
+		t.Error("Raw content should preserve br tag")
+	}
+}
+
+func TestMJMLRaw_PreservesCompleteHTMLStructure(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<div class="container">
+			<img src="test.jpg" alt="test" />
+			<p>Content after void element</p>
+			<hr />
+			<p>Final paragraph</p>
+		</div>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("Parse should succeed: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	content := rawElement.Text
+
+	// The parser must preserve the complete HTML structure including all content after void elements
+	requiredElements := []string{
+		`<div class="container">`,
+		`</div>`,
+		`<img src="test.jpg" alt="test"`,
+		`<p>Content after void element</p>`,
+		`<hr`,
+		`<p>Final paragraph</p>`,
+	}
+
+	t.Logf("Raw content: %q", content)
+
+	for _, required := range requiredElements {
+		if !strings.Contains(content, required) {
+			t.Errorf("Raw content missing required element: %s\nActual content: %s", required, content)
+		}
 	}
 }
