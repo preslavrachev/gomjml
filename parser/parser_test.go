@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -169,7 +170,7 @@ func TestMJMLRaw_SingleVoidElement(t *testing.T) {
 		t.Fatal("Should find mj-raw element")
 	}
 
-	if !contains(rawElement.Text, "<img") {
+	if !strings.Contains(rawElement.Text, "<img") {
 		t.Error("Raw content should preserve img tag")
 	}
 }
@@ -199,7 +200,7 @@ func TestMJMLRaw_MultipleVoidElements(t *testing.T) {
 
 	voidTags := []string{"<br", "<hr", "<img", "<input"}
 	for _, tag := range voidTags {
-		if !contains(rawElement.Text, tag) {
+		if !strings.Contains(rawElement.Text, tag) {
 			t.Errorf("Raw content should preserve %s tag", tag)
 		}
 	}
@@ -227,25 +228,60 @@ func TestMJMLRaw_NestedVoidElements(t *testing.T) {
 		t.Fatal("Should find mj-raw element")
 	}
 
-	if !contains(rawElement.Text, "<div>") || !contains(rawElement.Text, "</div>") {
+	if !strings.Contains(rawElement.Text, "<div>") || !strings.Contains(rawElement.Text, "</div>") {
 		t.Error("Raw content should preserve div nesting")
 	}
 
-	if !contains(rawElement.Text, "<img") {
+	if !strings.Contains(rawElement.Text, "<img") {
 		t.Error("Raw content should preserve img tag")
 	}
 
-	if !contains(rawElement.Text, "<br") {
+	if !strings.Contains(rawElement.Text, "<br") {
 		t.Error("Raw content should preserve br tag")
 	}
 }
 
-// Helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if len(s) >= len(substr) && s[i:i+len(substr)] == substr {
-			return true
+func TestMJMLRaw_PreservesCompleteHTMLStructure(t *testing.T) {
+	mjml := `<mjml>
+<mj-body>
+	<mj-raw>
+		<div class="container">
+			<img src="test.jpg" alt="test" />
+			<p>Content after void element</p>
+			<hr />
+			<p>Final paragraph</p>
+		</div>
+	</mj-raw>
+</mj-body>
+</mjml>`
+
+	node, err := ParseMJML(mjml)
+	if err != nil {
+		t.Fatalf("Parse should succeed: %v", err)
+	}
+
+	rawElement := node.FindFirstChild("mj-body").FindFirstChild("mj-raw")
+	if rawElement == nil {
+		t.Fatal("Should find mj-raw element")
+	}
+
+	content := rawElement.Text
+
+	// The parser must preserve the complete HTML structure including all content after void elements
+	requiredElements := []string{
+		`<div class="container">`,
+		`</div>`,
+		`<img src="test.jpg" alt="test"`,
+		`<p>Content after void element</p>`,
+		`<hr`,
+		`<p>Final paragraph</p>`,
+	}
+
+	t.Logf("Raw content: %q", content)
+
+	for _, required := range requiredElements {
+		if !strings.Contains(content, required) {
+			t.Errorf("Raw content missing required element: %s\nActual content: %s", required, content)
 		}
 	}
-	return false
 }
