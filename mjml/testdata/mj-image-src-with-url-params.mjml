@@ -1,0 +1,9 @@
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-image width="300px" src="https://placehold.co/150x60/E3F2FD/1976D2?font=playfair-display&text=LOGO" />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -75,13 +75,18 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 }
 
 // preprocessHTMLEntities replaces common HTML entities with Unicode characters
+// and properly escapes ampersands in attribute values
 func preprocessHTMLEntities(content string) string {
+	// First, escape raw ampersands in attribute values that aren't part of valid entities
+	result := escapeAttributeAmpersands(content)
+
 	// Replace the most common HTML entities with Unicode characters
-	result := content
+	// NOTE: We skip &amp; replacement here because we just escaped raw ampersands
+	// to &amp; in the previous step. The XML parser will handle &amp; correctly.
 	result = strings.ReplaceAll(result, "&copy;", "©")
 	result = strings.ReplaceAll(result, "&reg;", "®")
 	result = strings.ReplaceAll(result, "&trade;", "™")
-	result = strings.ReplaceAll(result, "&amp;", "&")
+	// result = strings.ReplaceAll(result, "&amp;", "&")  // SKIP THIS - let XML parser handle it
 	result = strings.ReplaceAll(result, "&lt;", "<")
 	result = strings.ReplaceAll(result, "&gt;", ">")
 	result = strings.ReplaceAll(result, "&quot;", `"`)
@@ -92,6 +97,100 @@ func preprocessHTMLEntities(content string) string {
 	result = strings.ReplaceAll(result, "&ndash;", "–")
 	result = strings.ReplaceAll(result, "&mdash;", "—")
 	result = strings.ReplaceAll(result, "&hellip;", "…")
+
+	return result
+}
+
+// escapeAttributeAmpersands escapes raw ampersands in XML attribute values
+// that aren't part of valid HTML entities. This prevents XML parsing errors
+// when URLs contain query parameters like "?param1=value1&param2=value2"
+func escapeAttributeAmpersands(content string) string {
+	// attrPattern is a regular expression that matches HTML/XML attribute assignments.
+	// It captures both double-quoted and single-quoted attribute values, including escaped quotes within the value.
+	// The pattern extracts the attribute name, the equals sign (with optional whitespace), and the quoted value.
+	attrPattern := regexp.MustCompile(`(\w+)(\s*=\s*)"((?:[^"\\]|\\.)*)"|(\w+)(\s*=\s*)'((?:[^'\\]|\\.)*)'`)
+
+	return attrPattern.ReplaceAllStringFunc(content, func(match string) string {
+		// Extract the parts of the match
+		parts := attrPattern.FindStringSubmatch(match)
+		if len(parts) < 7 {
+			return match // Return unchanged if parsing failed
+		}
+
+		var attrName, attrValue, quote, spacing string
+
+		// Check which pattern matched (double quotes or single quotes)
+		if parts[1] != "" && parts[2] != "" && parts[3] != "" {
+			// Double quote pattern matched
+			attrName = parts[1]
+			spacing = parts[2]
+			attrValue = parts[3]
+			quote = `"`
+		} else if parts[4] != "" && parts[5] != "" && parts[6] != "" {
+			// Single quote pattern matched
+			attrName = parts[4]
+			spacing = parts[5]
+			attrValue = parts[6]
+			quote = `'`
+		} else {
+			return match // No valid pattern matched
+		}
+
+		// Escape ampersands in the attribute value that aren't part of valid entities
+		escapedValue := escapeAmperands(attrValue)
+
+		return attrName + spacing + quote + escapedValue + quote
+	})
+}
+
+// escapeAmperands escapes ampersands that aren't part of valid HTML entities
+func escapeAmperands(value string) string {
+	// List of known HTML entities (without the & and ;)
+	validEntities := []string{
+		"amp", "lt", "gt", "quot", "apos", "nbsp", "copy", "reg", "trade",
+		"ndash", "mdash", "hellip", "laquo", "raquo", "ldquo", "rdquo",
+		"lsquo", "rsquo", "times", "divide",
+	}
+
+	// Also handle numeric character references like &#160; and &#xA0;
+	numericEntityPattern := regexp.MustCompile(`&(#(?:\d+|x[0-9A-Fa-f]+));`)
+
+	result := value
+	i := 0
+
+	for i < len(result) {
+		if result[i] == '&' {
+			// Check if this is a valid HTML entity
+			isValidEntity := false
+
+			// Check for numeric entities first
+			matches := numericEntityPattern.FindStringSubmatch(result[i:])
+			if len(matches) > 0 && strings.HasPrefix(result[i:], matches[0]) {
+				i += len(matches[0])
+				isValidEntity = true
+				continue
+			}
+
+			// Check for named entities
+			for _, entity := range validEntities {
+				entityWithMarkers := "&" + entity + ";"
+				if i+len(entityWithMarkers) <= len(result) &&
+					result[i:i+len(entityWithMarkers)] == entityWithMarkers {
+					i += len(entityWithMarkers)
+					isValidEntity = true
+					break
+				}
+			}
+
+			if !isValidEntity {
+				// This is a raw ampersand that needs escaping
+				result = result[:i] + "&amp;" + result[i+1:]
+				i += 5 // Move past "&amp;"
+			}
+		} else {
+			i++
+		}
+	}
 
 	return result
 }

@@ -79,6 +79,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-button-class",
 		"mj-image",
 		"mj-image-class",
+		"mj-image-src-with-url-params",
 		"mj-section-with-columns",
 		"mj-section",
 		"mj-section-class",
