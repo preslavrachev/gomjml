@@ -37,15 +37,22 @@ func (c *MJBodyComponent) GetTagName() string {
 func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	// Apply background-color to div if specified (matching MRML's set_body_style)
 	backgroundColor := c.GetAttribute("background-color")
+	
+	// Get lang attribute from render options (set by root MJML component)
+	langAttr := c.RenderOpts.Lang
 
+	// Build div tag with attributes
+	divTag := `<div`
+	if langAttr != "" {
+		divTag += ` lang="` + langAttr + `"`
+	}
 	if backgroundColor != nil && *backgroundColor != "" {
-		if _, err := w.WriteString(`<div style="background-color:` + *backgroundColor + `;">`); err != nil {
-			return err
-		}
-	} else {
-		if _, err := w.WriteString(`<div>`); err != nil {
-			return err
-		}
+		divTag += ` style="background-color:` + *backgroundColor + `;"`
+	}
+	divTag += `>`
+
+	if _, err := w.WriteString(divTag); err != nil {
+		return err
 	}
 
 	for _, child := range c.Children {

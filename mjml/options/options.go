@@ -46,4 +46,5 @@ type RenderOpts struct {
 	InsideHero  bool         // Whether the component is being rendered inside a hero
 	FontTracker *FontTracker // Tracks fonts used during rendering
 	UseCache    bool         // Whether to enable AST caching
+	Lang        string       // Language attribute from root MJML element
 }

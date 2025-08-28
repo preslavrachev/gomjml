@@ -105,6 +105,11 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 }
 
 func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJMLComponent, error) {
+	// Extract lang attribute from root MJML element and store in opts
+	if langAttr := node.GetAttribute("lang"); langAttr != "" {
+		opts.Lang = langAttr
+	}
+	
 	comp := &MJMLComponent{
 		BaseComponent: components.NewBaseComponent(node, opts),
 	}

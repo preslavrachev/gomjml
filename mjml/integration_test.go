@@ -34,6 +34,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 	components.ResetCarouselIDCounter()
 	testCases := []string{
 		"mjml",
+		"mj-body",
 		"basic",
 		"with-head",
 		"complex-layout",
