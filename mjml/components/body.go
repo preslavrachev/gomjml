@@ -37,7 +37,7 @@ func (c *MJBodyComponent) GetTagName() string {
 func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	// Apply background-color to div if specified (matching MRML's set_body_style)
 	backgroundColor := c.GetAttribute("background-color")
-	
+
 	// Get lang attribute from render options (set by root MJML component)
 	langAttr := c.RenderOpts.Lang
 

@@ -179,6 +179,14 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				// For debugging: write both outputs to temp files
 				os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
 				os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
+			} else {
+				// DOM trees match, but check for self-closing tag serialization differences
+				if selfClosingDiff := checkSelfClosingTagDifferences(expected, actual); selfClosingDiff != "" {
+					t.Errorf("Self-closing tag serialization differences found:\n%s", selfClosingDiff)
+					// For debugging: write both outputs to temp files
+					os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
+					os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
+				}
 			}
 		})
 	}
@@ -972,4 +980,40 @@ func normalizeCSSContent(css string) string {
 	})
 
 	return string(runes)
+}
+
+// checkSelfClosingTagDifferences detects differences in self-closing tag serialization
+// between expected and actual HTML that would be missed by DOM comparison
+func checkSelfClosingTagDifferences(expected, actual string) string {
+	// HTML5 void elements that should be self-closing
+	voidTags := []string{"br", "hr", "img", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"}
+
+	var differences []string
+
+	for _, tag := range voidTags {
+		// Count different serialization patterns for this tag
+		expectedUnclosed := countTagPattern(expected, fmt.Sprintf("<%s>", tag))
+		actualUnclosed := countTagPattern(actual, fmt.Sprintf("<%s>", tag))
+
+		expectedSelfClosed := countTagPattern(expected, fmt.Sprintf("<%s/>", tag)) + countTagPattern(expected, fmt.Sprintf("<%s />", tag))
+		actualSelfClosed := countTagPattern(actual, fmt.Sprintf("<%s/>", tag)) + countTagPattern(actual, fmt.Sprintf("<%s />", tag))
+
+		// Check for differences in serialization
+		if expectedUnclosed != actualUnclosed || expectedSelfClosed != actualSelfClosed {
+			differences = append(differences,
+				fmt.Sprintf("<%s> tag serialization mismatch:\n  Expected: %d unclosed + %d self-closed\n  Actual:   %d unclosed + %d self-closed",
+					tag, expectedUnclosed, expectedSelfClosed, actualUnclosed, actualSelfClosed))
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+
+	return ""
+}
+
+// countTagPattern counts occurrences of a specific tag pattern in HTML
+func countTagPattern(html, pattern string) int {
+	return strings.Count(strings.ToLower(html), strings.ToLower(pattern))
 }

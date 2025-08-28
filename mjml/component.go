@@ -109,7 +109,7 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 	if langAttr := node.GetAttribute("lang"); langAttr != "" {
 		opts.Lang = langAttr
 	}
-	
+
 	comp := &MJMLComponent{
 		BaseComponent: components.NewBaseComponent(node, opts),
 	}
