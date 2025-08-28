@@ -13,6 +13,18 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/debug"
 )
 
+var (
+	// Pre-compiled regexes for performance - moved from function scope to avoid recompilation
+
+	// attrPattern matches HTML/XML attribute assignments with both double-quoted and single-quoted values.
+	// It captures the attribute name, equals sign (with optional whitespace), and the quoted value,
+	// including escaped quotes within the value.
+	attrPattern = regexp.MustCompile(`(\w+)(\s*=\s*)"((?:[^"\\]|\\.)*)"|(\w+)(\s*=\s*)'((?:[^'\\]|\\.)*)'`)
+
+	// numericEntityPattern matches numeric character references like &#160; and &#xA0;
+	numericEntityPattern = regexp.MustCompile(`&(#(?:\d+|x[0-9A-Fa-f]+));`)
+)
+
 // htmlVoidElements contains HTML elements that do not require closing tags.
 //
 // Reference: https://html.spec.whatwg.org/\#void-elements
@@ -105,11 +117,6 @@ func preprocessHTMLEntities(content string) string {
 // that aren't part of valid HTML entities. This prevents XML parsing errors
 // when URLs contain query parameters like "?param1=value1&param2=value2"
 func escapeAttributeAmpersands(content string) string {
-	// attrPattern is a regular expression that matches HTML/XML attribute assignments.
-	// It captures both double-quoted and single-quoted attribute values, including escaped quotes within the value.
-	// The pattern extracts the attribute name, the equals sign (with optional whitespace), and the quoted value.
-	attrPattern := regexp.MustCompile(`(\w+)(\s*=\s*)"((?:[^"\\]|\\.)*)"|(\w+)(\s*=\s*)'((?:[^'\\]|\\.)*)'`)
-
 	return attrPattern.ReplaceAllStringFunc(content, func(match string) string {
 		// Extract the parts of the match
 		parts := attrPattern.FindStringSubmatch(match)
@@ -153,7 +160,6 @@ func escapeAmperands(value string) string {
 	}
 
 	// Also handle numeric character references like &#160; and &#xA0;
-	numericEntityPattern := regexp.MustCompile(`&(#(?:\d+|x[0-9A-Fa-f]+));`)
 
 	result := value
 	i := 0
