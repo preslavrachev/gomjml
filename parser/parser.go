@@ -13,18 +13,6 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/debug"
 )
 
-var (
-	// Pre-compiled regexes for performance - moved from function scope to avoid recompilation
-
-	// attrPattern matches HTML/XML attribute assignments with both double-quoted and single-quoted values.
-	// It captures the attribute name, equals sign (with optional whitespace), and the quoted value,
-	// including escaped quotes within the value.
-	attrPattern = regexp.MustCompile(`(\w+)(\s*=\s*)"((?:[^"\\]|\\.)*)"|(\w+)(\s*=\s*)'((?:[^'\\]|\\.)*)'`)
-
-	// numericEntityPattern matches numeric character references like &#160; and &#xA0;
-	numericEntityPattern = regexp.MustCompile(`&(#(?:\d+|x[0-9A-Fa-f]+));`)
-)
-
 // htmlVoidElements contains HTML elements that do not require closing tags.
 //
 // Reference: https://html.spec.whatwg.org/\#void-elements
@@ -43,6 +31,30 @@ var htmlVoidElements = map[string]struct{}{
 	"source": {},
 	"track":  {},
 	"wbr":    {},
+}
+
+// namedHTMLEntities lists HTML entities that should remain unescaped.
+var namedHTMLEntities = map[string]struct{}{
+	"amp":    {},
+	"lt":     {},
+	"gt":     {},
+	"quot":   {},
+	"apos":   {},
+	"nbsp":   {},
+	"copy":   {},
+	"reg":    {},
+	"trade":  {},
+	"ndash":  {},
+	"mdash":  {},
+	"hellip": {},
+	"laquo":  {},
+	"raquo":  {},
+	"ldquo":  {},
+	"rdquo":  {},
+	"lsquo":  {},
+	"rsquo":  {},
+	"times":  {},
+	"divide": {},
 }
 
 // isVoidHTMLElement reports whether the provided tag name is an HTML void element.
@@ -115,90 +127,118 @@ func preprocessHTMLEntities(content string) string {
 
 // escapeAttributeAmpersands escapes raw ampersands in XML attribute values
 // that aren't part of valid HTML entities. This prevents XML parsing errors
-// when URLs contain query parameters like "?param1=value1&param2=value2"
+// when URLs contain query parameters like "?param1=value1&param2=value2".
 func escapeAttributeAmpersands(content string) string {
-	return attrPattern.ReplaceAllStringFunc(content, func(match string) string {
-		// Extract the parts of the match
-		parts := attrPattern.FindStringSubmatch(match)
-		if len(parts) < 7 {
-			return match // Return unchanged if parsing failed
-		}
+	var out strings.Builder
+	out.Grow(len(content))
 
-		var attrName, attrValue, quote, spacing string
+	inTag := false
+	var quote byte
 
-		// Check which pattern matched (double quotes or single quotes)
-		if parts[1] != "" && parts[2] != "" && parts[3] != "" {
-			// Double quote pattern matched
-			attrName = parts[1]
-			spacing = parts[2]
-			attrValue = parts[3]
-			quote = `"`
-		} else if parts[4] != "" && parts[5] != "" && parts[6] != "" {
-			// Single quote pattern matched
-			attrName = parts[4]
-			spacing = parts[5]
-			attrValue = parts[6]
-			quote = `'`
-		} else {
-			return match // No valid pattern matched
-		}
-
-		// Escape ampersands in the attribute value that aren't part of valid entities
-		escapedValue := escapeAmperands(attrValue)
-
-		return attrName + spacing + quote + escapedValue + quote
-	})
-}
-
-// escapeAmperands escapes ampersands that aren't part of valid HTML entities
-func escapeAmperands(value string) string {
-	// List of known HTML entities (without the & and ;)
-	validEntities := []string{
-		"amp", "lt", "gt", "quot", "apos", "nbsp", "copy", "reg", "trade",
-		"ndash", "mdash", "hellip", "laquo", "raquo", "ldquo", "rdquo",
-		"lsquo", "rsquo", "times", "divide",
-	}
-
-	// Also handle numeric character references like &#160; and &#xA0;
-
-	result := value
-	i := 0
-
-	for i < len(result) {
-		if result[i] == '&' {
-			// Check if this is a valid HTML entity
-			isValidEntity := false
-
-			// Check for numeric entities first
-			matches := numericEntityPattern.FindStringSubmatch(result[i:])
-			if len(matches) > 0 && strings.HasPrefix(result[i:], matches[0]) {
-				i += len(matches[0])
-				isValidEntity = true
+	for i := 0; i < len(content); i++ {
+		c := content[i]
+		if quote != 0 {
+			if c == quote {
+				out.WriteByte(c)
+				quote = 0
 				continue
 			}
-
-			// Check for named entities
-			for _, entity := range validEntities {
-				entityWithMarkers := "&" + entity + ";"
-				if i+len(entityWithMarkers) <= len(result) &&
-					result[i:i+len(entityWithMarkers)] == entityWithMarkers {
-					i += len(entityWithMarkers)
-					isValidEntity = true
-					break
+			if c == '&' {
+				j := i + 1
+				for j < len(content) && content[j] != ';' && content[j] != '&' && content[j] != quote && content[j] != ' ' && content[j] != '\n' && content[j] != '\t' && content[j] != '<' && content[j] != '>' {
+					j++
 				}
+				if j < len(content) && content[j] == ';' && isValidEntity(content[i+1:j]) {
+					out.WriteString(content[i : j+1])
+					i = j
+				} else {
+					out.WriteString("&amp;")
+				}
+				continue
 			}
+			out.WriteByte(c)
+			continue
+		}
 
-			if !isValidEntity {
-				// This is a raw ampersand that needs escaping
-				result = result[:i] + "&amp;" + result[i+1:]
-				i += 5 // Move past "&amp;"
+		switch c {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		case '\'', '"':
+			if inTag {
+				quote = c
 			}
+		}
+		out.WriteByte(c)
+	}
+
+	return out.String()
+}
+
+// escapeAmperands escapes ampersands that aren't part of valid HTML entities.
+func escapeAmperands(value string) string {
+	if strings.IndexByte(value, '&') == -1 {
+		return value
+	}
+
+	var b strings.Builder
+	b.Grow(len(value))
+
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		if c != '&' {
+			b.WriteByte(c)
+			continue
+		}
+
+		j := i + 1
+		for j < len(value) && value[j] != ';' && value[j] != '&' && value[j] != ' ' && value[j] != '\n' && value[j] != '\t' && value[j] != '"' && value[j] != '\'' && value[j] != '<' && value[j] != '>' {
+			j++
+		}
+		if j < len(value) && value[j] == ';' && isValidEntity(value[i+1:j]) {
+			b.WriteString(value[i : j+1])
+			i = j
 		} else {
-			i++
+			b.WriteString("&amp;")
 		}
 	}
 
-	return result
+	return b.String()
+}
+
+func isValidEntity(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	if s[0] == '#' {
+		if len(s) == 1 {
+			return false
+		}
+		if s[1] == 'x' || s[1] == 'X' {
+			if len(s) == 2 {
+				return false
+			}
+			for i := 2; i < len(s); i++ {
+				if !isHexDigit(s[i]) {
+					return false
+				}
+			}
+			return true
+		}
+		for i := 1; i < len(s); i++ {
+			if s[i] < '0' || s[i] > '9' {
+				return false
+			}
+		}
+		return true
+	}
+	_, ok := namedHTMLEntities[s]
+	return ok
+}
+
+func isHexDigit(b byte) bool {
+	return ('0' <= b && b <= '9') || ('a' <= b && b <= 'f') || ('A' <= b && b <= 'F')
 }
 
 const (
