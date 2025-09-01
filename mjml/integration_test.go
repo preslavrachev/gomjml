@@ -179,16 +179,12 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				t.Logf("Style differences for %s:", testName)
 				compareStylesPrecise(t, expected, actual)
 
-				// For debugging: write both outputs to temp files
-				os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
-				os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
+				writeDebugFiles(testName, expected, actual)
 			} else {
 				// DOM trees match, but check for self-closing tag serialization differences
 				if selfClosingDiff := checkSelfClosingTagDifferences(expected, actual); selfClosingDiff != "" {
 					t.Errorf("Self-closing tag serialization differences found:\n%s", selfClosingDiff)
-					// For debugging: write both outputs to temp files
-					os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
-					os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
+					writeDebugFiles(testName, expected, actual)
 				}
 			}
 		})
@@ -199,6 +195,13 @@ func TestMJMLAgainstExpected(t *testing.T) {
 // using the provided testName as the base filename. The resulting path has the format "testdata/{testName}.mjml".
 func getTestdataFilename(testName string) string {
 	return fmt.Sprintf("testdata/%s.mjml", testName)
+}
+
+// writeDebugFiles writes both expected and actual HTML outputs to temp files for debugging
+func writeDebugFiles(testName, expected, actual string) {
+	// For debugging: write both outputs to temp files
+	os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
+	os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
 }
 
 // TestDirectLibraryUsage demonstrates and tests direct library usage

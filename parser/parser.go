@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/debug"
@@ -31,6 +32,16 @@ var htmlVoidElements = map[string]struct{}{
 	"source": {},
 	"track":  {},
 	"wbr":    {},
+}
+
+// buildVoidElementsRegexPattern creates a regex pattern from the htmlVoidElements map
+func buildVoidElementsRegexPattern() string {
+	elements := make([]string, 0, len(htmlVoidElements))
+	for element := range htmlVoidElements {
+		elements = append(elements, element)
+	}
+	sort.Strings(elements) // Ensure deterministic order
+	return `(?i)<(?:` + strings.Join(elements, "|") + `)([^>]*?)/>`
 }
 
 // namedHTMLEntities lists HTML entities that should remain unescaped.
@@ -99,18 +110,20 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 }
 
 // preprocessHTMLEntities replaces common HTML entities with Unicode characters
-// and properly escapes ampersands in attribute values
+// and properly escapes ampersands in attribute values. Raw ampersands are first
+// escaped to &amp; for XML safety, then most entities are replaced with Unicode.
+// The &amp; entities are left for the XML parser to handle, preventing re-introduction
+// of invalid raw ampersands that would break XML parsing.
 func preprocessHTMLEntities(content string) string {
 	// First, escape raw ampersands in attribute values that aren't part of valid entities
 	result := escapeAttributeAmpersands(content)
 
 	// Replace the most common HTML entities with Unicode characters
-	// NOTE: We skip &amp; replacement here because we just escaped raw ampersands
-	// to &amp; in the previous step. The XML parser will handle &amp; correctly.
+	// NOTE: &amp; entities are intentionally preserved - the XML parser will convert
+	// them to raw ampersands safely after parsing, maintaining XML validity.
 	result = strings.ReplaceAll(result, "&copy;", "©")
 	result = strings.ReplaceAll(result, "&reg;", "®")
 	result = strings.ReplaceAll(result, "&trade;", "™")
-	// result = strings.ReplaceAll(result, "&amp;", "&")  // SKIP THIS - let XML parser handle it
 	result = strings.ReplaceAll(result, "&lt;", "<")
 	result = strings.ReplaceAll(result, "&gt;", ">")
 	result = strings.ReplaceAll(result, "&quot;", `"`)
@@ -258,6 +271,7 @@ const (
 	// with "]]]]><![CDATA[>" which effectively closes the current CDATA section,
 	// outputs "]]>", then starts a new CDATA section. This prevents XML parsing
 	// errors that would occur if "]]>" appeared within a CDATA block.
+	// See: https://www.w3.org/TR/xml/#sec-cdata-sect (W3C XML 1.0, section 2.7 CDATA Sections)
 	cdataEndSafe = "]]]]><![CDATA[>"
 )
 
@@ -411,7 +425,7 @@ func equalFoldASCII(a, b []byte) bool {
 // normalizeSelfClosingVoidTags ensures that void HTML elements use a space before the
 // closing slash (e.g., <br/> becomes <br />). This matches how XML parsers normalize
 // self-closing tags.
-var voidSelfClosingRe = regexp.MustCompile(`(?i)<(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)([^>]*?)/>`)
+var voidSelfClosingRe = regexp.MustCompile(buildVoidElementsRegexPattern())
 
 func normalizeSelfClosingVoidTags(b []byte) []byte {
 	return voidSelfClosingRe.ReplaceAllFunc(b, func(m []byte) []byte {
