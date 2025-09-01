@@ -145,7 +145,7 @@ func escapeAttributeAmpersands(content string) string {
 			}
 			if c == '&' {
 				j := i + 1
-				for j < len(content) && content[j] != ';' && content[j] != '&' && content[j] != quote && content[j] != ' ' && content[j] != '\n' && content[j] != '\t' && content[j] != '<' && content[j] != '>' {
+				for j < len(content) && content[j] != quote && !isEntityTerminator(content[j]) {
 					j++
 				}
 				if j < len(content) && content[j] == ';' && isValidEntity(content[i+1:j]) {
@@ -193,7 +193,7 @@ func escapeAmperands(value string) string {
 		}
 
 		j := i + 1
-		for j < len(value) && value[j] != ';' && value[j] != '&' && value[j] != ' ' && value[j] != '\n' && value[j] != '\t' && value[j] != '"' && value[j] != '\'' && value[j] != '<' && value[j] != '>' {
+		for j < len(value) && !isEntityTerminator(value[j]) {
 			j++
 		}
 		if j < len(value) && value[j] == ';' && isValidEntity(value[i+1:j]) {
@@ -241,11 +241,23 @@ func isHexDigit(b byte) bool {
 	return ('0' <= b && b <= '9') || ('a' <= b && b <= 'f') || ('A' <= b && b <= 'F')
 }
 
+// isEntityTerminator returns true if the byte is a character that terminates
+// an HTML entity sequence (anything that would end an entity name).
+func isEntityTerminator(c byte) bool {
+	return c == ';' || c == '&' || c == ' ' || c == '\n' || c == '\t' ||
+		c == '"' || c == '\'' || c == '<' || c == '>'
+}
+
 const (
-	openNeedle   = "<mj-text"
-	closeNeedle  = "</mj-text>"
-	cdataStart   = "<![CDATA["
-	cdataEnd     = "]]>"
+	openNeedle  = "<mj-text"
+	closeNeedle = "</mj-text>"
+	cdataStart  = "<![CDATA["
+	cdataEnd    = "]]>"
+	// cdataEndSafe is used to escape CDATA end sequences within CDATA sections.
+	// When "]]>" appears in content that will be wrapped in CDATA, it's replaced
+	// with "]]]]><![CDATA[>" which effectively closes the current CDATA section,
+	// outputs "]]>", then starts a new CDATA section. This prevents XML parsing
+	// errors that would occur if "]]>" appeared within a CDATA block.
 	cdataEndSafe = "]]]]><![CDATA[>"
 )
 
