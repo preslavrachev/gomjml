@@ -33,6 +33,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 	// Reset carousel ID counter for deterministic testing
 	components.ResetCarouselIDCounter()
 	testCases := []string{
+		"mjml",
+		"mj-body",
 		"basic",
 		"with-head",
 		"complex-layout",
@@ -77,6 +79,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-button-class",
 		"mj-image",
 		"mj-image-class",
+		"mj-image-src-with-url-params",
 		"mj-section-with-columns",
 		"mj-section",
 		"mj-section-class",
@@ -137,6 +140,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-icon",
 		"mj-carousel-tb",
 		"mj-carousel-thumbnails",
+		// Custom test cases
+		"notifuse-open-br-tags",
 	}
 
 	for _, testName := range testCases {
@@ -174,9 +179,13 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				t.Logf("Style differences for %s:", testName)
 				compareStylesPrecise(t, expected, actual)
 
-				// For debugging: write both outputs to temp files
-				os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
-				os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
+				writeDebugFiles(testName, expected, actual)
+			} else {
+				// DOM trees match, but check for self-closing tag serialization differences
+				if selfClosingDiff := checkSelfClosingTagDifferences(expected, actual); selfClosingDiff != "" {
+					t.Errorf("Self-closing tag serialization differences found:\n%s", selfClosingDiff)
+					writeDebugFiles(testName, expected, actual)
+				}
 			}
 		})
 	}
@@ -186,6 +195,13 @@ func TestMJMLAgainstExpected(t *testing.T) {
 // using the provided testName as the base filename. The resulting path has the format "testdata/{testName}.mjml".
 func getTestdataFilename(testName string) string {
 	return fmt.Sprintf("testdata/%s.mjml", testName)
+}
+
+// writeDebugFiles writes both expected and actual HTML outputs to temp files for debugging
+func writeDebugFiles(testName, expected, actual string) {
+	// For debugging: write both outputs to temp files
+	os.WriteFile("/tmp/expected_"+testName+".html", []byte(expected), 0o644)
+	os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
 }
 
 // TestDirectLibraryUsage demonstrates and tests direct library usage
@@ -970,4 +986,40 @@ func normalizeCSSContent(css string) string {
 	})
 
 	return string(runes)
+}
+
+// checkSelfClosingTagDifferences detects differences in self-closing tag serialization
+// between expected and actual HTML that would be missed by DOM comparison
+func checkSelfClosingTagDifferences(expected, actual string) string {
+	// HTML5 void elements that should be self-closing
+	voidTags := []string{"br", "hr", "img", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"}
+
+	var differences []string
+
+	for _, tag := range voidTags {
+		// Count different serialization patterns for this tag
+		expectedUnclosed := countTagPattern(expected, fmt.Sprintf("<%s>", tag))
+		actualUnclosed := countTagPattern(actual, fmt.Sprintf("<%s>", tag))
+
+		expectedSelfClosed := countTagPattern(expected, fmt.Sprintf("<%s/>", tag)) + countTagPattern(expected, fmt.Sprintf("<%s />", tag))
+		actualSelfClosed := countTagPattern(actual, fmt.Sprintf("<%s/>", tag)) + countTagPattern(actual, fmt.Sprintf("<%s />", tag))
+
+		// Check for differences in serialization
+		if expectedUnclosed != actualUnclosed || expectedSelfClosed != actualSelfClosed {
+			differences = append(differences,
+				fmt.Sprintf("<%s> tag serialization mismatch:\n  Expected: %d unclosed + %d self-closed\n  Actual:   %d unclosed + %d self-closed",
+					tag, expectedUnclosed, expectedSelfClosed, actualUnclosed, actualSelfClosed))
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+
+	return ""
+}
+
+// countTagPattern counts occurrences of a specific tag pattern in HTML
+func countTagPattern(html, pattern string) int {
+	return strings.Count(strings.ToLower(html), strings.ToLower(pattern))
 }

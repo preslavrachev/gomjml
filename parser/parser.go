@@ -4,16 +4,15 @@
 package parser
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/debug"
 )
-
-// Compiled regex for robust text splitting in mixed content
-var mixedContentSplitRegex = regexp.MustCompile(`\s*[\r\n]+\s*`)
 
 // htmlVoidElements contains HTML elements that do not require closing tags.
 //
@@ -35,6 +34,40 @@ var htmlVoidElements = map[string]struct{}{
 	"wbr":    {},
 }
 
+// buildVoidElementsRegexPattern creates a regex pattern from the htmlVoidElements map
+func buildVoidElementsRegexPattern() string {
+	elements := make([]string, 0, len(htmlVoidElements))
+	for element := range htmlVoidElements {
+		elements = append(elements, element)
+	}
+	sort.Strings(elements) // Ensure deterministic order
+	return `(?i)<(?:` + strings.Join(elements, "|") + `)([^>]*?)/>`
+}
+
+// namedHTMLEntities lists HTML entities that should remain unescaped.
+var namedHTMLEntities = map[string]struct{}{
+	"amp":    {},
+	"lt":     {},
+	"gt":     {},
+	"quot":   {},
+	"apos":   {},
+	"nbsp":   {},
+	"copy":   {},
+	"reg":    {},
+	"trade":  {},
+	"ndash":  {},
+	"mdash":  {},
+	"hellip": {},
+	"laquo":  {},
+	"raquo":  {},
+	"ldquo":  {},
+	"rdquo":  {},
+	"lsquo":  {},
+	"rsquo":  {},
+	"times":  {},
+	"divide": {},
+}
+
 // isVoidHTMLElement reports whether the provided tag name is an HTML void element.
 func isVoidHTMLElement(tag string) bool {
 	_, ok := htmlVoidElements[strings.ToLower(tag)]
@@ -47,12 +80,26 @@ type MJMLNode struct {
 	Text     string
 	Attrs    []xml.Attr
 	Children []*MJMLNode
+	// MixedContent preserves the interleaving order of text nodes and child elements
+	// as they originally appeared in the MJML source. Each entry contains either
+	// a text segment or a pointer to a child node.
+	MixedContent []MixedContentPart
+}
+
+// MixedContentPart represents either a piece of text or a child node in the
+// mixed content sequence of an MJML node.
+type MixedContentPart struct {
+	Text string
+	Node *MJMLNode
 }
 
 // ParseMJML parses an MJML string into an AST
 func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 	// Pre-process HTML entities that XML parser doesn't handle
 	processedContent := preprocessHTMLEntities(mjmlContent)
+
+	// Wrap mj-text inner content in CDATA to preserve raw HTML
+	processedContent = wrapMJTextContent(processedContent)
 
 	decoder := xml.NewDecoder(strings.NewReader(processedContent))
 	root, err := parseNode(decoder, xml.StartElement{})
@@ -63,13 +110,20 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 }
 
 // preprocessHTMLEntities replaces common HTML entities with Unicode characters
+// and properly escapes ampersands in attribute values. Raw ampersands are first
+// escaped to &amp; for XML safety, then most entities are replaced with Unicode.
+// The &amp; entities are left for the XML parser to handle, preventing re-introduction
+// of invalid raw ampersands that would break XML parsing.
 func preprocessHTMLEntities(content string) string {
+	// First, escape raw ampersands in attribute values that aren't part of valid entities
+	result := escapeAttributeAmpersands(content)
+
 	// Replace the most common HTML entities with Unicode characters
-	result := content
+	// NOTE: &amp; entities are intentionally preserved - the XML parser will convert
+	// them to raw ampersands safely after parsing, maintaining XML validity.
 	result = strings.ReplaceAll(result, "&copy;", "©")
 	result = strings.ReplaceAll(result, "&reg;", "®")
 	result = strings.ReplaceAll(result, "&trade;", "™")
-	result = strings.ReplaceAll(result, "&amp;", "&")
 	result = strings.ReplaceAll(result, "&lt;", "<")
 	result = strings.ReplaceAll(result, "&gt;", ">")
 	result = strings.ReplaceAll(result, "&quot;", `"`)
@@ -84,12 +138,312 @@ func preprocessHTMLEntities(content string) string {
 	return result
 }
 
+// escapeAttributeAmpersands escapes raw ampersands in XML attribute values
+// that aren't part of valid HTML entities. This prevents XML parsing errors
+// when URLs contain query parameters like "?param1=value1&param2=value2".
+func escapeAttributeAmpersands(content string) string {
+	var out strings.Builder
+	out.Grow(len(content))
+
+	inTag := false
+	var quote byte
+
+	for i := 0; i < len(content); i++ {
+		c := content[i]
+		if quote != 0 {
+			if c == quote {
+				out.WriteByte(c)
+				quote = 0
+				continue
+			}
+			if c == '&' {
+				j := i + 1
+				for j < len(content) && content[j] != quote && !isEntityTerminator(content[j]) {
+					j++
+				}
+				if j < len(content) && content[j] == ';' && isValidEntity(content[i+1:j]) {
+					out.WriteString(content[i : j+1])
+					i = j
+				} else {
+					out.WriteString("&amp;")
+				}
+				continue
+			}
+			out.WriteByte(c)
+			continue
+		}
+
+		switch c {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		case '\'', '"':
+			if inTag {
+				quote = c
+			}
+		}
+		out.WriteByte(c)
+	}
+
+	return out.String()
+}
+
+// escapeAmperands escapes ampersands that aren't part of valid HTML entities.
+func escapeAmperands(value string) string {
+	if strings.IndexByte(value, '&') == -1 {
+		return value
+	}
+
+	var b strings.Builder
+	b.Grow(len(value))
+
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		if c != '&' {
+			b.WriteByte(c)
+			continue
+		}
+
+		j := i + 1
+		for j < len(value) && !isEntityTerminator(value[j]) {
+			j++
+		}
+		if j < len(value) && value[j] == ';' && isValidEntity(value[i+1:j]) {
+			b.WriteString(value[i : j+1])
+			i = j
+		} else {
+			b.WriteString("&amp;")
+		}
+	}
+
+	return b.String()
+}
+
+func isValidEntity(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	if s[0] == '#' {
+		if len(s) == 1 {
+			return false
+		}
+		if s[1] == 'x' || s[1] == 'X' {
+			if len(s) == 2 {
+				return false
+			}
+			for i := 2; i < len(s); i++ {
+				if !isHexDigit(s[i]) {
+					return false
+				}
+			}
+			return true
+		}
+		for i := 1; i < len(s); i++ {
+			if s[i] < '0' || s[i] > '9' {
+				return false
+			}
+		}
+		return true
+	}
+	_, ok := namedHTMLEntities[s]
+	return ok
+}
+
+func isHexDigit(b byte) bool {
+	return ('0' <= b && b <= '9') || ('a' <= b && b <= 'f') || ('A' <= b && b <= 'F')
+}
+
+// isEntityTerminator returns true if the byte is a character that terminates
+// an HTML entity sequence (anything that would end an entity name).
+func isEntityTerminator(c byte) bool {
+	return c == ';' || c == '&' || c == ' ' || c == '\n' || c == '\t' ||
+		c == '"' || c == '\'' || c == '<' || c == '>'
+}
+
+const (
+	openNeedle  = "<mj-text"
+	closeNeedle = "</mj-text>"
+	cdataStart  = "<![CDATA["
+	cdataEnd    = "]]>"
+	// cdataEndSafe is used to escape CDATA end sequences within CDATA sections.
+	// When "]]>" appears in content that will be wrapped in CDATA, it's replaced
+	// with "]]]]><![CDATA[>" which effectively closes the current CDATA section,
+	// outputs "]]>", then starts a new CDATA section. This prevents XML parsing
+	// errors that would occur if "]]>" appeared within a CDATA block.
+	// See: https://www.w3.org/TR/xml/#sec-cdata-sect (W3C XML 1.0, section 2.7 CDATA Sections)
+	cdataEndSafe = "]]]]><![CDATA[>"
+)
+
+// wrapMJTextContent wraps the inner content of every <mj-text>...</mj-text>
+// in a CDATA section and normalizes void tags inside. It is case-insensitive
+// on tag names, handles attributes with quotes, and supports self-closing tags.
+func wrapMJTextContent(content string) string {
+	if content == "" {
+		return ""
+	}
+
+	b := []byte(content)
+	var out strings.Builder
+	out.Grow(len(content) + 64)
+
+	pos := 0
+	for {
+		idx := indexCI(b, []byte(openNeedle), pos)
+		if idx < 0 {
+			out.Write(b[pos:])
+			break
+		}
+
+		out.Write(b[pos:idx])
+
+		endStart, selfClosing := findTagEnd(b, idx)
+		if endStart < 0 {
+			out.Write(b[idx:])
+			break
+		}
+
+		out.Write(b[idx:endStart])
+
+		if selfClosing {
+			pos = endStart
+			continue
+		}
+
+		closeIdx := indexCI(b, []byte(closeNeedle), endStart)
+		if closeIdx < 0 {
+			out.Write(b[endStart:])
+			break
+		}
+
+		inner := b[endStart:closeIdx]
+
+		alreadyCDATA := bytes.HasPrefix(bytes.TrimLeft(inner, " \t\r\n"), []byte(cdataStart))
+
+		inner = normalizeSelfClosingVoidTags(inner)
+
+		if alreadyCDATA {
+			out.Write(inner)
+		} else {
+			if bytes.Contains(inner, []byte(cdataEnd)) {
+				inner = bytes.ReplaceAll(inner, []byte(cdataEnd), []byte(cdataEndSafe))
+			}
+			out.WriteString(cdataStart)
+			out.Write(inner)
+			out.WriteString(cdataEnd)
+		}
+
+		out.WriteString(closeNeedle)
+
+		pos = closeIdx + len(closeNeedle)
+	}
+
+	return out.String()
+}
+
+// findTagEnd returns the index *after* the '>' of the start tag at 'start'
+// and whether it was self-closing (<.../>). Respects single/double quotes.
+func findTagEnd(b []byte, start int) (end int, selfClosing bool) {
+	i := start
+	inQuote := byte(0)
+	for i < len(b) {
+		c := b[i]
+		if inQuote != 0 {
+			if c == inQuote {
+				inQuote = 0
+			}
+			i++
+			continue
+		}
+		switch c {
+		case '"', '\'':
+			inQuote = c
+			i++
+		case '>':
+			selfClosing = i > start && previousNonSpace(b, i-1) == '/'
+			return i + 1, selfClosing
+		default:
+			i++
+		}
+	}
+	return -1, false
+}
+
+// previousNonSpace returns the previous non-space byte at or before idx; 0 if none.
+func previousNonSpace(b []byte, idx int) byte {
+	for i := idx; i >= 0; i-- {
+		if b[i] != ' ' && b[i] != '\t' && b[i] != '\n' && b[i] != '\r' {
+			return b[i]
+		}
+	}
+	return 0
+}
+
+// indexCI finds needle in haystack starting at 'from', ASCII case-insensitive.
+// Avoids allocating by not lowercasing the whole string.
+func indexCI(haystack, needle []byte, from int) int {
+	if from < 0 {
+		from = 0
+	}
+	n := len(needle)
+	if n == 0 {
+		return from
+	}
+	h := haystack
+	max := len(h) - n
+	for i := from; i <= max; i++ {
+		if equalFoldASCII(h[i:i+n], needle) {
+			return i
+		}
+	}
+	return -1
+}
+
+func equalFoldASCII(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		ai := a[i]
+		bi := b[i]
+		if ai == bi {
+			continue
+		}
+		if 'A' <= ai && ai <= 'Z' {
+			ai += 'a' - 'A'
+		}
+		if 'A' <= bi && bi <= 'Z' {
+			bi += 'a' - 'A'
+		}
+		if ai != bi {
+			return false
+		}
+	}
+	return true
+}
+
+// normalizeSelfClosingVoidTags ensures that void HTML elements use a space before the
+// closing slash (e.g., <br/> becomes <br />). This matches how XML parsers normalize
+// self-closing tags.
+var voidSelfClosingRe = regexp.MustCompile(buildVoidElementsRegexPattern())
+
+func normalizeSelfClosingVoidTags(b []byte) []byte {
+	return voidSelfClosingRe.ReplaceAllFunc(b, func(m []byte) []byte {
+		base := bytes.TrimRight(m[:len(m)-2], " ")
+		res := make([]byte, len(base)+3)
+		copy(res, base)
+		copy(res[len(base):], []byte(" />"))
+		return res
+	})
+}
+
 // parseNode recursively parses XML nodes
 func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) {
 	node := &MJMLNode{
-		XMLName:  start.Name,
-		Attrs:    start.Attr,
-		Children: make([]*MJMLNode, 0),
+		XMLName:      start.Name,
+		Attrs:        start.Attr,
+		Children:     make([]*MJMLNode, 0),
+		MixedContent: make([]MixedContentPart, 0),
 	}
 
 	// If this is called with empty start element, get the first element
@@ -113,10 +467,20 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 			return nil, err
 		}
 		node.Text = raw
+		node.MixedContent = []MixedContentPart{{Text: raw}}
 		return node, nil
 	}
 
 	var textBuilder strings.Builder
+	var segmentBuilder strings.Builder
+
+	flushSegment := func() {
+		if segmentBuilder.Len() > 0 {
+			text := segmentBuilder.String()
+			node.MixedContent = append(node.MixedContent, MixedContentPart{Text: text})
+			segmentBuilder.Reset()
+		}
+	}
 
 	for {
 		tok, err := decoder.Token()
@@ -126,14 +490,17 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 		switch t := tok.(type) {
 		case xml.StartElement:
+			flushSegment()
 			child, err := parseNode(decoder, t)
 			if err != nil {
 				return nil, err
 			}
 			node.Children = append(node.Children, child)
+			node.MixedContent = append(node.MixedContent, MixedContentPart{Node: child})
 
 		case xml.EndElement:
 			if t.Name == node.XMLName {
+				flushSegment()
 				node.Text = textBuilder.String()
 				return node, nil
 			}
@@ -141,11 +508,15 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 
 		case xml.CharData:
 			textBuilder.Write(t)
+			segmentBuilder.Write(t)
 		case xml.Comment:
 			// Preserve comments as part of text content
 			textBuilder.WriteString("<!--")
 			textBuilder.WriteString(string(t))
 			textBuilder.WriteString("-->")
+			segmentBuilder.WriteString("<!--")
+			segmentBuilder.WriteString(string(t))
+			segmentBuilder.WriteString("-->")
 		}
 	}
 }
@@ -267,7 +638,7 @@ func (n *MJMLNode) GetMixedContent() string {
 		"has_children":   len(n.Children) > 0,
 	})
 
-	if len(n.Children) == 0 {
+	if len(n.MixedContent) == 0 {
 		result := strings.TrimSpace(n.Text)
 		debug.DebugLogWithData("parser", "text-only", "Returning plain text content", map[string]interface{}{
 			"content": result,
@@ -276,53 +647,36 @@ func (n *MJMLNode) GetMixedContent() string {
 	}
 
 	var result strings.Builder
-
-	// For mixed content, we need to reconstruct the original structure
-	// The parser splits text at child elements, so we need to interleave them
-	textParts := mixedContentSplitRegex.Split(n.Text, -1)
-	cleanTextParts := make([]string, 0, len(textParts))
-
-	// Clean up text parts (remove excessive whitespace but preserve structure)
-	for _, part := range textParts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			cleanTextParts = append(cleanTextParts, trimmed)
-		}
-	}
-
-	// Write content with children interspersed
-	// Note: This assumes children are inline elements within the text flow
-	if len(cleanTextParts) > 0 {
-		result.WriteString(cleanTextParts[0])
-	}
-
-	// Add child elements with remaining text parts
-	for i, child := range n.Children {
-		// Render child element as HTML
-		result.WriteString("<")
-		result.WriteString(child.XMLName.Local)
-
-		// Add attributes if any
-		for _, attr := range child.Attrs {
-			result.WriteString(" ")
-			result.WriteString(attr.Name.Local)
-			result.WriteString("=\"")
-			result.WriteString(attr.Value)
-			result.WriteString("\"")
-		}
-		result.WriteString(">")
-
-		// Add child's content (recursively handle mixed content)
-		result.WriteString(child.GetMixedContent())
-
-		// Close tag
-		result.WriteString("</")
-		result.WriteString(child.XMLName.Local)
-		result.WriteString(">")
-
-		// Add remaining text part if available
-		if i+1 < len(cleanTextParts) {
-			result.WriteString(cleanTextParts[i+1])
+	for i, part := range n.MixedContent {
+		if part.Node != nil {
+			tag := part.Node.XMLName.Local
+			result.WriteString("<")
+			result.WriteString(tag)
+			for _, attr := range part.Node.Attrs {
+				result.WriteString(" ")
+				result.WriteString(attr.Name.Local)
+				result.WriteString("=\"")
+				result.WriteString(attr.Value)
+				result.WriteString("\"")
+			}
+			if isVoidHTMLElement(tag) {
+				result.WriteString(" />")
+				continue
+			}
+			result.WriteString(">")
+			result.WriteString(part.Node.GetMixedContent())
+			result.WriteString("</")
+			result.WriteString(tag)
+			result.WriteString(">")
+		} else {
+			text := part.Text
+			if i == 0 {
+				text = strings.TrimLeft(text, " \n\r\t")
+			}
+			if i == len(n.MixedContent)-1 {
+				text = strings.TrimRight(text, " \n\r\t")
+			}
+			result.WriteString(text)
 		}
 	}
 
