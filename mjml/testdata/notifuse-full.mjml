@@ -1,0 +1,74 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-text font-size="16px" line-height="1.6" padding-top="10px" padding-left="25px" background-color="transparent" text-decoration="none" text-transform="none" font-style="normal" font-weight="normal" padding-bottom="10px" align="left" font-family="Arial, sans-serif" padding-right="25px" color="#333333" />
+      <mj-button color="#ffffff" font-size="16px" font-weight="bold" align="center" font-family="Arial, sans-serif" text-decoration="none" padding-left="25px" text-transform="none" background-color="#007bff" padding="10px 25px" padding-right="25px" font-style="normal" padding-bottom="15px" line-height="120%" vertical-align="middle" border-radius="4px" target="_blank" rel="noopener noreferrer" border="none" padding-top="15px" inner-padding="12px 24px" />
+      <mj-image fluid-on-mobile="false" padding-right="25px" target="_blank" rel="noopener noreferrer" align="center" height="auto" padding-left="25px" border="none" padding-top="10px" padding-bottom="10px" src="https://placehold.co/150x60/E3F2FD/1976D2?font=playfair-display&text=LOGO" border-radius="0px" width="150px" container-background-color="transparent" />
+      <mj-section background-size="auto" background-position="top center" padding-left="0px" border-right="none" direction="ltr" border-bottom="none" padding-top="20px" border-left="none" background-repeat="no-repeat" full-width="full-width" border-radius="0px" padding="20px 0" border="none" padding-right="0px" background-color="transparent" border-top="none" padding-bottom="20px" text-align="center" />
+      <mj-column width="100%" padding-right="0px" padding-bottom="0px" border-top="none" vertical-align="top" inner-border-radius="0px" inner-border-top="none" inner-border-bottom="none" border="none" padding="0" border-right="none" padding-top="0px" inner-border="none" inner-border-right="none" inner-background-color="transparent" border-radius="0px" inner-border-left="none" border-bottom="none" padding-left="0px" background-color="transparent" border-left="none" />
+    </mj-attributes>
+    <mj-preview>Welcome! See how sections provide borders and groups prevent mobile stacking.</mj-preview>
+  </mj-head>
+  <mj-body background-color="#f8f9fa" width="600px">
+    <mj-wrapper padding-left="20px" padding-top="20px" padding-right="20px" padding-bottom="20px">
+      <mj-section full-width="full-width" padding-bottom="80px" text-align="center" background-size="cover" padding-left="20px" padding="20px 0" background-repeat="no-repeat" background-position="center center" padding-top="80px" background-url="https://images.unsplash.com/photo-1495419597644-19934b6b7c40?w=500&amp;auto=format&amp;fit=crop&amp;q=60&amp;ixlib=rb-4.1.0&amp;ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YmVhY2glMjBwYXN0ZWx8ZW58MHx8MHx8fDA%3D" padding-right="20px">
+        <mj-column padding="0" width="100%">
+          <mj-image padding-right="25px" fluid-on-mobile="false" padding-top="10px" container-background-color="transparent" border-radius="0px" border="none" src="https://placehold.co/150x60/E3F2FD/1976D2?font=playfair-display&text=LOGO" padding-bottom="20px" rel="noopener noreferrer" target="_blank" height="auto" padding-left="25px" align="center" width="150px" />
+          <mj-text font-style="normal" padding-bottom="20px" padding-left="20px" background-color="transparent" color="#ffffff" font-size="32px" padding-top="0px" font-family="Arial, sans-serif" padding-right="20px" align="center" line-height="1.2" font-weight="bold" text-decoration="none" text-transform="none">Beautiful Email Templates</mj-text>
+          <mj-text padding-top="0px" padding-right="40px" padding-left="40px" align="center" line-height="28px" font-size="20px" font-family="Arial, sans-serif" font-weight="500" padding-bottom="30px" text-decoration="none" background-color="transparent" color="#000000" font-style="normal" text-transform="none">Create stunning, responsive emails with our powerful MJML builder</mj-text>
+          <mj-button font-family="Arial, sans-serif" line-height="120%" rel="noopener noreferrer" align="center" text-transform="none" border="none" border-radius="30px" background-color="#EC407A" padding-top="0px" inner-padding="16px 32px" font-size="18px" padding-bottom="0px" padding-left="25px" vertical-align="middle" href="#" font-weight="bold" color="#ffffff" text-decoration="none" font-style="normal" padding-right="25px" target="_blank" padding="10px 25px">Get Started Today</mj-button>
+        </mj-column>
+      </mj-section>
+      <mj-section padding="20px 0" background-color="#ffffff" border-radius="8px" padding-top="25px" padding-right="25px" padding-bottom="25px" padding-left="25px">
+        <mj-column width="100%" padding="0">
+          <mj-text line-height="1.3" color="#EC407A" background-color="transparent" font-family="Arial, sans-serif" font-style="normal" align="center" font-size="24px" font-weight="bold" text-transform="none" padding-top="10px" padding-right="25px" padding-left="25px" text-decoration="none" padding-bottom="15px">Welcome  to MJML email builder</mj-text>
+          <mj-text font-style="normal" color="#666666" font-size="16px" padding-right="25px" padding-bottom="25px" text-transform="none" background-color="transparent" font-weight="normal" line-height="1.6" text-decoration="none" padding-top="10px" align="center" font-family="Arial, sans-serif" padding-left="25px">This section demonstrates MJML components. Below you'll see a group that prevents its columns from stacking on mobile devices.</mj-text>
+          <mj-button background-color="#EC407A" inner-padding="12px 24px" padding-left="25px" border="none" rel="noopener noreferrer" color="#ffffff" align="center" target="_blank" text-transform="none" padding-right="25px" padding-bottom="30px" vertical-align="middle" padding-top="15px" href="https://documentation.mjml.io/" font-style="normal" line-height="120%" text-decoration="none" font-size="16px" font-family="Arial, sans-serif" font-weight="bold" border-radius="4px" padding="10px 25px">Learn More About MJML</mj-button>
+          <mj-divider padding-left="25px" width="50%" align="center" padding-right="25px" padding-bottom="30px" container-background-color="transparent" border-style="solid" border-width="2px" border-color="#dee2e6" padding-top="30px" />
+        </mj-column>
+      </mj-section>
+      <mj-section padding-right="25px" padding-bottom="25px" padding-left="25px" padding="20px 0" background-color="#ffffff" border-radius="8px" padding-top="25px">
+        <mj-group width="100%" background-color="#f8f9fa">
+          <mj-column padding="0" width="50%">
+            <mj-text font-style="normal" text-decoration="none" padding-bottom="10px" padding-left="25px" line-height="1.4" align="center" text-transform="none" font-weight="bold" padding-top="10px" padding-right="25px" background-color="transparent" color="#EC407A" font-size="18px" font-family="Arial, sans-serif">Left Column</mj-text>
+            <mj-text align="center" text-decoration="none" font-family="Arial, sans-serif" line-height="1.6" color="#666666" padding-bottom="10px" background-color="transparent" font-weight="normal" text-transform="none" padding-right="25px" font-style="normal" font-size="14px" padding-top="10px" padding-left="25px">This column stays side-by-side with the right column even on mobile devices because both columns are inside an mj-group element.</mj-text>
+          </mj-column>
+          <mj-column width="50%" padding="0">
+            <mj-text text-transform="none" padding-right="25px" padding-left="25px" color="#EC407A" font-weight="bold" text-decoration="none" padding-top="10px" align="center" padding-bottom="10px" font-style="normal" font-size="18px" line-height="1.4" background-color="transparent" font-family="Arial, sans-serif">Right Column</mj-text>
+            <mj-text padding-left="25px" font-family="Arial, sans-serif" font-weight="normal" color="#666666" text-transform="none" padding-top="10px" padding-bottom="10px" font-style="normal" background-color="transparent" align="center" line-height="1.6" font-size="14px" text-decoration="none" padding-right="25px">Groups prevent the default mobile stacking behavior. Without a group, these columns would stack vertically on mobile for better readability.</mj-text>
+          </mj-column>
+        </mj-group>
+      </mj-section>
+      <mj-raw><!-- Custom CSS for email clients -->
+<style type="text/css">
+  .custom-highlight {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: white;
+    font-weight: bold;
+  }
+</style>
+
+<!-- Custom HTML structure -->
+<div style="text-align: center; padding: 20px; background-color: #f0f8ff; margin: 20px 0; border-radius: 8px;">
+  <p style="margin: 0; font-size: 14px; color: #333;">
+    This is <span class="custom-highlight">custom HTML</span> content from an mj-raw block!
+  </p>
+  <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
+    Perfect for custom styling, special HTML structures, or advanced layouts.
+  </p>
+</div></mj-raw>
+      <mj-section padding-bottom="25px" padding-left="25px" padding="20px 0" background-color="#ffffff" border-radius="8px" padding-top="25px" padding-right="25px">
+        <mj-column padding="0" width="100%">
+          <mj-text padding-right="25px" color="#EC407A" text-transform="none" padding-top="10px" font-weight="bold" text-decoration="none" background-color="transparent" font-size="24px" line-height="1.3" font-family="Arial, sans-serif" font-style="normal" padding-bottom="20px" padding-left="25px" align="center">Connect With Us</mj-text>
+          <mj-social mode="horizontal" table-layout="auto" text-padding="4px 4px 4px 0px" inner-padding="8px" line-height="22px" padding-top="20px" padding-right="25px" padding-bottom="20px" border-radius="3px" icon-size="40px" padding-left="25px" align="center" container-background-color="transparent" icon-height="40px">
+            <mj-social-element name="facebook" href="https://facebook.com" background-color="#3b5998" border-radius="3px" />
+            <mj-social-element border-radius="3px" name="instagram" href="https://instagram.com" background-color="#E4405F" />
+            <mj-social-element background-color="#000000" border-radius="3px" name="x" href="https://x.com" />
+          </mj-social>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>
