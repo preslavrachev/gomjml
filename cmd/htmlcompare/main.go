@@ -397,6 +397,8 @@ func cleanup(config *Config) {
 	fmt.Println("Temporary files cleaned up.")
 }
 
+// filterOrderOnlyDifferences removes diff lines that are identical when sorted alphabetically.
+// Only applies to lines longer than 10 characters to avoid false positives on low-entropy strings.
 func filterOrderOnlyDifferences(diffContent string) string {
 	lines := strings.Split(diffContent, "\n")
 	var result []string
@@ -410,13 +412,11 @@ func filterOrderOnlyDifferences(diffContent string) string {
 			removedLine := strings.TrimPrefix(line, "-")
 			addedLine := strings.TrimPrefix(lines[i+1], "+")
 
-			// If same length, sort and compare
-			if len(removedLine) == len(addedLine) {
-				if sortString(removedLine) == sortString(addedLine) {
-					// Skip both lines - they're just reordered
-					i += 2
-					continue
-				}
+			// If same length and long enough for good entropy, sort and compare
+			if len(removedLine) == len(addedLine) && len(removedLine) > 10 && sortString(removedLine) == sortString(addedLine) {
+				// Skip both lines - they're just reordered
+				i += 2
+				continue
 			}
 		}
 
