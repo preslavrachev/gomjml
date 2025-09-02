@@ -311,6 +311,11 @@ func getPixelWidthString(widthPx int) string {
 func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag) *html.HTMLTag {
 	bgcolor := bc.GetAttribute("background-color")
 	bgImage := bc.GetAttribute("background-image")
+	if bgImage == nil || *bgImage == "" {
+		// MJML commonly uses the "background-url" attribute. Fall back to it
+		// when "background-image" is not provided to mirror MRML's behaviour.
+		bgImage = bc.GetAttribute(constants.MJMLBackgroundUrl)
+	}
 	bgRepeat := bc.GetAttribute("background-repeat")
 	bgSize := bc.GetAttribute("background-size")
 	bgPosition := bc.GetAttribute("background-position")

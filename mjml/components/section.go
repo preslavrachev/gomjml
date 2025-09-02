@@ -39,18 +39,23 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Get section attributes
 	backgroundColor := getAttr("background-color")
+	backgroundUrl := getAttr(constants.MJMLBackgroundUrl)
 	padding := getAttr("padding")
 	direction := getAttr("direction")
 	textAlign := getAttr("text-align")
 	fullWidth := getAttr("full-width")
 
-	// For full-width sections with background, add outer table wrapper (like MRML does)
-	if backgroundColor != "" && fullWidth != "" {
+	// For full-width sections with any background (color or image), add
+	// outer table wrapper (like MRML does). Previously we only checked for
+	// background color which skipped cases where only background-url was
+	// provided, causing significant diffs in complex templates.
+	if fullWidth != "" && (backgroundColor != "" || backgroundUrl != "") {
 		outerTable := html.NewTableTag().
 			AddAttribute("align", "center")
 
-		// Apply background styles in MRML order: background, background-color, width
+		// Apply background and border styles in MRML order
 		c.ApplyBackgroundStyles(outerTable)
+		c.ApplyBorderStyles(outerTable)
 		outerTable.AddStyle("width", "100%")
 
 		if err := outerTable.RenderOpen(w); err != nil {

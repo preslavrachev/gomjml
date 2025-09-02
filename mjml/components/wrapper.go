@@ -8,6 +8,7 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -96,6 +97,19 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
 
+	// Calculate effective content width by subtracting horizontal padding and border widths
+	effectiveWidth := GetDefaultBodyWidthPixels() - c.getBorderWidth()
+	if pl := c.getAttribute(constants.MJMLPaddingLeft); pl != "" {
+		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
+			effectiveWidth -= int(px.Value)
+		}
+	}
+	if pr := c.getAttribute(constants.MJMLPaddingRight); pr != "" {
+		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
+			effectiveWidth -= int(px.Value)
+		}
+	}
+
 	// Outer full-width table (MRML pattern)
 	outerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
@@ -181,9 +195,16 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
-	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
+	// Add individual padding properties after shorthand to match MRML order:
+	// bottom, left, right, then top.
 	if paddingBottom := c.getAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
 		innerTd.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft := c.getAttribute(constants.MJMLPaddingLeft); paddingLeft != "" {
+		innerTd.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	}
+	if paddingRight := c.getAttribute(constants.MJMLPaddingRight); paddingRight != "" {
+		innerTd.AddStyle(constants.CSSPaddingRight, paddingRight)
 	}
 	if paddingTop := c.getAttribute(constants.MJMLPaddingTop); paddingTop != "" {
 		innerTd.AddStyle(constants.CSSPaddingTop, paddingTop)
@@ -196,7 +217,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	// MSO conditional for wrapper content
-	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels()); err != nil {
+	if err := html.RenderMSOWrapperTableOpen(w, effectiveWidth); err != nil {
 		return err
 	}
 
@@ -208,7 +229,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 			}
 			continue
 		}
-		child.SetContainerWidth(GetDefaultBodyWidthPixels())
+		child.SetContainerWidth(effectiveWidth)
 		if err := child.Render(w); err != nil {
 			return err
 		}
@@ -347,9 +368,15 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
-	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
+	// Add individual padding properties after shorthand to match MRML order
 	if paddingBottom := c.getAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
 		mainTd.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft := c.getAttribute(constants.MJMLPaddingLeft); paddingLeft != "" {
+		mainTd.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	}
+	if paddingRight := c.getAttribute(constants.MJMLPaddingRight); paddingRight != "" {
+		mainTd.AddStyle(constants.CSSPaddingRight, paddingRight)
 	}
 	if paddingTop := c.getAttribute(constants.MJMLPaddingTop); paddingTop != "" {
 		mainTd.AddStyle(constants.CSSPaddingTop, paddingTop)
