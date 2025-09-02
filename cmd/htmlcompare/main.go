@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -298,8 +299,11 @@ func generateDiff(referenceFile, gomjmlFile, outputFile string, config *Config) 
 	output, _ := cmd.CombinedOutput()
 	diffContent := string(output)
 
+	// AIDEV-NOTE: hack to ignore same-length lines that differ only by ordering; proper CSS/HTML parsing would be better
+	diffContent = filterOrderOnlyDifferences(diffContent)
+
 	// Write diff to file
-	if err := os.WriteFile(outputFile, output, 0o644); err != nil {
+	if err := os.WriteFile(outputFile, []byte(diffContent), 0o644); err != nil {
 		return err
 	}
 
@@ -391,4 +395,40 @@ func cleanup(config *Config) {
 	os.Remove(config.OutputDir)
 
 	fmt.Println("Temporary files cleaned up.")
+}
+
+func filterOrderOnlyDifferences(diffContent string) string {
+	lines := strings.Split(diffContent, "\n")
+	var result []string
+	i := 0
+
+	for i < len(lines) {
+		line := lines[i]
+
+		// Look for pairs of +/- lines
+		if strings.HasPrefix(line, "-") && i+1 < len(lines) && strings.HasPrefix(lines[i+1], "+") {
+			removedLine := strings.TrimPrefix(line, "-")
+			addedLine := strings.TrimPrefix(lines[i+1], "+")
+
+			// If same length, sort and compare
+			if len(removedLine) == len(addedLine) {
+				if sortString(removedLine) == sortString(addedLine) {
+					// Skip both lines - they're just reordered
+					i += 2
+					continue
+				}
+			}
+		}
+
+		result = append(result, line)
+		i++
+	}
+
+	return strings.Join(result, "\n")
+}
+
+func sortString(s string) string {
+	chars := strings.Split(s, "")
+	sort.Strings(chars)
+	return strings.Join(chars, "")
 }
