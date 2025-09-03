@@ -10,6 +10,8 @@ type GlobalAttributes struct {
 	all map[string]string
 	// componentDefaults stores component-specific defaults (e.g., mj-text attributes)
 	componentDefaults map[string]map[string]string
+	// classDefaults stores mj-class definitions
+	classDefaults map[string]map[string]string
 }
 
 // NewGlobalAttributes creates a new global attributes store
@@ -17,6 +19,7 @@ func NewGlobalAttributes() *GlobalAttributes {
 	return &GlobalAttributes{
 		all:               make(map[string]string),
 		componentDefaults: make(map[string]map[string]string),
+		classDefaults:     make(map[string]map[string]string),
 	}
 }
 
@@ -39,12 +42,34 @@ func (ga *GlobalAttributes) processAttributesElement(attributesNode *parser.MJML
 	for _, child := range attributesNode.Children {
 		tagName := child.XMLName.Local
 
-		if tagName == "mj-all" {
+		switch tagName {
+		case "mj-all":
 			// Process mj-all - applies to all components
 			for _, attr := range child.Attrs {
 				ga.all[attr.Name.Local] = attr.Value
 			}
-		} else {
+		case "mj-class":
+			// Process mj-class definitions
+			var className string
+			for _, attr := range child.Attrs {
+				if attr.Name.Local == "name" {
+					className = attr.Value
+					break
+				}
+			}
+			if className == "" {
+				continue
+			}
+			if ga.classDefaults[className] == nil {
+				ga.classDefaults[className] = make(map[string]string)
+			}
+			for _, attr := range child.Attrs {
+				if attr.Name.Local == "name" {
+					continue
+				}
+				ga.classDefaults[className][attr.Name.Local] = attr.Value
+			}
+		default:
 			// Process component-specific defaults (e.g., mj-text)
 			if ga.componentDefaults[tagName] == nil {
 				ga.componentDefaults[tagName] = make(map[string]string)
@@ -73,6 +98,24 @@ func (ga *GlobalAttributes) GetGlobalAttribute(componentName, attrName string) s
 	return ""
 }
 
+// GetClassAttribute gets an attribute value for a named mj-class
+func (ga *GlobalAttributes) GetClassAttribute(className, attrName string) string {
+	if classAttrs, exists := ga.classDefaults[className]; exists {
+		if value, ok := classAttrs[attrName]; ok {
+			return value
+		}
+	}
+	return ""
+}
+
+// GetClassAttributes returns all attributes for a given mj-class
+func (ga *GlobalAttributes) GetClassAttributes(className string) map[string]string {
+	if attrs, exists := ga.classDefaults[className]; exists {
+		return attrs
+	}
+	return nil
+}
+
 // Global instance (will be set during rendering)
 var instance *GlobalAttributes
 
@@ -87,4 +130,20 @@ func GetGlobalAttribute(componentName, attrName string) string {
 		return ""
 	}
 	return instance.GetGlobalAttribute(componentName, attrName)
+}
+
+// GetClassAttribute is a package-level function to access mj-class definitions
+func GetClassAttribute(className, attrName string) string {
+	if instance == nil {
+		return ""
+	}
+	return instance.GetClassAttribute(className, attrName)
+}
+
+// GetClassAttributes is a package-level function to access full mj-class attribute maps
+func GetClassAttributes(className string) map[string]string {
+	if instance == nil {
+		return nil
+	}
+	return instance.GetClassAttributes(className)
 }
