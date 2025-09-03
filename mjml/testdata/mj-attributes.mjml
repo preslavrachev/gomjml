@@ -4,16 +4,78 @@
       <mj-text padding="0" />
       <mj-class name="blue" color="blue" />
       <mj-class name="big" font-size="20px" />
+      <mj-class name="padded" padding="20px" />
+      <mj-class name="center" align="center" />
+      <mj-class name="rounded" border-radius="10px" />
       <mj-all font-family="Arial" />
     </mj-attributes>
   </mj-head>
-  <mj-body>
-    <mj-section>
-      <mj-column>
-        <mj-text mj-class="blue big">
-          Hello World!
-        </mj-text>
-      </mj-column>
-    </mj-section>
+  <mj-body mj-class="padded">
+    <mj-wrapper mj-class="rounded">
+      <mj-section mj-class="center">
+        <mj-column mj-class="padded">
+          <!-- Content components -->
+          <mj-text mj-class="blue big">
+            Hello World!
+          </mj-text>
+          <mj-button mj-class="rounded center">Click Me</mj-button>
+          <mj-divider mj-class="blue" />
+          <mj-spacer mj-class="padded" />
+          <mj-image mj-class="rounded center" src="https://via.placeholder.com/150" />
+          <mj-table mj-class="center">
+            <tr><td>Test</td><td>Table</td></tr>
+          </mj-table>
+          
+          
+          <!-- Social components -->
+          <mj-social mj-class="center">
+            <mj-social-element mj-class="rounded" name="facebook" href="#" />
+            <mj-social-element mj-class="rounded" name="twitter" href="#" />
+          </mj-social>
+          
+          <!-- Raw/HTML components -->
+          <mj-raw mj-class="center">
+            <div style="color: red;">Raw HTML</div>
+          </mj-raw>
+          
+          <!-- Accordion components -->
+          <mj-accordion mj-class="padded">
+            <mj-accordion-element mj-class="rounded">
+              <mj-accordion-title mj-class="blue">Title</mj-accordion-title>
+              <mj-accordion-text mj-class="padded">Content</mj-accordion-text>
+            </mj-accordion-element>
+          </mj-accordion>
+          
+          <!-- Navbar component -->
+          <mj-navbar mj-class="center">
+            <mj-navbar-link mj-class="blue" href="#">Link 1</mj-navbar-link>
+            <mj-navbar-link mj-class="blue" href="#">Link 2</mj-navbar-link>
+          </mj-navbar>
+          
+          <!-- Carousel components -->
+          <mj-carousel mj-class="center">
+            <mj-carousel-image mj-class="rounded" src="https://via.placeholder.com/300x200" />
+            <mj-carousel-image mj-class="rounded" src="https://via.placeholder.com/300x200" />
+          </mj-carousel>
+        </mj-column>
+      </mj-section>
+      
+      <!-- Group component section -->
+      <mj-section>
+        <mj-group mj-class="padded">
+          <mj-column>
+            <mj-text mj-class="blue">Group Column 1</mj-text>
+          </mj-column>
+          <mj-column>
+            <mj-text mj-class="blue">Group Column 2</mj-text>
+          </mj-column>
+        </mj-group>
+      </mj-section>
+      
+      <!-- Hero component (container level) -->
+      <mj-hero mj-class="center padded" background-url="https://via.placeholder.com/600x400">
+        <mj-text mj-class="blue big">Hero Content</mj-text>
+      </mj-hero>
+    </mj-wrapper>
   </mj-body>
 </mjml>
