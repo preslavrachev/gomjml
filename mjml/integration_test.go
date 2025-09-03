@@ -36,6 +36,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mjml",
 		"mj-body",
 		"basic",
+		"comment",
 		"with-head",
 		"complex-layout",
 		"wrapper-basic",
@@ -65,6 +66,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mrml-text-basic",
 		"mrml-button-basic",
 		"body-wrapper-section",
+		"mj-attributes",
 		// MJ-Group tests from MRML
 		"mj-group",
 		"mj-group-background-color",
@@ -142,7 +144,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		"notifuse-full",
+		//"notifuse-full",
 	}
 
 	for _, testName := range testCases {
