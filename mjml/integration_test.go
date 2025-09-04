@@ -186,11 +186,12 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				t.Errorf("\n%s", domDiff)
 
 				// Enhanced debugging: analyze style differences with precise element identification
-				t.Logf("Style differences for %s:", testName)
+				// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
 				styleResult := testutils.CompareStylesPrecise(expected, actual)
 				if styleResult.ParseError != nil {
 					t.Logf("DOM parsing failed: %v", styleResult.ParseError)
-				} else {
+				} else if styleResult.HasDifferences {
+					t.Logf("Style differences for %s:", testName)
 					for _, element := range styleResult.Elements {
 						switch element.Status {
 						case testutils.ElementExtra:
