@@ -1,7 +1,10 @@
 package components
 
 import (
+	"fmt"
 	"io"
+	"strconv"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -100,8 +103,18 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO conditional comment for Outlook compatibility
-	msoTable := `<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="550px" style="border-top:` + borderStyle + ` ` + borderWidth + ` ` + borderColor + `;font-size:1px;margin:0px auto;width:550px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`
+	// MSO conditional comment for Outlook compatibility - calculate width based on container width minus padding
+	// Container width minus divider padding (25px left + 25px right = 50px total from default "10px 25px")
+	containerWidth := c.GetContainerWidth()
+	if containerWidth <= 0 {
+		containerWidth = 600 // fallback
+	}
+
+	// Parse divider padding to get accurate left + right values
+	leftPadding, rightPadding := c.parseDividerPaddingLeftRight(padding)
+	msoWidth := containerWidth - leftPadding - rightPadding
+
+	msoTable := fmt.Sprintf(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="%dpx" style="border-top:%s %s %s;font-size:1px;margin:0px auto;width:%dpx;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`, msoWidth, borderStyle, borderWidth, borderColor, msoWidth)
 	if _, err := w.WriteString(msoTable); err != nil {
 		return err
 	}
@@ -118,4 +131,32 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 
 func (c *MJDividerComponent) GetTagName() string {
 	return "mj-divider"
+}
+
+// parseDividerPaddingLeftRight parses CSS padding shorthand to get left and right padding values in pixels
+func (c *MJDividerComponent) parseDividerPaddingLeftRight(padding string) (left, right int) {
+	if padding == "" {
+		return 0, 0
+	}
+
+	// Handle default "10px 25px" case - top/bottom=10px, left/right=25px
+	parts := strings.Fields(padding)
+	if len(parts) == 2 {
+		// "10px 25px" format
+		if strings.HasSuffix(parts[1], "px") {
+			if value, err := strconv.Atoi(strings.TrimSuffix(parts[1], "px")); err == nil {
+				return value, value // left and right are the same
+			}
+		}
+	} else if len(parts) == 1 {
+		// Single value applies to all sides
+		if strings.HasSuffix(parts[0], "px") {
+			if value, err := strconv.Atoi(strings.TrimSuffix(parts[0], "px")); err == nil {
+				return value, value
+			}
+		}
+	}
+
+	// Fallback for complex cases
+	return 0, 0
 }

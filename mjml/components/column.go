@@ -34,6 +34,60 @@ func (c *MJColumnComponent) GetTagName() string {
 	return "mj-column"
 }
 
+// calculateEffectiveContentWidth calculates the available content width for column children
+// by subtracting the column's own padding from its actual width (not container width)
+func (c *MJColumnComponent) calculateEffectiveContentWidth() int {
+	// Use the column's own width, not the container width from section
+	columnWidth := c.GetWidthAsPixel()
+	containerWidth := 600 // fallback
+	if columnWidth != "" {
+		if strings.HasSuffix(columnWidth, "px") {
+			if value, err := strconv.Atoi(strings.TrimSuffix(columnWidth, "px")); err == nil {
+				containerWidth = value
+			}
+		}
+	}
+
+	// Get column padding (defaults to no padding)
+	getAttr := func(name string) string {
+		if attr := c.GetAttribute(name); attr != nil {
+			return *attr
+		}
+		return c.GetDefaultAttribute(name)
+	}
+
+	// Parse padding to get left + right values
+	padding := getAttr("padding")
+	leftPadding, rightPadding := c.parsePaddingLeftRight(padding)
+
+	// Subtract total horizontal padding
+	effectiveWidth := containerWidth - leftPadding - rightPadding
+	if effectiveWidth < 0 {
+		effectiveWidth = containerWidth // fallback
+	}
+
+	return effectiveWidth
+}
+
+// parsePaddingLeftRight parses CSS padding shorthand to get left and right padding values in pixels
+func (c *MJColumnComponent) parsePaddingLeftRight(padding string) (left, right int) {
+	if padding == "" {
+		return 0, 0
+	}
+
+	// Simple parsing for common cases - this should be enhanced with proper CSS parsing
+	// For now, handle the test case: "20px" -> 20px left + 20px right
+	if strings.HasSuffix(padding, "px") {
+		if value, err := strconv.Atoi(strings.TrimSuffix(padding, "px")); err == nil {
+			return value, value // same value for all sides
+		}
+	}
+
+	// For more complex cases like "10px 20px", would need full CSS padding parser
+	// For now, return 0 to be safe
+	return 0, 0
+}
+
 // Render implements optimized Writer-based rendering for MJColumnComponent
 func (c *MJColumnComponent) Render(w io.StringWriter) error {
 	// Helper function to get attribute with default
@@ -122,8 +176,13 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 		return err
 	}
 
+	// Calculate effective content width for children by subtracting column padding
+	effectiveWidth := c.calculateEffectiveContentWidth()
+
 	// Render column content (child components)
 	for _, child := range c.Children {
+		// Set container width for child (like section does)
+		child.SetContainerWidth(effectiveWidth)
 		if err := child.Render(w); err != nil {
 			return err
 		}

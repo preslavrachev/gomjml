@@ -74,7 +74,12 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		msoTable.AddAttribute(constants.AttrBgcolor, backgroundColor)
 	}
 
-	msoTable.AddAttribute("align", "center").
+	// Get align from attributes (including mj-class)
+	alignAttr := getAttr("align")
+	if alignAttr == "" {
+		alignAttr = "center" // default align for MSO table
+	}
+	msoTable.AddAttribute("align", alignAttr).
 		AddAttribute("width", strconv.Itoa(c.GetEffectiveWidth())).
 		AddStyle("width", c.GetEffectiveWidthString())
 
