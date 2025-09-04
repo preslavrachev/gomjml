@@ -1,10 +1,8 @@
 package components
 
 import (
-	"fmt"
 	"io"
 	"strconv"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -114,8 +112,38 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	leftPadding, rightPadding := c.parseDividerPaddingLeftRight(padding)
 	msoWidth := containerWidth - leftPadding - rightPadding
 
-	msoTable := fmt.Sprintf(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="%dpx" style="border-top:%s %s %s;font-size:1px;margin:0px auto;width:%dpx;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`, msoWidth, borderStyle, borderWidth, borderColor, msoWidth)
-	if _, err := w.WriteString(msoTable); err != nil {
+	// Build MSO table directly to writer to avoid fmt.Sprintf allocation
+	if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`px" style="border-top:`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(borderStyle); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(" "); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(borderWidth); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(" "); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(borderColor); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`;font-size:1px;margin:0px auto;width:`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`); err != nil {
 		return err
 	}
 
@@ -134,29 +162,43 @@ func (c *MJDividerComponent) GetTagName() string {
 }
 
 // parseDividerPaddingLeftRight parses CSS padding shorthand to get left and right padding values in pixels
+// Optimized to avoid allocations by parsing in place
 func (c *MJDividerComponent) parseDividerPaddingLeftRight(padding string) (left, right int) {
-	if padding == "" {
+	if len(padding) == 0 {
 		return 0, 0
 	}
 
-	// Handle default "10px 25px" case - top/bottom=10px, left/right=25px
-	parts := strings.Fields(padding)
-	if len(parts) == 2 {
-		// "10px 25px" format
-		if strings.HasSuffix(parts[1], "px") {
-			if value, err := strconv.Atoi(strings.TrimSuffix(parts[1], "px")); err == nil {
-				return value, value // left and right are the same
-			}
+	// Fast path: single value like "20px"
+	if len(padding) > 2 && padding[len(padding)-2:] == "px" {
+		// Parse without allocating substring
+		if value, err := strconv.Atoi(padding[:len(padding)-2]); err == nil {
+			return value, value // same value for all sides
 		}
-	} else if len(parts) == 1 {
-		// Single value applies to all sides
-		if strings.HasSuffix(parts[0], "px") {
-			if value, err := strconv.Atoi(strings.TrimSuffix(parts[0], "px")); err == nil {
+	}
+
+	// Handle "10px 25px" format - find space separator without Fields allocation
+	spaceIdx := -1
+	for i := 0; i < len(padding); i++ {
+		if padding[i] == ' ' {
+			spaceIdx = i
+			break
+		}
+	}
+
+	if spaceIdx > 0 {
+		// Find second token (skip spaces)
+		secondStart := spaceIdx + 1
+		for secondStart < len(padding) && padding[secondStart] == ' ' {
+			secondStart++
+		}
+
+		if secondStart < len(padding) && len(padding) > secondStart+2 && padding[len(padding)-2:] == "px" {
+			// Parse second value (left/right padding) without substring allocation
+			if value, err := strconv.Atoi(padding[secondStart : len(padding)-2]); err == nil {
 				return value, value
 			}
 		}
 	}
 
-	// Fallback for complex cases
 	return 0, 0
 }

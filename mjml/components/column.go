@@ -40,11 +40,10 @@ func (c *MJColumnComponent) calculateEffectiveContentWidth() int {
 	// Use the column's own width, not the container width from section
 	columnWidth := c.GetWidthAsPixel()
 	containerWidth := 600 // fallback
-	if columnWidth != "" {
-		if strings.HasSuffix(columnWidth, "px") {
-			if value, err := strconv.Atoi(strings.TrimSuffix(columnWidth, "px")); err == nil {
-				containerWidth = value
-			}
+	if len(columnWidth) > 2 && columnWidth[len(columnWidth)-2:] == "px" {
+		// Parse without allocating substring
+		if value, err := strconv.Atoi(columnWidth[:len(columnWidth)-2]); err == nil {
+			containerWidth = value
 		}
 	}
 
@@ -70,21 +69,44 @@ func (c *MJColumnComponent) calculateEffectiveContentWidth() int {
 }
 
 // parsePaddingLeftRight parses CSS padding shorthand to get left and right padding values in pixels
+// Optimized to avoid allocations by parsing in place
 func (c *MJColumnComponent) parsePaddingLeftRight(padding string) (left, right int) {
-	if padding == "" {
+	if len(padding) == 0 {
 		return 0, 0
 	}
 
-	// Simple parsing for common cases - this should be enhanced with proper CSS parsing
-	// For now, handle the test case: "20px" -> 20px left + 20px right
-	if strings.HasSuffix(padding, "px") {
-		if value, err := strconv.Atoi(strings.TrimSuffix(padding, "px")); err == nil {
+	// Fast path: single value like "20px"
+	if len(padding) > 2 && padding[len(padding)-2:] == "px" {
+		// Parse without allocating substring
+		if value, err := strconv.Atoi(padding[:len(padding)-2]); err == nil {
 			return value, value // same value for all sides
 		}
 	}
 
-	// For more complex cases like "10px 20px", would need full CSS padding parser
-	// For now, return 0 to be safe
+	// Handle "10px 25px" format by finding space separator
+	spaceIdx := -1
+	for i := 0; i < len(padding); i++ {
+		if padding[i] == ' ' {
+			spaceIdx = i
+			break
+		}
+	}
+
+	if spaceIdx > 0 {
+		// Find second token (skip spaces)
+		secondStart := spaceIdx + 1
+		for secondStart < len(padding) && padding[secondStart] == ' ' {
+			secondStart++
+		}
+
+		if secondStart < len(padding) && len(padding) > secondStart+2 && padding[len(padding)-2:] == "px" {
+			// Parse second value (left/right padding)
+			if value, err := strconv.Atoi(padding[secondStart : len(padding)-2]); err == nil {
+				return value, value
+			}
+		}
+	}
+
 	return 0, 0
 }
 
