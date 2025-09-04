@@ -176,6 +176,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
+	// AIDEV-NOTE: width-flow-start; section initiates width flow by passing effective width to columns
 	for _, child := range c.Children {
 		if child.IsRawElement() {
 			if err := child.Render(w); err != nil {

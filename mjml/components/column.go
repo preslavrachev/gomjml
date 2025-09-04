@@ -36,6 +36,7 @@ func (c *MJColumnComponent) GetTagName() string {
 
 // calculateEffectiveContentWidth calculates the available content width for column children
 // by subtracting the column's own padding from its actual width (not container width)
+// AIDEV-NOTE: width-flow-core; column must subtract paddings before SetContainerWidth() calls to children
 func (c *MJColumnComponent) calculateEffectiveContentWidth() int {
 	// Use the column's own width, not the container width from section
 	columnWidth := c.GetWidthAsPixel()
@@ -202,6 +203,7 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 	effectiveWidth := c.calculateEffectiveContentWidth()
 
 	// Render column content (child components)
+	// AIDEV-NOTE: width-flow-children; SetContainerWidth passes effective width to children after subtracting column padding
 	for _, child := range c.Children {
 		// Set container width for child (like section does)
 		child.SetContainerWidth(effectiveWidth)

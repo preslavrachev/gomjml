@@ -103,6 +103,7 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 
 	// MSO conditional comment for Outlook compatibility - calculate width based on container width minus padding
 	// Container width minus divider padding (25px left + 25px right = 50px total from default "10px 25px")
+	// AIDEV-NOTE: width-flow-divider; divider gets containerWidth from column and subtracts its own padding for MSO table width
 	containerWidth := c.GetContainerWidth()
 	if containerWidth <= 0 {
 		containerWidth = 600 // fallback

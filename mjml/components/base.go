@@ -284,11 +284,13 @@ func (bc *BaseComponent) GetDefaultAttribute(name string) string {
 }
 
 // SetContainerWidth sets the container width in pixels for this component
+// AIDEV-NOTE: width-flow-interface; container width flows from parent to child components
 func (bc *BaseComponent) SetContainerWidth(widthPx int) {
 	bc.ContainerWidth = widthPx
 }
 
 // GetContainerWidth returns the container width in pixels (0 means use default body width)
+// AIDEV-NOTE: width-flow-interface; used by child components to calculate their effective rendering width
 func (bc *BaseComponent) GetContainerWidth() int {
 	return bc.ContainerWidth
 }
@@ -319,6 +321,7 @@ func (bc *BaseComponent) GetNonRawSiblings() int {
 }
 
 // GetEffectiveWidth returns the container width if set, otherwise default body width
+// AIDEV-NOTE: width-flow-calculation; used to calculate actual pixel width for rendering and child width calculation
 func (bc *BaseComponent) GetEffectiveWidth() int {
 	if bc.ContainerWidth > 0 {
 		return bc.ContainerWidth
