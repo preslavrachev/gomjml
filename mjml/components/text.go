@@ -36,9 +36,17 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 		"container_width": c.GetContainerWidth(),
 	})
 
-	// Get attributes using full resolution order (element > mj-class > global > default)
-	align := c.GetAttributeFast(c, constants.MJMLAlign)
-	padding := c.GetAttributeFast(c, constants.MJMLPadding)
+	// Helper function to get attribute with default
+	getAttr := func(name string) string {
+		if attr := c.GetAttribute(name); attr != nil {
+			return *attr
+		}
+		return c.GetDefaultAttribute(name)
+	}
+
+	// Get attributes
+	align := getAttr(constants.MJMLAlign)
+	padding := getAttr(constants.MJMLPadding)
 
 	// Create TR element
 	if _, err := w.WriteString("<tr>"); err != nil {
@@ -57,17 +65,17 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add specific padding overrides if they exist (following MRML/section pattern)
-	if paddingTop := c.GetAttributeFast(c, constants.MJMLPaddingTop); paddingTop != "" {
-		tdTag.AddStyle(constants.CSSPaddingTop, paddingTop)
+	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
 	}
-	if paddingBottom := c.GetAttributeFast(c, constants.MJMLPaddingBottom); paddingBottom != "" {
-		tdTag.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	if paddingBottomAttr := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottomAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingBottom, *paddingBottomAttr)
 	}
-	if paddingLeft := c.GetAttributeFast(c, constants.MJMLPaddingLeft); paddingLeft != "" {
-		tdTag.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingLeft, *paddingLeftAttr)
 	}
-	if paddingRight := c.GetAttributeFast(c, constants.MJMLPaddingRight); paddingRight != "" {
-		tdTag.AddStyle(constants.CSSPaddingRight, paddingRight)
+	if paddingRightAttr := c.GetAttribute(constants.MJMLPaddingRight); paddingRightAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingRight, *paddingRightAttr)
 	}
 
 	tdTag.AddStyle("word-break", "break-word")

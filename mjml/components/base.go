@@ -59,8 +59,6 @@ type BaseComponent struct {
 	Node           *parser.MJMLNode
 	Children       []Component
 	Attrs          map[string]string
-	classNames     []string            // Split mj-class attribute values
-	classAttrs     map[string]string   // Merged attributes from mj-class definitions
 	ContainerWidth int                 // Container width in pixels (0 means use default)
 	Siblings       int                 // Total siblings count
 	RawSiblings    int                 // Raw siblings count (for width calculations)
@@ -74,30 +72,6 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		attrs[attr.Name.Local] = attr.Value
 	}
 
-	var classNames []string
-	var classAttrs map[string]string
-	if classAttr, ok := attrs["mj-class"]; ok && classAttr != "" {
-		classNames = strings.Fields(classAttr)
-		if len(classNames) > 0 {
-			classAttrs = make(map[string]string)
-			cssClassParts := make([]string, 0, len(classNames)) // pre-allocate with capacity
-			for _, className := range classNames {
-				if ca := globals.GetClassAttributes(className); ca != nil {
-					for k, v := range ca {
-						if k == "css-class" {
-							cssClassParts = append(cssClassParts, v)
-							continue
-						}
-						classAttrs[k] = v // last class wins
-					}
-				}
-			}
-			if len(cssClassParts) > 0 {
-				classAttrs["css-class"] = strings.Join(cssClassParts, " ")
-			}
-		}
-	}
-
 	if opts == nil {
 		opts = &options.RenderOpts{}
 	}
@@ -105,8 +79,6 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 	return &BaseComponent{
 		Node:           node,
 		Attrs:          attrs,
-		classNames:     classNames,
-		classAttrs:     classAttrs,
 		Children:       make([]Component, 0, len(node.Children)),
 		ContainerWidth: 0, // 0 means use default body width
 		Siblings:       1,
@@ -132,10 +104,7 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 		return &value
 	}
 
-	// 2. Check mj-class definitions
-	if classValue := bc.getClassAttribute(name); classValue != "" {
-		return &classValue
-	}
+	// 2. Check mj-class (TODO: implement)
 
 	// 3. Check global defaults - we can't access GetTagName from BaseComponent
 	// Global attributes will be checked in GetAttributeWithDefault or by passing component
@@ -148,29 +117,26 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 	return nil
 }
 
-// GetAttributeFast gets an attribute value without debug logging using full resolution order
-func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
-	// 1. Element attributes
+// GetAttributeWithGlobal gets an attribute value checking global attributes for the given component tag
+func (bc *BaseComponent) GetAttributeWithGlobal(name, tagName string) *string {
+	// 1. Check element attributes
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		return value
+		return &value
 	}
 
-	// 2. mj-class definitions
-	if classValue := bc.getClassAttribute(name); classValue != "" {
-		return classValue
+	// 2. Check mj-class (TODO: implement)
+
+	// 3. Check global defaults via globals package
+	if globalValue := globals.GetGlobalAttribute(tagName, name); globalValue != "" {
+		return &globalValue
 	}
 
-	// 3. Global attributes
-	if globalValue := globals.GetGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-		return globalValue
+	// 4. Check component defaults
+	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
+		return &defaultVal
 	}
 
-	// 4. Component defaults
-	if defaultVal := comp.GetDefaultAttribute(name); defaultVal != "" {
-		return defaultVal
-	}
-
-	return ""
+	return nil
 }
 
 // GetAttributeWithDefault gets an attribute with component-specific defaults
@@ -189,20 +155,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		return value
 	}
 
-	// 2. Check mj-class definitions
-	if classValue := bc.getClassAttribute(name); classValue != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-class", "Using mj-class attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": classValue,
-			"classes":    bc.Attrs["mj-class"],
-		})
-		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(classValue)
-		}
-		return classValue
-	}
-
-	// 3. Check global attributes if available (we'll get this via external function)
+	// 2. Check global attributes if available (we'll get this via external function)
 	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
 		debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]interface{}{
 			"attr_name":  name,
@@ -215,7 +168,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		return globalValue
 	}
 
-	// 4. Check component defaults via interface method (properly calls overridden method)
+	// 3. Check component defaults via interface method (properly calls overridden method)
 	defaultValue := comp.GetDefaultAttribute(name)
 	if defaultValue != "" {
 		debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]interface{}{
@@ -234,17 +187,6 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 func (bc *BaseComponent) getGlobalAttribute(componentName, attrName string) string {
 	// Access global attributes via globals package
 	return globals.GetGlobalAttribute(componentName, attrName)
-}
-
-// getClassAttribute retrieves an attribute value from mj-class definitions if present
-func (bc *BaseComponent) getClassAttribute(attrName string) string {
-	if bc.classAttrs == nil {
-		return ""
-	}
-	if v, ok := bc.classAttrs[attrName]; ok {
-		return v
-	}
-	return ""
 }
 
 // GetAttributeAsPixel parses an attribute value as a CSS pixel value
@@ -487,12 +429,8 @@ func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
 		}
 	}
 
-	// Determine css-class from element or mj-class definitions
-	cssClass := bc.GetCSSClass()
-	if cssClass == "" {
-		cssClass = bc.getClassAttribute("css-class")
-	}
-	if cssClass != "" {
+	// Add css-class if present
+	if cssClass := bc.GetCSSClass(); cssClass != "" {
 		classes = append(classes, cssClass)
 	}
 
