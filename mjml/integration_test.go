@@ -9,6 +9,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/testutils"
 )
 
 /*
@@ -400,7 +401,7 @@ func compareStylesPrecise(t *testing.T, expected, actual string) {
 		} else if actual == nil {
 			t.Logf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
 				i, expected.Tag, expected.Classes, expected.Style)
-		} else if expected.Style != actual.Style {
+		} else if !testutils.StylesEqual(expected.Style, actual.Style) {
 			componentInfo := ""
 			if actual.Component != "" {
 				componentInfo = fmt.Sprintf(" [created by %s]", actual.Component)
