@@ -17,6 +17,12 @@ TestMJMLAgainstExpected runs a suite of integration tests to verify that the MJM
 implementation produces HTML output matching the expected results for a variety of MJML input files,
 created using the MRML CLI.
 
+// AIDEV-NOTE: If you are unsure about a test output, try the htmlcompare utility for a semantic diff.
+// Example:
+//   cd mjml/testdata && ../../bin/htmlcompare basic
+// Or from project root:
+//   ./bin/htmlcompare basic --testdata-dir mjml/testdata
+
 For each test case, it reads the corresponding MJML file from the "testdata" directory, using the test case name
 (e.g., "basic") to construct the filename "testdata/basic.mjml". It then renders the MJML to HTML using the Render function,
 and compares the output to a pre-generated expected HTML file named "testdata/basic.html".
