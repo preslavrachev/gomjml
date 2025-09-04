@@ -1099,7 +1099,8 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	// Only auto-import default fonts if no fonts were already detected from content
 	// This matches MRML's behavior: explicit fonts override default font imports
-	if len(detectedFonts) == 0 && hasSocial {
+	// Also respect custom global fonts from mj-all attributes
+	if len(detectedFonts) == 0 && hasSocial && !c.hasCustomGlobalFonts() {
 		debug.DebugLogWithData(
 			"font-detection",
 			"check-defaults",
