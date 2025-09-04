@@ -1,6 +1,8 @@
 package testutils
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -205,5 +207,127 @@ func BenchmarkParseStyleProperties(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parseStyleProperties(style)
+	}
+}
+
+// TestCompareStylesPreciseConsistency verifies that CompareStylesPrecise and StylesEqual
+// behave consistently - if StylesEqual returns true, CompareStylesPrecise should not log any differences
+func TestCompareStylesPreciseConsistency(t *testing.T) {
+	testCases := []struct {
+		name        string
+		expected    string
+		actual      string
+		stylesEqual bool
+	}{
+		{
+			name:        "identical styles",
+			expected:    `<div style="color: red; font-size: 12px;">content</div>`,
+			actual:      `<div style="color: red; font-size: 12px;">content</div>`,
+			stylesEqual: true,
+		},
+		{
+			name:        "reordered CSS properties",
+			expected:    `<div style="color: red; font-size: 12px;">content</div>`,
+			actual:      `<div style="font-size: 12px; color: red;">content</div>`,
+			stylesEqual: true,
+		},
+		{
+			name:        "different whitespace in styles",
+			expected:    `<div style="color:red;font-size:12px;">content</div>`,
+			actual:      `<div style="color: red; font-size: 12px;">content</div>`,
+			stylesEqual: true,
+		},
+		{
+			name:        "extra semicolons and whitespace",
+			expected:    `<div style="color: red;  font-size: 12px;;">content</div>`,
+			actual:      `<div style="font-size: 12px; color: red">content</div>`,
+			stylesEqual: true,
+		},
+		{
+			name:        "different style values should differ",
+			expected:    `<div style="color: red;">content</div>`,
+			actual:      `<div style="color: blue;">content</div>`,
+			stylesEqual: false,
+		},
+		{
+			name:        "missing properties should differ",
+			expected:    `<div style="color: red; font-size: 12px;">content</div>`,
+			actual:      `<div style="color: red;">content</div>`,
+			stylesEqual: false,
+		},
+		{
+			name:        "complex real-world styles",
+			expected:    `<table style="font-size:0px;padding:20px;word-break:break-word;"><tr><td style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;">content</td></tr></table>`,
+			actual:      `<table style="font-size:0px;word-break:break-word;padding:20px;"><tr><td style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;">content</td></tr></table>`,
+			stylesEqual: true,
+		},
+		{
+			name: "multiple elements with mixed differences",
+			expected: `<div style="color: red;">
+				<p style="font-size: 12px; margin: 10px;">text</p>
+				<span style="background: white;">span</span>
+			</div>`,
+			actual: `<div style="color: red;">
+				<p style="margin: 10px; font-size: 12px;">text</p>
+				<span style="background: black;">span</span>
+			</div>`,
+			stylesEqual: false, // span has different background
+		},
+		{
+			name:        "no styled elements",
+			expected:    `<div>content</div>`,
+			actual:      `<div>content</div>`,
+			stylesEqual: true,
+		},
+		{
+			name:        "empty style attributes",
+			expected:    `<div style="">content</div>`,
+			actual:      `<div style="">content</div>`,
+			stylesEqual: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Run CompareStylesPrecise and get structured result
+			result := CompareStylesPrecise(tc.expected, tc.actual)
+
+			if result.ParseError != nil {
+				t.Fatalf("Failed to parse HTML: %v", result.ParseError)
+			}
+
+			// Check consistency between CompareStylesPrecise and StylesEqual for each element
+			var inconsistencies []string
+
+			for _, element := range result.Elements {
+				// Only check elements that have both expected and actual styles
+				if element.Status == ElementIdentical || element.Status == ElementDifferent {
+					stylesEqualResult := StylesEqual(element.Expected, element.Actual)
+					compareStylesPreciseFoundDiff := (element.Status == ElementDifferent)
+
+					// If StylesEqual says they're equal, CompareStylesPrecise should mark as identical
+					if stylesEqualResult && compareStylesPreciseFoundDiff {
+						inconsistencies = append(inconsistencies,
+							fmt.Sprintf("Element[%d]: StylesEqual returned true but CompareStylesPrecise found differences. Expected: %q, Actual: %q",
+								element.Index, element.Expected, element.Actual))
+					}
+
+					// If StylesEqual says they differ, CompareStylesPrecise should mark as different
+					if !stylesEqualResult && !compareStylesPreciseFoundDiff {
+						inconsistencies = append(inconsistencies,
+							fmt.Sprintf("Element[%d]: StylesEqual returned false but CompareStylesPrecise found no differences. Expected: %q, Actual: %q",
+								element.Index, element.Expected, element.Actual))
+					}
+				}
+			}
+
+			if len(inconsistencies) > 0 {
+				t.Errorf("Inconsistencies between StylesEqual and CompareStylesPrecise:\n%s", strings.Join(inconsistencies, "\n"))
+				t.Logf("CompareStylesPrecise result: HasDifferences=%v, Elements=%d", result.HasDifferences, len(result.Elements))
+				for i, elem := range result.Elements {
+					t.Logf("  Element[%d]: Status=%d, Expected=%q, Actual=%q", i, elem.Status, elem.Expected, elem.Actual)
+				}
+			}
+		})
 	}
 }

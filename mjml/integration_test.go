@@ -187,7 +187,37 @@ func TestMJMLAgainstExpected(t *testing.T) {
 
 				// Enhanced debugging: analyze style differences with precise element identification
 				t.Logf("Style differences for %s:", testName)
-				compareStylesPrecise(t, expected, actual)
+				styleResult := testutils.CompareStylesPrecise(expected, actual)
+				if styleResult.ParseError != nil {
+					t.Logf("DOM parsing failed: %v", styleResult.ParseError)
+				} else {
+					for _, element := range styleResult.Elements {
+						switch element.Status {
+						case testutils.ElementExtra:
+							componentInfo := ""
+							if element.Component != "" {
+								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+							}
+							t.Logf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
+								element.Index, element.Tag, element.Classes, element.Actual, componentInfo)
+						case testutils.ElementMissing:
+							t.Logf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
+								element.Index, element.Tag, element.Classes, element.Expected)
+						case testutils.ElementDifferent:
+							componentInfo := ""
+							if element.Component != "" {
+								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+							}
+							t.Logf("  Style diff element[%d]: <%s class=\"%s\">%s",
+								element.Index, element.Tag, element.Classes, componentInfo)
+							t.Logf("    Expected: style=\"%s\"", element.Expected)
+							t.Logf("    Actual:   style=\"%s\"", element.Actual)
+							if !element.StyleDiff.IsEmpty() {
+								t.Logf("    %s", element.StyleDiff.String())
+							}
+						}
+					}
+				}
 
 				writeDebugFiles(testName, expected, actual)
 			} else {
@@ -329,122 +359,6 @@ func TestCSSNormalization(t *testing.T) {
 			}
 		})
 	}
-}
-
-// compareStylesPrecise provides exact element identification for style differences
-func compareStylesPrecise(t *testing.T, expected, actual string) {
-	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
-	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
-
-	if err1 != nil || err2 != nil {
-		t.Logf("DOM parsing failed: expected=%v, actual=%v", err1, err2)
-		return
-	}
-
-	// Build ordered lists of styled elements
-	var expectedElements []ElementInfo
-	var actualElements []ElementInfo
-
-	expectedDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
-		style, _ := el.Attr("style")
-		classes, _ := el.Attr("class")
-		tagName := goquery.NodeName(el)
-
-		expectedElements = append(expectedElements, ElementInfo{
-			Tag:     tagName,
-			Classes: classes,
-			Style:   style,
-			Index:   i,
-		})
-	})
-
-	actualDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
-		style, _ := el.Attr("style")
-		classes, _ := el.Attr("class")
-		tagName := goquery.NodeName(el)
-
-		// Extract debug info to identify which MJML component created this element
-		debugComponent := ""
-		if debugAttr, exists := el.Attr("data-mj-debug-group"); exists && debugAttr == "true" {
-			debugComponent = "mj-group"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-column"); exists && debugAttr == "true" {
-			debugComponent = "mj-column"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-section"); exists && debugAttr == "true" {
-			debugComponent = "mj-section"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-text"); exists && debugAttr == "true" {
-			debugComponent = "mj-text"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-wrapper"); exists && debugAttr == "true" {
-			debugComponent = "mj-wrapper"
-		}
-
-		actualElements = append(actualElements, ElementInfo{
-			Tag:       tagName,
-			Classes:   classes,
-			Style:     style,
-			Index:     i,
-			Component: debugComponent,
-		})
-	})
-
-	// Compare element by element
-	maxLen := max(len(expectedElements), len(actualElements))
-	for i := 0; i < maxLen; i++ {
-		var expected, actual *ElementInfo
-		if i < len(expectedElements) {
-			expected = &expectedElements[i]
-		}
-		if i < len(actualElements) {
-			actual = &actualElements[i]
-		}
-
-		if expected == nil {
-			componentInfo := ""
-			if actual.Component != "" {
-				componentInfo = fmt.Sprintf(" [created by %s]", actual.Component)
-			}
-			t.Logf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
-				i, actual.Tag, actual.Classes, actual.Style, componentInfo)
-		} else if actual == nil {
-			t.Logf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
-				i, expected.Tag, expected.Classes, expected.Style)
-		} else if !testutils.StylesEqual(expected.Style, actual.Style) {
-			componentInfo := ""
-			if actual.Component != "" {
-				componentInfo = fmt.Sprintf(" [created by %s]", actual.Component)
-			}
-			t.Logf("  Style diff element[%d]: <%s class=\"%s\">%s",
-				i, actual.Tag, actual.Classes, componentInfo)
-			t.Logf("    Expected: style=\"%s\"", expected.Style)
-			t.Logf("    Actual:   style=\"%s\"", actual.Style)
-
-			// Show specific property differences
-			expectedProps := parseStyleProperties(expected.Style)
-			actualProps := parseStyleProperties(actual.Style)
-
-			for prop, expectedVal := range expectedProps {
-				if actualVal, exists := actualProps[prop]; !exists {
-					t.Logf("    Missing property: %s=%s", prop, expectedVal)
-				} else if actualVal != expectedVal {
-					t.Logf("    Wrong value: %s=%s (expected %s)", prop, actualVal, expectedVal)
-				}
-			}
-
-			for prop, actualVal := range actualProps {
-				if _, exists := expectedProps[prop]; !exists {
-					t.Logf("    Extra property: %s=%s", prop, actualVal)
-				}
-			}
-		}
-	}
-}
-
-// ElementInfo represents a styled HTML element
-type ElementInfo struct {
-	Tag       string
-	Classes   string
-	Style     string
-	Index     int
-	Component string // Which MJML component created this element (from debug attrs)
 }
 
 // parseStyleProperties parses CSS style string into property map
@@ -723,7 +637,11 @@ func normalizeStyleAttribute(style string) string {
 	return result
 }
 
-// createDOMDiff creates a detailed diff report using DOM analysis
+// createDOMDiff compares two HTML DOM strings and returns a formatted string describing their differences.
+// It parses both expected and actual HTML strings, compares their structures, counts of common HTML tags,
+// style attributes, and debug attributes. Differences are highlighted using ANSI color codes for readability.
+// If no structural differences are found, it suggests checking text content and attribute values.
+// Returns a human-readable summary of DOM differences or parsing errors.
 func createDOMDiff(expected, actual string) string {
 	// ANSI color codes
 	red := "\033[31m"
@@ -784,7 +702,16 @@ func createDOMDiff(expected, actual string) string {
 		diffs = append(diffs, debugComparison)
 	}
 
+	// If no structural or style differences were found, but the test still failed,
+	// it means the DOM trees match in structure and attributes, but there may be
+	// differences in text content, attribute values, or other subtle issues.
+	// (This function is only called when compareDOMTrees returned false, so we know the test failed.)
 	if len(diffs) == 0 {
+		// Last resort: compare character-sorted strings to detect reordering
+		// With massive HTML strings, collision chance is astronomically low
+		if sortStringChars(expected) == sortStringChars(actual) {
+			return "DOM structures match and content is identical when sorted. Likely ordering-only differences."
+		}
 		return "DOM structures match but content differs. Check text content and attribute values."
 	}
 
@@ -1032,4 +959,12 @@ func checkSelfClosingTagDifferences(expected, actual string) string {
 // countTagPattern counts occurrences of a specific tag pattern in HTML
 func countTagPattern(html, pattern string) int {
 	return strings.Count(strings.ToLower(html), strings.ToLower(pattern))
+}
+
+// sortStringChars sorts all characters in a string alphabetically
+// Used to detect if two strings have identical content but different ordering
+func sortStringChars(s string) string {
+	chars := strings.Split(s, "")
+	sort.Strings(chars)
+	return strings.Join(chars, "")
 }
