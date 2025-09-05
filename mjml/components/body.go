@@ -2,6 +2,7 @@ package components
 
 import (
 	"io"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -35,23 +36,32 @@ func (c *MJBodyComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJBodyComponent
 func (c *MJBodyComponent) Render(w io.StringWriter) error {
-	// Apply background-color to div if specified (matching MRML's set_body_style)
 	backgroundColor := c.GetAttribute("background-color")
-
-	// Get lang attribute from render options (set by root MJML component)
 	langAttr := c.RenderOpts.Lang
 
-	// Build div tag with attributes
-	divTag := `<div`
+	// Build class attribute: just use the user's css-class if present
+	classAttr := c.BuildClassAttribute("")
+
+	var b strings.Builder
+	b.WriteString("<div")
 	if langAttr != "" {
-		divTag += ` lang="` + langAttr + `"`
+		b.WriteString(` lang="`)
+		b.WriteString(langAttr)
+		b.WriteString(`"`)
+	}
+	if classAttr != "" {
+		b.WriteString(` class="`)
+		b.WriteString(classAttr)
+		b.WriteString(`"`)
 	}
 	if backgroundColor != nil && *backgroundColor != "" {
-		divTag += ` style="background-color:` + *backgroundColor + `;"`
+		b.WriteString(` style="background-color:`)
+		b.WriteString(*backgroundColor)
+		b.WriteString(`;"`)
 	}
-	divTag += `>`
+	b.WriteString(">")
 
-	if _, err := w.WriteString(divTag); err != nil {
+	if _, err := w.WriteString(b.String()); err != nil {
 		return err
 	}
 
@@ -61,11 +71,8 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	if _, err := w.WriteString(`</div>`); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := w.WriteString("</div>")
+	return err
 }
 
 func (c *MJBodyComponent) GetDefaultAttribute(name string) string {

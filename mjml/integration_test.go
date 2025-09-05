@@ -42,6 +42,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 	testCases := []string{
 		"mjml",
 		"mj-body",
+		"mj-body-background-color",
+		"mj-body-class",
+		"mj-body-width",
 		"basic",
 		"comment",
 		"with-head",
