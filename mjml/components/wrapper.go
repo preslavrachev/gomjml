@@ -74,7 +74,21 @@ func (c *MJWrapperComponent) getBorderWidth() int {
 func (c *MJWrapperComponent) getEffectiveWidth() int {
 	baseWidth := GetDefaultBodyWidthPixels()
 	borderWidth := c.getBorderWidth()
-	return baseWidth - borderWidth
+	effectiveWidth := baseWidth - borderWidth
+
+	// Subtract horizontal padding
+	if pl := c.getAttribute(constants.MJMLPaddingLeft); pl != "" {
+		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
+			effectiveWidth -= int(px.Value)
+		}
+	}
+	if pr := c.getAttribute(constants.MJMLPaddingRight); pr != "" {
+		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
+			effectiveWidth -= int(px.Value)
+		}
+	}
+
+	return effectiveWidth
 }
 
 func (c *MJWrapperComponent) isFullWidth() bool {

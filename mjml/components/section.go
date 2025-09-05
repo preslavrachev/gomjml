@@ -237,9 +237,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Add layout styles
+	// Add layout styles - use actual container width (respects wrapper padding)
 	sectionDiv.AddStyle("margin", "0px auto").
-		AddStyle("max-width", c.GetEffectiveWidthString())
+		AddStyle("max-width", strconv.Itoa(c.GetContainerWidth())+"px")
+
+	// Add border-radius if specified
+	if borderRadius := getAttr("border-radius"); borderRadius != "" {
+		sectionDiv.AddStyle("border-radius", borderRadius)
+	}
 
 	if err := sectionDiv.RenderOpen(w); err != nil {
 		return err
@@ -282,8 +287,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Then add width
+	// Then add width and border-radius
 	innerTable.AddStyle("width", "100%")
+
+	// Add border-radius if specified
+	if borderRadius := getAttr("border-radius"); borderRadius != "" {
+		innerTable.AddStyle("border-radius", borderRadius)
+	}
 
 	if err := innerTable.RenderOpen(w); err != nil {
 		return err
