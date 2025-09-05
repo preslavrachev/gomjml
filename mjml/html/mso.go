@@ -410,7 +410,7 @@ func RenderMSOTableTrOpenConditional(w io.StringWriter, table, tr, td *HTMLTag) 
 
 // RenderMSOWrapperTableOpen renders MSO wrapper table opening directly to Writer without string allocation
 func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int) error {
-	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td align=\"center\" width=\""); err != nil {
+	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\""); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {

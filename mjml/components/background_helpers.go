@@ -134,7 +134,7 @@ func computeVMLPosition(posX, posY, size string) (originX, originY, posValX, pos
 		case "left", "top":
 			return "0"
 		case "center":
-			return "0.5"  
+			return "0.5"
 		case "right", "bottom":
 			return "1"
 		}
@@ -148,33 +148,33 @@ func computeVMLPosition(posX, posY, size string) (originX, originY, posValX, pos
 		// default
 		return "0.5"
 	}
-	
+
 	// Get base decimal values
 	decX := mapDecimal(posX, true)
 	decY := mapDecimal(posY, false)
-	
+
 	// For cover sizing, MJML uses special VML positioning logic
 	if size == "cover" {
 		// Convert position to VML values: center=0, top=-0.5
 		// This matches MJML's VML generation for cover backgrounds
 		vmlX := "0"    // center -> 0
 		vmlY := "-0.5" // top -> -0.5
-		
+
 		if posX == "left" {
 			vmlX = "-0.5"
 		} else if posX == "right" {
 			vmlX = "0.5"
 		}
-		
+
 		if posY == "center" {
 			vmlY = "0"
 		} else if posY == "bottom" {
-			vmlY = "0.5" 
+			vmlY = "0.5"
 		}
-		
+
 		return vmlX, vmlY, vmlX, vmlY
 	}
-	
+
 	// For other sizes, use standard mapping
 	return decX, decY, decX, decY
 }

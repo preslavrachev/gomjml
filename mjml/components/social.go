@@ -127,9 +127,17 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 	td.AddStyle(constants.CSSFontSize, "0px").
 		AddStyle(constants.CSSPadding, padding)
 
-	// Handle padding-left separately if specified
-	paddingLeft := c.Node.GetAttribute(constants.MJMLPaddingLeft)
-	if paddingLeft != "" {
+	// Handle individual padding properties - check all sides for MRML compatibility
+	if paddingTop := c.Node.GetAttribute(constants.MJMLPaddingTop); paddingTop != "" {
+		td.AddStyle(constants.CSSPaddingTop, paddingTop)
+	}
+	if paddingRight := c.Node.GetAttribute(constants.MJMLPaddingRight); paddingRight != "" {
+		td.AddStyle(constants.CSSPaddingRight, paddingRight)
+	}
+	if paddingBottom := c.Node.GetAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
+		td.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft := c.Node.GetAttribute(constants.MJMLPaddingLeft); paddingLeft != "" {
 		td.AddStyle(constants.CSSPaddingLeft, paddingLeft)
 	}
 

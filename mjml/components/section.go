@@ -8,6 +8,7 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -61,7 +62,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		outerTable := html.NewTableTag().
 			AddAttribute("align", "center")
 
-		// Apply background and border styles in MRML order
+		// Apply background styles (original approach) and border styles
 		c.ApplyBackgroundStyles(outerTable)
 		c.ApplyBorderStyles(outerTable)
 		outerTable.AddStyle("width", "100%")
@@ -80,6 +81,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Add attributes in MRML order: bgcolor, align, width
 	if backgroundColor != "" {
 		msoTable.AddAttribute(constants.AttrBgcolor, backgroundColor)
+	} else if hasBackgroundImage {
+		// Match MRML: when a background image is used without an explicit color,
+		// emit bgcolor="transparent" on the MSO table
+		msoTable.AddAttribute(constants.AttrBgcolor, "transparent")
 	}
 
 	// Get align from attributes (including mj-class)
@@ -87,9 +92,37 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if alignAttr == "" {
 		alignAttr = "center" // default align for MSO table
 	}
+	// Compute effective MSO inner width by subtracting horizontal padding
+	// from the container width to match MRML (e.g., 600 -> 560)
+	effectiveWidth := c.GetEffectiveWidth()
+	if padding != "" {
+		if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+			effectiveWidth -= int(sp.Left + sp.Right)
+		}
+	}
+	if pa := c.GetAttribute(constants.MJMLPaddingLeft); pa != nil && *pa != "" {
+		if px, err := styles.ParsePixel(*pa); err == nil && px != nil {
+			if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+				effectiveWidth += int(sp.Left)
+			}
+			effectiveWidth -= int(px.Value)
+		}
+	}
+	if pa := c.GetAttribute(constants.MJMLPaddingRight); pa != nil && *pa != "" {
+		if px, err := styles.ParsePixel(*pa); err == nil && px != nil {
+			if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+				effectiveWidth += int(sp.Right)
+			}
+			effectiveWidth -= int(px.Value)
+		}
+	}
+	if effectiveWidth < 0 {
+		effectiveWidth = 0
+	}
+
 	msoTable.AddAttribute("align", alignAttr).
-		AddAttribute("width", strconv.Itoa(c.GetEffectiveWidth())).
-		AddStyle("width", c.GetEffectiveWidthString())
+		AddAttribute("width", strconv.Itoa(effectiveWidth)).
+		AddStyle("width", getPixelWidthString(effectiveWidth))
 
 	// Add css-class-outlook if present
 	if cssClass := c.GetCSSClass(); cssClass != "" {
@@ -135,12 +168,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		vmlOpen = `<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"` +
 			widthFragment + `><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY +
 			`" src="` + htmlEscape(backgroundUrl) + `"` +
-			(func() string {
-				if backgroundColor != "" {
-					return ` color="` + backgroundColor + `"`
-				}
-				return ""
-			})() + sizeFragment + ` type="` + vmlType + `"` +
+			// Always include color attribute; use transparent when no explicit color
+			` color="` + func() string {
+			if backgroundColor != "" {
+				return backgroundColor
+			}
+			return "transparent"
+		}() + `"` +
+			sizeFragment + ` type="` + vmlType + `"` +
 			aspectFragment + ` /><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;">`
 
 		vmlClose = `</v:textbox></v:rect>`
@@ -159,14 +194,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if err := msoTd.RenderOpen(w); err != nil {
 		return err
 	}
-	
+
 	// Write VML opening if we have background image (inside MSO conditional)
 	if hasBackgroundImage {
 		if _, err := w.WriteString(vmlOpen); err != nil {
 			return err
 		}
 	}
-	
+
 	if _, err := w.WriteString("<![endif]-->"); err != nil {
 		return err
 	}
@@ -180,27 +215,27 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		sectionDiv.AddAttribute("class", cssClass)
 	}
 
-    // Background on main section div (MRML behavior):
-    // - When not full-width and we have a background image, use shorthand background
-    //   and explicitly set position/repeat/size (no extra longhands for color/image).
-    // - When only background color is present (no image) and not full-width, apply color.
-    if fullWidth == "" {
-        if backgroundUrl != "" {
-            posX, posY := parseBackgroundPosition(backgroundPosition)
-            posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
-            shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX, posY, backgroundSize, backgroundRepeat)
-            if shorthandBg != "" {
-                sectionDiv.AddStyle("background", shorthandBg)
-                // Add the explicit longhand properties to match MRML output
-                sectionDiv.AddStyle("background-position", posX+" "+posY)
-                sectionDiv.AddStyle("background-repeat", backgroundRepeat)
-                sectionDiv.AddStyle("background-size", backgroundSize)
-            }
-        } else if backgroundColor != "" {
-            // Color-only background
-            c.ApplyBackgroundStyles(sectionDiv)
-        }
-    }
+	// Background on main section div (MRML behavior):
+	// - When not full-width and we have a background image, use shorthand background
+	//   and explicitly set position/repeat/size (no extra longhands for color/image).
+	// - When only background color is present (no image) and not full-width, apply color.
+	if fullWidth == "" {
+		if backgroundUrl != "" {
+			posX, posY := parseBackgroundPosition(backgroundPosition)
+			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
+			shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX, posY, backgroundSize, backgroundRepeat)
+			if shorthandBg != "" {
+				sectionDiv.AddStyle("background", shorthandBg)
+				// Add the explicit longhand properties to match MRML output
+				sectionDiv.AddStyle("background-position", posX+" "+posY)
+				sectionDiv.AddStyle("background-repeat", backgroundRepeat)
+				sectionDiv.AddStyle("background-size", backgroundSize)
+			}
+		} else if backgroundColor != "" {
+			// Color-only background
+			c.ApplyBackgroundStyles(sectionDiv)
+		}
+	}
 
 	// Add layout styles
 	sectionDiv.AddStyle("margin", "0px auto").
@@ -212,40 +247,40 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Add intermediate div wrapper when we have background image (matches MRML structure)
 	var intermediateDiv *html.HTMLTag
-    if backgroundUrl != "" {
-        intermediateDiv = html.NewHTMLTag("div").
-            AddStyle("line-height", "0").
-            // Match MRML: font-size should be 0 (unitless), not 0px
-            AddStyle("font-size", "0")
-        if err := intermediateDiv.RenderOpen(w); err != nil {
-            return err
-        }
-    }
+	if backgroundUrl != "" {
+		intermediateDiv = html.NewHTMLTag("div").
+			AddStyle("line-height", "0").
+			// Match MRML: font-size should be 0 (unitless), not 0px
+			AddStyle("font-size", "0")
+		if err := intermediateDiv.RenderOpen(w); err != nil {
+			return err
+		}
+	}
 
 	// Inner table with styles
 	innerTable := html.NewTableTag().
 		AddAttribute("align", "center")
 
-    // Apply background styles to inner table
-    if backgroundUrl != "" {
-        // Use shorthand and explicit longhand properties (avoid extra background-color/image longhands)
-        posX, posY := parseBackgroundPosition(backgroundPosition)
-        posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
-        shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX, posY, backgroundSize, backgroundRepeat)
-        if shorthandBg != "" {
-            innerTable.AddStyle("background", shorthandBg)
-            innerTable.AddStyle("background-position", posX+" "+posY)
-            innerTable.AddStyle("background-repeat", backgroundRepeat)
-            innerTable.AddStyle("background-size", backgroundSize)
-            // Also add the background attribute for email client compatibility
-            innerTable.AddAttribute("background", backgroundUrl)
-        }
-    } else {
-        // No background image: apply defaults (color-only etc.)
-        if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
-            c.ApplyBackgroundStyles(innerTable)
-        }
-    }
+	// Apply background styles to inner table
+	if backgroundUrl != "" {
+		// Use shorthand and explicit longhand properties (avoid extra background-color/image longhands)
+		posX, posY := parseBackgroundPosition(backgroundPosition)
+		posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
+		shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX, posY, backgroundSize, backgroundRepeat)
+		if shorthandBg != "" {
+			innerTable.AddStyle("background", shorthandBg)
+			innerTable.AddStyle("background-position", posX+" "+posY)
+			innerTable.AddStyle("background-repeat", backgroundRepeat)
+			innerTable.AddStyle("background-size", backgroundSize)
+			// Also add the background attribute for email client compatibility
+			innerTable.AddAttribute("background", backgroundUrl)
+		}
+	} else {
+		// No background image: apply defaults (color-only etc.)
+		if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
+			c.ApplyBackgroundStyles(innerTable)
+		}
+	}
 
 	// Then add width
 	innerTable.AddStyle("width", "100%")
@@ -282,6 +317,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if err := tdTag.RenderOpen(w); err != nil {
 		return err
 	}
+
+	// No inner MSO wrapper here; per MRML, inner column MSO wrappers are handled separately
 
 	// Calculate sibling counts for width calculations (following MRML logic)
 	siblings := len(c.Children)
@@ -380,19 +417,19 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if err := innerTable.RenderClose(w); err != nil {
 		return err
 	}
-	
+
 	// Close intermediate div if we added one
 	if intermediateDiv != nil {
 		if err := intermediateDiv.RenderClose(w); err != nil {
 			return err
 		}
 	}
-	
+
 	if err := sectionDiv.RenderClose(w); err != nil {
 		return err
 	}
 
-	// Write VML closing if we have background image
+	// Write VML closing just before MSO close conditional (keeps previous passing behavior)
 	if hasBackgroundImage {
 		if _, err := w.WriteString(vmlClose); err != nil {
 			return err

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"sort"
+
 	"github.com/preslavrachev/gomjml/mjml/components"
 	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
@@ -686,7 +688,14 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 
 	// Standard responsive media query
 	css.WriteString(`<style type="text/css">@media only screen and (min-width:480px) { `)
-	for className, size := range c.columnClasses {
+	// Deterministic ordering to match MRML byte output
+	keys := make([]string, 0, len(c.columnClasses))
+	for k := range c.columnClasses {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, className := range keys {
+		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
 		css.WriteString(`.`)
 		css.WriteString(className)
@@ -700,7 +709,8 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 
 	// Mozilla-specific responsive media query
 	css.WriteString(`<style media="screen and (min-width:480px)">`)
-	for className, size := range c.columnClasses {
+	for _, className := range keys {
+		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
 		css.WriteString(`.moz-text-html .`)
 		css.WriteString(className)
