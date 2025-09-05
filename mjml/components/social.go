@@ -421,13 +421,18 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	alt := c.getAttribute("alt")
 
 	// Handle special sharing URL generation for known platforms
+	nameAttr := c.Node.GetAttribute("name")
 	if href != "" && !strings.HasPrefix(href, "http") {
-		nameAttr := c.Node.GetAttribute("name")
 		if nameAttr == "facebook" {
 			// Convert simple href to Facebook sharing URL
 			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
+		} else if nameAttr == "twitter" {
+			// Convert simple href to Twitter sharing URL
+			href = "https://twitter.com/home?status=" + href
 		}
 	}
+	// Note: Only generate default URLs when href is explicitly provided (even if empty like "#")
+	// Don't add default URLs when no href attribute exists - those are text-only social elements
 	target := c.getAttribute("target")
 	backgroundColor := c.getAttribute("background-color")
 	borderRadius := c.getAttribute("border-radius")
