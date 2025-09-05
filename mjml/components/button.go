@@ -178,6 +178,11 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 		if target != "" {
 			contentTag.AddAttribute("target", target)
 		}
+		// Add rel attribute if specified
+		rel := getAttr("rel")
+		if rel != "" {
+			contentTag.AddAttribute("rel", rel)
+		}
 	}
 
 	// Get font styles first

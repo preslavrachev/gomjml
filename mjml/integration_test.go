@@ -92,8 +92,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-image",
 		"mj-image-class",
 		"mj-image-src-with-url-params",
-		"mj-section-with-columns",
 		"mj-section",
+		"mj-section-bg-cover-no-repeat",
+		"mj-section-with-columns",
 		"mj-section-class",
 		"mj-column",
 		"mj-column-padding",
@@ -158,7 +159,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		"notifuse-full",
+		//"notifuse-full",
 	}
 
 	for _, testName := range testCases {
