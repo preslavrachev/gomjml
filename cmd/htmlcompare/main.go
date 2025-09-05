@@ -36,8 +36,8 @@ func main() {
 
 	flag.StringVar(&config.TestCase, "test", "", "Test case name (required)")
 	flag.StringVar(&config.TestDataDir, "testdata-dir", "", "Path to testdata directory (defaults to mjml/testdata)")
-	flag.BoolVar(&config.Verbose, "verbose", false, "Show more diff context (50 lines instead of 20)")
-	flag.BoolVar(&config.Verbose, "v", false, "Show more diff context (short)")
+	flag.BoolVar(&config.Verbose, "verbose", false, "Show verbose output (currently shows entire diff by default)")
+	flag.BoolVar(&config.Verbose, "v", false, "Show verbose output (short)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] test-case-name\n", os.Args[0])
@@ -47,7 +47,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  # From mjml/testdata directory:\n")
 		fmt.Fprintf(os.Stderr, "  %s basic                           # Compare basic.mjml vs basic.html\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s basic --verbose                 # Show more diff context\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s basic --verbose                 # Show verbose output\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  \n")
 		fmt.Fprintf(os.Stderr, "  # From project root:\n")
 		fmt.Fprintf(os.Stderr, "  %s basic --testdata-dir mjml/testdata    # Specify testdata directory\n", os.Args[0])
@@ -67,9 +67,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	config.DiffLines = 20
+	config.DiffLines = -1 // Show entire diff by default
 	if config.Verbose {
-		config.DiffLines = 50
+		config.DiffLines = -1 // Verbose also shows entire diff
 	}
 
 	if err := setupPaths(&config); err != nil {
@@ -312,7 +312,11 @@ func generateDiff(referenceFile, gomjmlFile, outputFile string, config *Config) 
 		fmt.Printf("  Diff: %s\n", outputFile)
 
 		// Show preview of diff
-		fmt.Printf("\nDiff preview (first %d lines):\n", config.DiffLines)
+		if config.DiffLines == -1 {
+			fmt.Printf("\nDiff output:\n")
+		} else {
+			fmt.Printf("\nDiff preview (first %d lines):\n", config.DiffLines)
+		}
 		showDiffPreview(diffContent, config.DiffLines)
 
 		cleanup(config)
@@ -328,7 +332,7 @@ func showDiffPreview(content string, maxLines int) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	lineCount := 0
 
-	for scanner.Scan() && lineCount < maxLines {
+	for scanner.Scan() && (maxLines == -1 || lineCount < maxLines) {
 		line := scanner.Text()
 		coloredLine := colorDiffLine(line)
 		fmt.Println(coloredLine)
@@ -373,8 +377,6 @@ func cleanup(config *Config) {
 
 	// Remove directory if empty
 	os.Remove(config.OutputDir)
-
-	fmt.Println("Temporary files cleaned up.")
 }
 
 // filterOrderOnlyDifferences removes diff lines that are identical when sorted alphabetically,
