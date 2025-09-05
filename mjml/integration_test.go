@@ -709,6 +709,11 @@ func createDOMDiff(expected, actual string) string {
 	// differences in text content, attribute values, or other subtle issues.
 	// (This function is only called when compareDOMTrees returned false, so we know the test failed.)
 	if len(diffs) == 0 {
+		// First, check if the difference is just whitespace/formatting
+		if testutils.NormalizeForComparison(expected) == testutils.NormalizeForComparison(actual) {
+			return "" // No meaningful differences - whitespace/formatting only
+		}
+
 		// Last resort: compare character-sorted strings to detect reordering
 		// With massive HTML strings, collision chance is astronomically low
 		if sortStringChars(expected) == sortStringChars(actual) {
