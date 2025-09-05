@@ -23,6 +23,7 @@ var platformDefaults = map[string]string{
 	"youtube":    "#EB3323",
 	"facebook":   "#3b5998",
 	"twitter":    "#55acee",
+	"x":          "#000000",
 	"google":     "#dc4e41",
 	"github":     "#000000",
 	"dribbble":   "#D95988",
@@ -279,6 +280,8 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/facebook.png"
 		case "twitter":
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter.png"
+		case "x":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter-x.png"
 		case "linkedin":
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png"
 		case "google":
@@ -430,8 +433,8 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		if nameAttr == "facebook" && !strings.Contains(href, "facebook.com/sharer") {
 			// Convert href to Facebook sharing URL if not already a sharing URL
 			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
-		} else if nameAttr == "twitter" && !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
-			// Convert href to Twitter sharing URL if not already a sharing URL or profile URL
+		} else if (nameAttr == "twitter" || nameAttr == "x") && !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
+			// Convert href to Twitter/X sharing URL if not already a sharing or profile URL
 			href = "https://twitter.com/home?status=" + href
 		}
 	}

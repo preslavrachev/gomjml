@@ -273,7 +273,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close outer table if we added one for full-width background
-	if backgroundColor != "" && fullWidth != "" {
+	if fullWidth != "" && (backgroundColor != "" || backgroundUrl != "") {
 		if _, err := w.WriteString("</td></tr></tbody></table>"); err != nil {
 			return err
 		}
