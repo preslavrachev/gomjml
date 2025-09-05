@@ -180,21 +180,27 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		sectionDiv.AddAttribute("class", cssClass)
 	}
 
-	// For non-full-width background sections with images, use shorthand; otherwise individual properties
-	if backgroundColor != "" && fullWidth == "" {
-		if backgroundUrl != "" {
-			// Use CSS background shorthand for background images
-			posX, posY := parseBackgroundPosition(backgroundPosition)
-			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
-			shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX+" "+posY, "", backgroundSize, backgroundRepeat)
-			if shorthandBg != "" {
-				sectionDiv.AddStyle("background", shorthandBg)
-			}
-		} else {
-			// Use individual properties for color-only backgrounds
-			c.ApplyBackgroundStyles(sectionDiv)
-		}
-	}
+    // Background on main section div (MRML behavior):
+    // - When not full-width and we have a background image, use shorthand background
+    //   and explicitly set position/repeat/size (no extra longhands for color/image).
+    // - When only background color is present (no image) and not full-width, apply color.
+    if fullWidth == "" {
+        if backgroundUrl != "" {
+            posX, posY := parseBackgroundPosition(backgroundPosition)
+            posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
+            shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX, posY, backgroundSize, backgroundRepeat)
+            if shorthandBg != "" {
+                sectionDiv.AddStyle("background", shorthandBg)
+                // Add the explicit longhand properties to match MRML output
+                sectionDiv.AddStyle("background-position", posX+" "+posY)
+                sectionDiv.AddStyle("background-repeat", backgroundRepeat)
+                sectionDiv.AddStyle("background-size", backgroundSize)
+            }
+        } else if backgroundColor != "" {
+            // Color-only background
+            c.ApplyBackgroundStyles(sectionDiv)
+        }
+    }
 
 	// Add layout styles
 	sectionDiv.AddStyle("margin", "0px auto").
@@ -206,38 +212,40 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Add intermediate div wrapper when we have background image (matches MRML structure)
 	var intermediateDiv *html.HTMLTag
-	if backgroundUrl != "" {
-		intermediateDiv = html.NewHTMLTag("div").
-			AddStyle("line-height", "0").
-			AddStyle("font-size", "0px")
-		if err := intermediateDiv.RenderOpen(w); err != nil {
-			return err
-		}
-	}
+    if backgroundUrl != "" {
+        intermediateDiv = html.NewHTMLTag("div").
+            AddStyle("line-height", "0").
+            // Match MRML: font-size should be 0 (unitless), not 0px
+            AddStyle("font-size", "0")
+        if err := intermediateDiv.RenderOpen(w); err != nil {
+            return err
+        }
+    }
 
 	// Inner table with styles
 	innerTable := html.NewTableTag().
 		AddAttribute("align", "center")
 
-	// Apply background styles to inner table
-	// - Always for no-background sections
-	// - Also for non-full-width background sections (MRML puts background on both div and table)
-	if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
-		c.ApplyBackgroundStyles(innerTable)
-		
-		// Add CSS background shorthand for inner table when we have background image
-		if backgroundUrl != "" {
-			// Parse background position for shorthand  
-			posX, posY := parseBackgroundPosition(backgroundPosition)
-			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
-			shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX+" "+posY, "", backgroundSize, backgroundRepeat)
-			if shorthandBg != "" {
-				innerTable.AddStyle("background", shorthandBg)
-				// Also add the background attribute for email client compatibility
-				innerTable.AddAttribute("background", backgroundUrl)
-			}
-		}
-	}
+    // Apply background styles to inner table
+    if backgroundUrl != "" {
+        // Use shorthand and explicit longhand properties (avoid extra background-color/image longhands)
+        posX, posY := parseBackgroundPosition(backgroundPosition)
+        posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
+        shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX, posY, backgroundSize, backgroundRepeat)
+        if shorthandBg != "" {
+            innerTable.AddStyle("background", shorthandBg)
+            innerTable.AddStyle("background-position", posX+" "+posY)
+            innerTable.AddStyle("background-repeat", backgroundRepeat)
+            innerTable.AddStyle("background-size", backgroundSize)
+            // Also add the background attribute for email client compatibility
+            innerTable.AddAttribute("background", backgroundUrl)
+        }
+    } else {
+        // No background image: apply defaults (color-only etc.)
+        if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
+            c.ApplyBackgroundStyles(innerTable)
+        }
+    }
 
 	// Then add width
 	innerTable.AddStyle("width", "100%")
