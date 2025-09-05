@@ -102,6 +102,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-raw-go-template",
 		// MJ-SOCIAL tests
 		"mj-social",
+		"mj-social-anchors",
 		"mj-social-align",
 		"mj-social-border-radius",
 		"mj-social-class",
