@@ -92,6 +92,10 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.StringWriter) error {
+	// AIDEV-NOTE: Always track font-family for font injection detection
+	// This ensures Ubuntu fonts are detected even when social elements have no text content
+	c.getAttribute(constants.MJMLFontFamily)
+
 	padding := c.getAttribute(constants.MJMLPadding)
 	align := c.getAttribute(constants.MJMLAlign)
 	mode := c.getAttribute(constants.MJMLMode)
@@ -357,23 +361,23 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 					}
 					return parentValue
 				}
-				// Then check parent's default attribute
-				if parentDefault := c.parentSocial.GetDefaultAttribute(name); parentDefault != "" {
+				// Then check parent's resolved attribute (includes global attributes)
+				if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
 					debug.DebugLogWithData(
 						"social-attr",
-						"parent-default",
-						"Using parent default attribute",
+						"parent-resolved",
+						"Using parent resolved attribute",
 						map[string]interface{}{
 							"attr":    name,
-							"value":   parentDefault,
+							"value":   parentResolved,
 							"element": c.Node.GetAttribute("name"),
 						},
 					)
 					// Track font families
 					if name == constants.MJMLFontFamily {
-						c.TrackFontFamily(parentDefault)
+						c.TrackFontFamily(parentResolved)
 					}
-					return parentDefault
+					return parentResolved
 				}
 			}
 		}
@@ -422,12 +426,12 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 
 	// Handle special sharing URL generation for known platforms
 	nameAttr := c.Node.GetAttribute("name")
-	if href != "" && !strings.HasPrefix(href, "http") {
-		if nameAttr == "facebook" {
-			// Convert simple href to Facebook sharing URL
+	if href != "" {
+		if nameAttr == "facebook" && !strings.Contains(href, "facebook.com/sharer") {
+			// Convert href to Facebook sharing URL if not already a sharing URL
 			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
-		} else if nameAttr == "twitter" {
-			// Convert simple href to Twitter sharing URL
+		} else if nameAttr == "twitter" && !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
+			// Convert href to Twitter sharing URL if not already a sharing URL or profile URL
 			href = "https://twitter.com/home?status=" + href
 		}
 	}

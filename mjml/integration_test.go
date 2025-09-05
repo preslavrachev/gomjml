@@ -119,6 +119,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-social-mode",
 		"mj-social-padding",
 		"mj-social-text",
+		"mj-social-no-ubuntu-fonts-overridden",
+		"mj-social-ubuntu-fonts-with-text-content",
+		"mj-social-ubuntu-fonts-icons-only-fallback",
 		// MJ-ACCORDION tests
 		"mj-accordion",
 		"mj-accordion-font-padding",

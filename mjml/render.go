@@ -1100,7 +1100,9 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// Only auto-import default fonts if no fonts were already detected from content
 	// This matches MRML's behavior: explicit fonts override default font imports
 	// Also respect custom global fonts from mj-all attributes
-	if len(detectedFonts) == 0 && hasSocial && !c.hasCustomGlobalFonts() {
+	// Special case: social components with only default fonts should trigger Ubuntu fallback
+	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
+	if (len(detectedFonts) == 0 || (hasSocial && hasOnlyDefaultFonts)) && hasSocial && !c.hasCustomGlobalFonts() {
 		debug.DebugLogWithData(
 			"font-detection",
 			"check-defaults",
