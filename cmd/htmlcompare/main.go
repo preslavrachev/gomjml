@@ -22,7 +22,6 @@ const (
 
 type Config struct {
 	TestCase     string
-	KeepFiles    bool
 	Verbose      bool
 	DiffLines    int
 	ScriptDir    string
@@ -37,8 +36,6 @@ func main() {
 
 	flag.StringVar(&config.TestCase, "test", "", "Test case name (required)")
 	flag.StringVar(&config.TestDataDir, "testdata-dir", "", "Path to testdata directory (defaults to mjml/testdata)")
-	flag.BoolVar(&config.KeepFiles, "keep-files", false, "Keep temporary files for inspection")
-	flag.BoolVar(&config.KeepFiles, "k", false, "Keep temporary files for inspection (short)")
 	flag.BoolVar(&config.Verbose, "verbose", false, "Show more diff context (50 lines instead of 20)")
 	flag.BoolVar(&config.Verbose, "v", false, "Show more diff context (short)")
 
@@ -50,11 +47,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  # From mjml/testdata directory:\n")
 		fmt.Fprintf(os.Stderr, "  %s basic                           # Compare basic.mjml vs basic.html\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s basic --keep-files              # Keep files for inspection\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s basic --verbose                 # Show more diff context\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  \n")
 		fmt.Fprintf(os.Stderr, "  # From project root:\n")
 		fmt.Fprintf(os.Stderr, "  %s basic --testdata-dir mjml/testdata    # Specify testdata directory\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s basic -k -v                           # Keep files and verbose output\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s basic -v                              # Verbose output\n", os.Args[0])
 	}
 
 	flag.Parse()
@@ -318,27 +315,10 @@ func generateDiff(referenceFile, gomjmlFile, outputFile string, config *Config) 
 		fmt.Printf("\nDiff preview (first %d lines):\n", config.DiffLines)
 		showDiffPreview(diffContent, config.DiffLines)
 
-		if !config.KeepFiles {
-			cleanup(config)
-		} else {
-			fmt.Println("\nFiles preserved for inspection:")
-			fmt.Printf("  Reference output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_reference.html"))
-			fmt.Printf("  gomjml output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_gomjml.html"))
-			fmt.Printf("  Reference output (pretty): %s\n", referenceFile)
-			fmt.Printf("  gomjml output (pretty): %s\n", gomjmlFile)
-			fmt.Printf("  Diff: %s\n", outputFile)
-		}
+		cleanup(config)
 	} else {
 		fmt.Println("No differences found! HTML outputs are identical.")
-		if !config.KeepFiles {
-			cleanup(config)
-		} else {
-			fmt.Println("Files preserved for inspection:")
-			fmt.Printf("  Reference output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_reference.html"))
-			fmt.Printf("  gomjml output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_gomjml.html"))
-			fmt.Printf("  Reference output (pretty): %s\n", referenceFile)
-			fmt.Printf("  gomjml output (pretty): %s\n", gomjmlFile)
-		}
+		cleanup(config)
 	}
 
 	return nil
@@ -397,8 +377,8 @@ func cleanup(config *Config) {
 	fmt.Println("Temporary files cleaned up.")
 }
 
-// filterOrderOnlyDifferences removes diff lines that are identical when sorted alphabetically.
-// Only applies to lines longer than 10 characters to avoid false positives on low-entropy strings.
+// filterOrderOnlyDifferences removes diff lines that are identical when sorted alphabetically,
+// but only for cases that are clearly just CSS property reordering, not real content differences.
 func filterOrderOnlyDifferences(diffContent string) string {
 	lines := strings.Split(diffContent, "\n")
 	var result []string
@@ -412,9 +392,16 @@ func filterOrderOnlyDifferences(diffContent string) string {
 			removedLine := strings.TrimPrefix(line, "-")
 			addedLine := strings.TrimPrefix(lines[i+1], "+")
 
-			// If same length and long enough for good entropy, sort and compare
-			if len(removedLine) == len(addedLine) && len(removedLine) > 10 && sortString(removedLine) == sortString(addedLine) {
-				// Skip both lines - they're just reordered
+			// Only consider CSS style reordering if:
+			// 1. Both lines contain 'style=' attributes
+			// 2. Same length and good entropy
+			// 3. No href, src, or other URL attributes that shouldn't be reordered
+			if len(removedLine) == len(addedLine) && len(removedLine) > 20 &&
+				strings.Contains(removedLine, "style=") && strings.Contains(addedLine, "style=") &&
+				!strings.Contains(removedLine, "href=") && !strings.Contains(addedLine, "href=") &&
+				!strings.Contains(removedLine, "src=") && !strings.Contains(addedLine, "src=") &&
+				sortString(removedLine) == sortString(addedLine) {
+				// Skip both lines - likely just CSS property reordering
 				i += 2
 				continue
 			}
