@@ -299,13 +299,16 @@ func generateDiff(referenceFile, gomjmlFile, outputFile string, config *Config) 
 	// AIDEV-NOTE: hack to ignore same-length lines that differ only by ordering; proper CSS/HTML parsing would be better
 	diffContent = filterOrderOnlyDifferences(diffContent)
 
+	// Count differences
+	diffCount := countDifferences(diffContent)
+
 	// Write diff to file
 	if err := os.WriteFile(outputFile, []byte(diffContent), 0o644); err != nil {
 		return err
 	}
 
 	if len(diffContent) > 0 && strings.TrimSpace(diffContent) != "" {
-		fmt.Printf("Differences found! Check: %s\n", outputFile)
+		fmt.Printf("Differences found: %d lines differ! Check: %s\n", diffCount, outputFile)
 		fmt.Println("Files generated:")
 		fmt.Printf("  Reference output (pretty): %s\n", referenceFile)
 		fmt.Printf("  gomjml output (pretty): %s\n", gomjmlFile)
@@ -420,4 +423,25 @@ func sortString(s string) string {
 	chars := strings.Split(s, "")
 	sort.Strings(chars)
 	return strings.Join(chars, "")
+}
+
+func countDifferences(diffContent string) int {
+	if strings.TrimSpace(diffContent) == "" {
+		return 0
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(diffContent))
+	count := 0
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+			// Don't count context lines that start with +++ or ---
+			if !strings.HasPrefix(line, "+++") && !strings.HasPrefix(line, "---") {
+				count++
+			}
+		}
+	}
+
+	return count
 }
