@@ -112,13 +112,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 
 			// Build VML strings
-			colorAttr := "transparent"
+			colorFragment := ""
 			if backgroundColor != "" {
-				colorAttr = backgroundColor
+				colorFragment = ` color="` + backgroundColor + `"`
 			}
 
 			vmlOpen := `<v:rect mso-width-percent="1000" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY +
-				`" src="` + htmlEscape(backgroundUrl) + `" color="` + colorAttr + `"` +
+				`" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment +
 				sizeFragment + ` type="` + vmlType + `"` +
 				aspectFragment + ` /><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;"><![endif]-->`
 
