@@ -686,7 +686,8 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	img.AddAttribute("height", heightAttr).
-		AddAttribute("src", src)
+		AddAttribute("src", src).
+		AddAttribute("width", widthAttr)
 
 	// Add title attribute if specified
 	title := c.Node.GetAttribute("title")
@@ -694,8 +695,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		img.AddAttribute("title", title)
 	}
 
-	img.AddAttribute("width", widthAttr).
-		AddStyle("border-radius", borderRadius).
+	img.AddStyle("border-radius", borderRadius).
 		AddStyle("display", "block")
 
 	if href != "" {

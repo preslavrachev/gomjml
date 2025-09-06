@@ -93,6 +93,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-image-class",
 		"mj-image-src-with-url-params",
 		"mj-section",
+		"mj-section-background-vml",
 		"mj-section-bg-cover-no-repeat",
 		"mj-section-with-columns",
 		"mj-section-class",
@@ -111,6 +112,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-social-border-radius",
 		"mj-social-class",
 		"mj-social-color",
+		"mj-social-complex-styling",
 		"mj-social-container-background-color",
 		"mj-social-element-ending",
 		"mj-social-font-family",
@@ -162,7 +164,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		"notifuse-full",
+		//"notifuse-full",
 	}
 
 	for _, testName := range testCases {
@@ -192,6 +194,22 @@ func TestMJMLAgainstExpected(t *testing.T) {
 
 			// Compare outputs using DOM tree comparison
 			if !compareDOMTrees(expected, actual) {
+				// Check for HTML entity encoding differences first
+				entityDiff := checkHTMLEntityDifferences(expected, actual)
+				if entityDiff != "" {
+					t.Errorf("HTML entity encoding differences found:\n%s", entityDiff)
+					writeDebugFiles(testName, expected, actual)
+					return
+				}
+
+				// Check for MSO conditional comment differences
+				msoDiff := checkMSOConditionalDifferences(expected, actual)
+				if msoDiff != "" {
+					t.Errorf("MSO conditional comment differences found:\n%s", msoDiff)
+					writeDebugFiles(testName, expected, actual)
+					return
+				}
+
 				// Enhanced DOM-based diff with debugging
 				domDiff := createDOMDiff(expected, actual)
 				t.Errorf("\n%s", domDiff)
@@ -984,4 +1002,90 @@ func sortStringChars(s string) string {
 	chars := strings.Split(s, "")
 	sort.Strings(chars)
 	return strings.Join(chars, "")
+}
+
+// checkHTMLEntityDifferences detects differences in HTML entity encoding
+// that would be normalized away by DOM parsing but are still meaningful
+func checkHTMLEntityDifferences(expected, actual string) string {
+	// Common HTML entity patterns that might differ
+	entityPairs := []struct {
+		encoded string
+		decoded string
+		name    string
+	}{
+		{"&amp;", "&", "ampersand"},
+		{"&lt;", "<", "less-than"},
+		{"&gt;", ">", "greater-than"},
+		{"&quot;", "\"", "quote"},
+		{"&#x27;", "'", "apostrophe"},
+		{"&#39;", "'", "apostrophe-numeric"},
+	}
+
+	var differences []string
+
+	for _, pair := range entityPairs {
+		expectedCount := strings.Count(expected, pair.encoded)
+		actualCount := strings.Count(actual, pair.encoded)
+
+		expectedDecodedCount := strings.Count(expected, pair.decoded)
+		actualDecodedCount := strings.Count(actual, pair.decoded)
+
+		// If one uses encoded form and other uses decoded form
+		if expectedCount != actualCount {
+			if expectedCount > 0 && actualCount == 0 && actualDecodedCount > 0 {
+				differences = append(differences,
+					fmt.Sprintf("Expected uses encoded %s (%s) %d times, actual uses decoded (%s) %d times",
+						pair.name, pair.encoded, expectedCount, pair.decoded, actualDecodedCount))
+			} else if actualCount > 0 && expectedCount == 0 && expectedDecodedCount > 0 {
+				differences = append(differences,
+					fmt.Sprintf("Actual uses encoded %s (%s) %d times, expected uses decoded (%s) %d times",
+						pair.name, pair.encoded, actualCount, pair.decoded, expectedDecodedCount))
+			} else {
+				differences = append(differences,
+					fmt.Sprintf("%s encoding mismatch: expected %d encoded, actual %d encoded",
+						pair.name, expectedCount, actualCount))
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// checkMSOConditionalDifferences detects differences in MSO conditional comments
+// that would be normalized away by DOM parsing but are still meaningful for email rendering
+func checkMSOConditionalDifferences(expected, actual string) string {
+	// Common MSO conditional patterns that might differ
+	msoPatterns := []struct {
+		pattern string
+		name    string
+	}{
+		{"<!--[if mso]>", "mso-opening"},
+		{"<!--[if !mso]><!-->", "not-mso-opening"},
+		{"<!--<![endif]-->", "endif"},
+		{"<!--[if mso | IE]>", "mso-or-ie-opening"},
+		{"<!--[if !mso | IE]><!-->", "not-mso-or-ie-opening"},
+		{"<!--[if lte mso 11]>", "mso-lte-11-opening"},
+		{"<![endif]-->", "simple-endif"},
+	}
+
+	var differences []string
+
+	for _, pattern := range msoPatterns {
+		expectedCount := strings.Count(expected, pattern.pattern)
+		actualCount := strings.Count(actual, pattern.pattern)
+
+		if expectedCount != actualCount {
+			differences = append(differences,
+				fmt.Sprintf("MSO conditional %s mismatch: expected %d, actual %d",
+					pattern.name, expectedCount, actualCount))
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
 }

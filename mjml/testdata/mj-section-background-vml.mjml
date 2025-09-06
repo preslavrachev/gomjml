@@ -1,0 +1,9 @@
+<mjml>
+  <mj-body>
+    <mj-section full-width="full-width" padding-bottom="80px" text-align="center" background-size="cover" padding="20px 0" background-repeat="no-repeat" background-position="center center" padding-top="80px" background-url="https://images.unsplash.com/photo-1495419597644-19934b6b7c40?w=500&amp;auto=format&amp;fit=crop&amp;q=60&amp;ixlib=rb-4.1.0&amp;ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YmVhY2glMjBwYXN0ZWx8ZW58MHx8MHx8fDA%3D">
+      <mj-column padding="0" width="100%">
+        <mj-text padding-top="0px" color="#ffffff" font-size="32px" font-family="Arial, sans-serif" align="center" line-height="1.2" font-weight="bold">Beautiful Email Templates</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

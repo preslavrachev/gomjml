@@ -1,0 +1,18 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-social mode="horizontal" table-layout="auto" text-padding="4px 4px 4px 0px" inner-padding="8px" line-height="22px" border-radius="3px" icon-size="40px" align="center" container-background-color="transparent" icon-height="40px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-social mode="horizontal" table-layout="auto" text-padding="4px 4px 4px 0px" inner-padding="8px" line-height="22px" padding-top="20px" padding-right="25px" padding-bottom="20px" border-radius="3px" icon-size="40px" padding-left="25px" align="center" container-background-color="transparent" icon-height="40px">
+          <mj-social-element name="facebook" href="https://facebook.com" background-color="#3b5998" border-radius="3px" />
+          <mj-social-element border-radius="3px" name="instagram" href="https://instagram.com" background-color="#E4405F" />
+          <mj-social-element background-color="#000000" border-radius="3px" name="x" href="https://x.com" />
+        </mj-social>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

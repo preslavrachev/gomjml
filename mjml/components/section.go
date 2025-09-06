@@ -51,8 +51,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	textAlign := getAttr("text-align")
 	fullWidth := getAttr("full-width")
 
-	// Check if we have a background image for VML generation
-	hasBackgroundImage := backgroundUrl != ""
+	// Check if we have a background image for VML generation (only for full-width sections)
+	hasBackgroundImage := backgroundUrl != "" && fullWidth != ""
 
 	// For full-width sections with any background (color or image), add
 	// outer table wrapper (like MRML does). Previously we only checked for
@@ -62,8 +62,24 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		outerTable := html.NewTableTag().
 			AddAttribute("align", "center")
 
-		// Apply background styles (original approach) and border styles
-		c.ApplyBackgroundStyles(outerTable)
+		// Apply background styles properly for full-width sections
+		if backgroundUrl != "" {
+			// Use shorthand and explicit longhand properties for full-width background images
+			posX, posY := parseBackgroundPosition(backgroundPosition)
+			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
+			shorthandBg := buildBackgroundShorthand(backgroundColor, backgroundUrl, posX, posY, backgroundSize, backgroundRepeat)
+			if shorthandBg != "" {
+				outerTable.AddStyle("background", shorthandBg)
+				outerTable.AddStyle("background-position", posX+" "+posY)
+				outerTable.AddStyle("background-repeat", backgroundRepeat)
+				outerTable.AddStyle("background-size", backgroundSize)
+				// Also add the background attribute for email client compatibility (use same encoding as VML src)
+				outerTable.AddAttribute("background", htmlEscape(backgroundUrl))
+			}
+		} else {
+			// Apply background color only
+			c.ApplyBackgroundStyles(outerTable)
+		}
 		c.ApplyBorderStyles(outerTable)
 		outerTable.AddStyle("width", "100%")
 
@@ -73,25 +89,46 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if _, err := w.WriteString("<tbody><tr><td>"); err != nil {
 			return err
 		}
+
+		// Write VML opening if we have background image (inside full-width outer table TD)
+		if hasBackgroundImage {
+			// Parse background position
+			posX, posY := parseBackgroundPosition(backgroundPosition)
+			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
+
+			// Compute VML attributes
+			vOriginX, vOriginY, vPosX, vPosY := computeVMLPosition(posX, posY, backgroundSize)
+			vSizeAttrs, vAspect := computeVMLSize(backgroundSize)
+			vmlType := computeVMLType(backgroundRepeat, backgroundSize)
+
+			// Build VML attributes
+			sizeFragment := ""
+			if vSizeAttrs != "" {
+				sizeFragment = " " + vSizeAttrs
+			}
+			aspectFragment := ""
+			if vAspect != "" {
+				aspectFragment = ` aspect="` + vAspect + `"`
+			}
+
+			// Build VML strings
+			colorAttr := "transparent"
+			if backgroundColor != "" {
+				colorAttr = backgroundColor
+			}
+
+			vmlOpen := `<v:rect mso-width-percent="1000" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY +
+				`" src="` + htmlEscape(backgroundUrl) + `" color="` + colorAttr + `"` +
+				sizeFragment + ` type="` + vmlType + `"` +
+				aspectFragment + ` /><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;"><![endif]-->`
+
+			if _, err := w.WriteString(vmlOpen); err != nil {
+				return err
+			}
+		}
 	}
 
-	// MSO conditional comment - table wrapper for Outlook
-	msoTable := html.NewTableTag()
-
-	// Add attributes in MRML order: bgcolor, align, width
-	if backgroundColor != "" {
-		msoTable.AddAttribute(constants.AttrBgcolor, backgroundColor)
-	} else if hasBackgroundImage {
-		// Match MRML: when a background image is used without an explicit color,
-		// emit bgcolor="transparent" on the MSO table
-		msoTable.AddAttribute(constants.AttrBgcolor, "transparent")
-	}
-
-	// Get align from attributes (including mj-class)
-	alignAttr := getAttr("align")
-	if alignAttr == "" {
-		alignAttr = "center" // default align for MSO table
-	}
+	// MSO conditional comment - table wrapper for Outlook (inside VML textbox if present)
 	// Compute effective MSO inner width by subtracting horizontal padding
 	// from the container width to match MRML (e.g., 600 -> 560)
 	effectiveWidth := c.GetEffectiveWidth()
@@ -120,7 +157,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		effectiveWidth = 0
 	}
 
-	msoTable.AddAttribute("align", alignAttr).
+	// Get align from attributes (including mj-class)
+	alignAttr := getAttr("align")
+	if alignAttr == "" {
+		alignAttr = "center" // default align for MSO table
+	}
+
+	msoTable := html.NewTableTag().
+		AddAttribute("align", alignAttr).
 		AddAttribute("width", strconv.Itoa(effectiveWidth)).
 		AddStyle("width", getPixelWidthString(effectiveWidth))
 
@@ -134,54 +178,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	// Generate VML for background images if needed
-	var vmlOpen, vmlClose string
-	if hasBackgroundImage {
-		// Parse background position
-		posX, posY := parseBackgroundPosition(backgroundPosition)
-		posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
-
-		// Compute VML attributes
-		vOriginX, vOriginY, vPosX, vPosY := computeVMLPosition(posX, posY, backgroundSize)
-		vSizeAttrs, vAspect := computeVMLSize(backgroundSize)
-		vmlType := computeVMLType(backgroundRepeat, backgroundSize)
-
-		// Build VML attributes
-		sizeFragment := ""
-		if vSizeAttrs != "" {
-			sizeFragment = " " + vSizeAttrs
-		}
-		aspectFragment := ""
-		if vAspect != "" {
-			aspectFragment = ` aspect="` + vAspect + `"`
-		}
-
-		// Width fragment based on full-width
-		widthFragment := ""
-		if fullWidth != "" {
-			widthFragment = ` style="mso-width-percent:1000;"`
-		} else {
-			widthFragment = ` style="width:` + strconv.Itoa(c.GetEffectiveWidth()) + `px;"`
-		}
-
-		// Build VML strings
-		vmlOpen = `<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"` +
-			widthFragment + `><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY +
-			`" src="` + htmlEscape(backgroundUrl) + `"` +
-			// Always include color attribute; use transparent when no explicit color
-			` color="` + func() string {
-			if backgroundColor != "" {
-				return backgroundColor
-			}
-			return "transparent"
-		}() + `"` +
-			sizeFragment + ` type="` + vmlType + `"` +
-			aspectFragment + ` /><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;">`
-
-		vmlClose = `</v:textbox></v:rect>`
-	}
-
-	// Custom MSO conditional with VML support
+	// Custom MSO conditional
 	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
 		return err
 	}
@@ -193,13 +190,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 	if err := msoTd.RenderOpen(w); err != nil {
 		return err
-	}
-
-	// Write VML opening if we have background image (inside MSO conditional)
-	if hasBackgroundImage {
-		if _, err := w.WriteString(vmlOpen); err != nil {
-			return err
-		}
 	}
 
 	if _, err := w.WriteString("<![endif]-->"); err != nil {
@@ -266,8 +256,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	innerTable := html.NewTableTag().
 		AddAttribute("align", "center")
 
-	// Apply background styles to inner table
-	if backgroundUrl != "" {
+	// Apply background styles to inner table (only for non-full-width sections)
+	if fullWidth == "" && backgroundUrl != "" {
 		// Use shorthand and explicit longhand properties (avoid extra background-color/image longhands)
 		posX, posY := parseBackgroundPosition(backgroundPosition)
 		posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
@@ -277,10 +267,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			innerTable.AddStyle("background-position", posX+" "+posY)
 			innerTable.AddStyle("background-repeat", backgroundRepeat)
 			innerTable.AddStyle("background-size", backgroundSize)
-			// Also add the background attribute for email client compatibility
-			innerTable.AddAttribute("background", backgroundUrl)
+			// Also add the background attribute for email client compatibility (use same encoding as VML src)
+			innerTable.AddAttribute("background", htmlEscape(backgroundUrl))
 		}
-	} else {
+	} else if fullWidth == "" {
 		// No background image: apply defaults (color-only etc.)
 		if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
 			c.ApplyBackgroundStyles(innerTable)
@@ -308,18 +298,18 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
-	// Add specific padding overrides in MRML order: left, right, top, bottom
+	// Add specific padding overrides in MRML order: left, right, bottom, top
 	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil {
 		tdTag.AddStyle(constants.CSSPaddingLeft, *paddingLeftAttr)
 	}
 	if paddingRightAttr := c.GetAttribute(constants.MJMLPaddingRight); paddingRightAttr != nil {
 		tdTag.AddStyle(constants.CSSPaddingRight, *paddingRightAttr)
 	}
-	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
-		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
-	}
 	if paddingBottomAttr := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottomAttr != nil {
 		tdTag.AddStyle(constants.CSSPaddingBottom, *paddingBottomAttr)
+	}
+	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
+		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
 	}
 
 	tdTag.AddStyle("text-align", textAlign)
@@ -439,32 +429,19 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Write VML closing just before MSO close conditional (keeps previous passing behavior)
-	if hasBackgroundImage {
-		if _, err := w.WriteString(vmlClose); err != nil {
-			return err
-		}
-	}
-
-	// Custom MSO close conditional
-	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-		return err
-	}
-	if err := msoTd.RenderClose(w); err != nil {
-		return err
-	}
-	if _, err := w.WriteString("</tr>"); err != nil {
-		return err
-	}
-	if err := msoTable.RenderClose(w); err != nil {
-		return err
-	}
-	if _, err := w.WriteString("<![endif]-->"); err != nil {
+	// Close MSO table structure
+	if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
 		return err
 	}
 
 	// Close outer table if we added one for full-width background
 	if fullWidth != "" && (backgroundColor != "" || backgroundUrl != "") {
+		// Close VML first if present, then outer table
+		if hasBackgroundImage {
+			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect>"); err != nil {
+				return err
+			}
+		}
 		if _, err := w.WriteString("</td></tr></tbody></table>"); err != nil {
 			return err
 		}
