@@ -90,10 +90,12 @@ func buildBackgroundShorthand(color, url, posX, posY, size, repeat string) strin
 		parts = append(parts, "url('"+htmlEscape(url)+"')")
 	}
 	if posX != "" || posY != "" {
-		parts = append(parts, posX+" "+posY)
-	}
-	if size != "" && size != "auto" {
-		parts = append(parts, "/", size)
+		position := posX + " " + posY
+		// Include size in the position part with slash delimiter if we have a size
+		if size != "" {
+			position += " / " + size
+		}
+		parts = append(parts, position)
 	}
 	if repeat != "" {
 		parts = append(parts, repeat)

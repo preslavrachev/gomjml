@@ -54,6 +54,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"wrapper-fullwidth",
 		"wrapper-border",
 		"group-footer-test",
+		"section-bg-vml-color",
 		"section-padding-top-zero",
 		//"austin-layout-from-mjml-io", // Commented out
 		// Austin layout component tests
