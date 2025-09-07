@@ -3,6 +3,7 @@ package mjml
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -55,6 +56,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"wrapper-border",
 		"group-footer-test",
 		"section-bg-vml-color",
+		"section-fullwidth-bg-transparent",
 		"section-padding-top-zero",
 		//"austin-layout-from-mjml-io", // Commented out
 		// Austin layout component tests
@@ -165,7 +167,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		//"notifuse-full",
+		"notifuse-full",
 	}
 
 	for _, testName := range testCases {
@@ -207,6 +209,30 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				msoDiff := checkMSOConditionalDifferences(expected, actual)
 				if msoDiff != "" {
 					t.Errorf("MSO conditional comment differences found:\n%s", msoDiff)
+					writeDebugFiles(testName, expected, actual)
+					return
+				}
+
+				// Check for VML attribute differences
+				vmlDiff := checkVMLAttributeDifferences(expected, actual)
+				if vmlDiff != "" {
+					t.Errorf("VML attribute differences found:\n%s", vmlDiff)
+					writeDebugFiles(testName, expected, actual)
+					return
+				}
+
+				// Check for MSO table attribute differences
+				msoTableDiff := checkMSOTableAttributeDifferences(expected, actual)
+				if msoTableDiff != "" {
+					t.Errorf("MSO table attribute differences found:\n%s", msoTableDiff)
+					writeDebugFiles(testName, expected, actual)
+					return
+				}
+
+				// Check for background CSS property differences
+				bgDiff := checkBackgroundPropertyDifferences(expected, actual)
+				if bgDiff != "" {
+					t.Errorf("Background CSS property differences found:\n%s", bgDiff)
 					writeDebugFiles(testName, expected, actual)
 					return
 				}
@@ -1089,4 +1115,137 @@ func checkMSOConditionalDifferences(expected, actual string) string {
 		return strings.Join(differences, "\n")
 	}
 	return ""
+}
+
+// checkVMLAttributeDifferences detects differences in VML attributes that are critical for email rendering
+func checkVMLAttributeDifferences(expected, actual string) string {
+	vmlPatterns := []struct {
+		pattern string
+		name    string
+	}{
+		{`position="([^"]*)"`, "position"},
+		{`origin="([^"]*)"`, "origin"},
+		{`color="([^"]*)"`, "color"},
+		{`size="([^"]*)"`, "size"},
+		{`type="([^"]*)"`, "type"},
+		{`aspect="([^"]*)"`, "aspect"},
+	}
+
+	var differences []string
+
+	for _, pattern := range vmlPatterns {
+		// Count different values for this VML attribute
+		expectedMatches := findRegexMatches(expected, pattern.pattern)
+		actualMatches := findRegexMatches(actual, pattern.pattern)
+
+		if len(expectedMatches) != len(actualMatches) {
+			differences = append(differences,
+				fmt.Sprintf("VML %s attribute count mismatch: expected %d, actual %d",
+					pattern.name, len(expectedMatches), len(actualMatches)))
+		} else {
+			// Check for value differences
+			for i, expectedVal := range expectedMatches {
+				if i < len(actualMatches) && expectedVal != actualMatches[i] {
+					differences = append(differences,
+						fmt.Sprintf("VML %s attribute value mismatch: expected '%s', actual '%s'",
+							pattern.name, expectedVal, actualMatches[i]))
+				}
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// checkMSOTableAttributeDifferences detects differences in MSO table attributes
+func checkMSOTableAttributeDifferences(expected, actual string) string {
+	msoTableAttrs := []string{"bgcolor", "width", "align", "cellpadding", "cellspacing"}
+
+	var differences []string
+
+	for _, attr := range msoTableAttrs {
+		// Look for MSO conditional table attributes
+		expectedPattern := fmt.Sprintf(`<!--\[if mso.*?<table[^>]*%s="([^"]*)"`, attr)
+		actualPattern := expectedPattern
+
+		expectedMatches := findRegexMatches(expected, expectedPattern)
+		actualMatches := findRegexMatches(actual, actualPattern)
+
+		if len(expectedMatches) != len(actualMatches) {
+			differences = append(differences,
+				fmt.Sprintf("MSO table %s attribute count mismatch: expected %d, actual %d",
+					attr, len(expectedMatches), len(actualMatches)))
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// checkBackgroundPropertyDifferences detects differences in CSS background properties
+func checkBackgroundPropertyDifferences(expected, actual string) string {
+	bgProps := []string{"background", "background-color", "background-image", "background-position", "background-size", "background-repeat"}
+
+	var differences []string
+
+	for _, prop := range bgProps {
+		// Look for style attributes containing this background property
+		pattern := fmt.Sprintf(`style="[^"]*%s:\s*([^;"]*)`, prop)
+
+		expectedMatches := findRegexMatches(expected, pattern)
+		actualMatches := findRegexMatches(actual, pattern)
+
+		// Count unique values for each property
+		expectedValues := make(map[string]int)
+		actualValues := make(map[string]int)
+
+		for _, match := range expectedMatches {
+			expectedValues[match]++
+		}
+		for _, match := range actualMatches {
+			actualValues[match]++
+		}
+
+		// Compare value distributions
+		for value, expectedCount := range expectedValues {
+			if actualCount := actualValues[value]; actualCount != expectedCount {
+				differences = append(differences,
+					fmt.Sprintf("CSS %s value '%s' count mismatch: expected %d, actual %d",
+						prop, value, expectedCount, actualCount))
+			}
+		}
+
+		// Check for extra values in actual
+		for value, actualCount := range actualValues {
+			if _, exists := expectedValues[value]; !exists {
+				differences = append(differences,
+					fmt.Sprintf("CSS %s has unexpected value '%s' (count: %d)",
+						prop, value, actualCount))
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// findRegexMatches finds all matches for a regex pattern and returns the first capture group
+func findRegexMatches(text, pattern string) []string {
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(text, -1)
+
+	var results []string
+	for _, match := range matches {
+		if len(match) > 1 {
+			results = append(results, match[1])
+		}
+	}
+	return results
 }

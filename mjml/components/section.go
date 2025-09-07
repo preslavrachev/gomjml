@@ -30,26 +30,18 @@ func (c *MJSectionComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJSectionComponent
 func (c *MJSectionComponent) Render(w io.StringWriter) error {
-	// Helper function to get attribute with default
-	getAttr := func(name string) string {
-		if attr := c.GetAttribute(name); attr != nil {
-			return *attr
-		}
-		return c.GetDefaultAttribute(name)
-	}
-
-	// Get section attributes
-	backgroundColor := getAttr("background-color")
-	backgroundUrl := getAttr(constants.MJMLBackgroundUrl)
-	backgroundPosition := getAttr("background-position")
-	backgroundPositionX := getAttr("background-position-x")
-	backgroundPositionY := getAttr("background-position-y")
-	backgroundRepeat := getAttr("background-repeat")
-	backgroundSize := getAttr("background-size")
-	padding := getAttr("padding")
-	direction := getAttr("direction")
-	textAlign := getAttr("text-align")
-	fullWidth := getAttr("full-width")
+	// Get section attributes using proper attribute resolution (includes mj-attributes)
+	backgroundColor := c.GetAttributeWithDefault(c, "background-color")
+	backgroundUrl := c.GetAttributeWithDefault(c, constants.MJMLBackgroundUrl)
+	backgroundPosition := c.GetAttributeWithDefault(c, "background-position")
+	backgroundPositionX := c.GetAttributeWithDefault(c, "background-position-x")
+	backgroundPositionY := c.GetAttributeWithDefault(c, "background-position-y")
+	backgroundRepeat := c.GetAttributeWithDefault(c, "background-repeat")
+	backgroundSize := c.GetAttributeWithDefault(c, "background-size")
+	padding := c.GetAttributeWithDefault(c, "padding")
+	direction := c.GetAttributeWithDefault(c, "direction")
+	textAlign := c.GetAttributeWithDefault(c, "text-align")
+	fullWidth := c.GetAttributeWithDefault(c, "full-width")
 
 	// Check if we have a background image for VML generation (only for full-width sections)
 	hasBackgroundImage := backgroundUrl != "" && fullWidth != ""
@@ -97,7 +89,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
 
 			// Compute VML attributes
-			vOriginX, vOriginY, vPosX, vPosY := computeVMLPosition(posX, posY, backgroundSize)
+			vOriginX, vOriginY, vPosX, vPosY := computeVMLPosition(posX, posY, backgroundSize, backgroundRepeat)
 			vSizeAttrs, vAspect := computeVMLSize(backgroundSize)
 			vmlType := computeVMLType(backgroundRepeat, backgroundSize)
 
@@ -116,6 +108,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			if backgroundColor != "" {
 				colorFragment = ` color="` + backgroundColor + `"`
 			}
+			// Note: VML color attribute is only included when backgroundColor is explicitly set
 
 			vmlOpen := `<v:rect mso-width-percent="1000" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY +
 				`" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment +
@@ -158,7 +151,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Get align from attributes (including mj-class)
-	alignAttr := getAttr("align")
+	alignAttr := c.GetAttributeWithDefault(c, "align")
 	if alignAttr == "" {
 		alignAttr = "center" // default align for MSO table
 	}
@@ -167,6 +160,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddAttribute("align", alignAttr).
 		AddAttribute("width", strconv.Itoa(effectiveWidth)).
 		AddStyle("width", getPixelWidthString(effectiveWidth))
+
+	// Add bgcolor attribute for MSO compatibility if background color is set
+	if backgroundColor != "" {
+		msoTable.AddAttribute("bgcolor", backgroundColor)
+	}
 
 	// Add css-class-outlook if present
 	if cssClass := c.GetCSSClass(); cssClass != "" {
@@ -232,7 +230,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddStyle("max-width", strconv.Itoa(c.GetContainerWidth())+"px")
 
 	// Add border-radius if specified
-	if borderRadius := getAttr("border-radius"); borderRadius != "" {
+	if borderRadius := c.GetAttributeWithDefault(c, "border-radius"); borderRadius != "" {
 		sectionDiv.AddStyle("border-radius", borderRadius)
 	}
 
@@ -281,7 +279,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	innerTable.AddStyle("width", "100%")
 
 	// Add border-radius if specified
-	if borderRadius := getAttr("border-radius"); borderRadius != "" {
+	if borderRadius := c.GetAttributeWithDefault(c, "border-radius"); borderRadius != "" {
 		innerTable.AddStyle("border-radius", borderRadius)
 	}
 

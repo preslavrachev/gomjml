@@ -61,28 +61,10 @@ func overridePosition(x, y, posXOverride, posYOverride string) (string, string) 
 	return x, y
 }
 
-// mapKeywordOrPercentToVMLDecimal converts CSS keyword/percent to decimal string
-func mapKeywordOrPercentToVMLDecimal(v string, horiz bool) string {
-	switch v {
-	case "left", "top":
-		return "0"
-	case "center":
-		return "0.5"
-	case "right", "bottom":
-		return "1"
-	}
-	if m := percentRe.FindStringSubmatch(v); m != nil {
-		if f, err := strconv.ParseFloat(m[1], 64); err == nil {
-			return strconv.FormatFloat(f/100.0, 'f', -1, 64)
-		}
-	}
-	// Length values not fully supported; fallback center
-	return "0.5"
-}
-
 func buildBackgroundShorthand(color, url, posX, posY, size, repeat string) string {
 	// Similar to MJML: color + url('...') + posX posY / size + repeat
 	parts := []string{}
+	// Only include color if it's explicitly provided (including "transparent")
 	if color != "" {
 		parts = append(parts, color)
 	}
@@ -129,55 +111,48 @@ func computeVMLSize(size string) (sizeAttr string, aspect string) {
 	return "", ""
 }
 
-func computeVMLPosition(posX, posY, size string) (originX, originY, posValX, posValY string) {
-	// Map keywords to decimal values
-	mapDecimal := func(v string, horiz bool) string {
+// AIDEV-NOTE: VML positioning depends on background-repeat mode - see docs/vml-background-positioning.md
+func computeVMLPosition(posX, posY, _ string, repeat string) (originX, originY, posValX, posValY string) {
+	// VML positioning depends on background-repeat mode:
+	// - repeat (tile): Direct mapping - center → 0.5
+	// - no-repeat (frame): Shifted mapping - center → 0 (0.5 - 0.5 = 0)
+	isFrameMode := repeat == "no-repeat"
+
+	mapDecimal := func(v string, _ bool) string {
+		var baseVal float64
 		switch v {
 		case "left", "top":
-			return "0"
+			baseVal = 0
 		case "center":
-			return "0.5"
+			baseVal = 0.5
 		case "right", "bottom":
-			return "1"
-		}
-		// percent (e.g. 30%) => 0.3
-		if strings.HasSuffix(v, "%") {
-			p := strings.TrimSuffix(v, "%")
-			if f, err := strconv.ParseFloat(p, 64); err == nil {
-				return strconv.FormatFloat(f/100.0, 'f', -1, 64)
+			baseVal = 1
+		default:
+			// percent (e.g. 30%) => 0.3
+			if strings.HasSuffix(v, "%") {
+				p := strings.TrimSuffix(v, "%")
+				if f, err := strconv.ParseFloat(p, 64); err == nil {
+					baseVal = f / 100.0
+				} else {
+					baseVal = 0.5 // default
+				}
+			} else {
+				baseVal = 0.5 // default
 			}
 		}
-		// default
-		return "0.5"
+
+		// Apply frame mode adjustment if needed
+		if isFrameMode {
+			baseVal = baseVal - 0.5
+		}
+
+		return strconv.FormatFloat(baseVal, 'f', -1, 64)
 	}
 
-	// Get base decimal values
+	// Get decimal values with repeat-mode consideration
 	decX := mapDecimal(posX, true)
 	decY := mapDecimal(posY, false)
 
-	// For cover sizing, MJML uses special VML positioning logic
-	if size == "cover" {
-		// Convert position to VML values: center=0, top=-0.5
-		// This matches MJML's VML generation for cover backgrounds
-		vmlX := "0"    // center -> 0
-		vmlY := "-0.5" // top -> -0.5
-
-		if posX == "left" {
-			vmlX = "-0.5"
-		} else if posX == "right" {
-			vmlX = "0.5"
-		}
-
-		if posY == "center" {
-			vmlY = "0"
-		} else if posY == "bottom" {
-			vmlY = "0.5"
-		}
-
-		return vmlX, vmlY, vmlX, vmlY
-	}
-
-	// For other sizes, use standard mapping
 	return decX, decY, decX, decY
 }
 
