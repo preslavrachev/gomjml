@@ -225,7 +225,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Add layout styles - use actual container width (respects wrapper padding)
+	// AIDEV-NOTE: width-calculation-critical; section max-width behavior
+	// 1. Use containerWidth (set by parent wrapper) - already accounts for wrapper horizontal padding
+	// 2. Section's own padding is internal spacing and must NOT reduce the section's max-width
+	// 3. Wrapper padding="20px" → child section gets containerWidth=560px → max-width:560px
+	// 4. Section padding="15px" → section keeps full containerWidth for max-width, padding affects inner content only
 	sectionDiv.AddStyle("margin", "0px auto").
 		AddStyle("max-width", strconv.Itoa(c.GetContainerWidth())+"px")
 

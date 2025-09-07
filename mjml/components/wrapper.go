@@ -76,14 +76,36 @@ func (c *MJWrapperComponent) getEffectiveWidth() int {
 	borderWidth := c.getBorderWidth()
 	effectiveWidth := baseWidth - borderWidth
 
-	// Subtract horizontal padding
+	// AIDEV-NOTE: wrapper-width-flow; wrapper padding reduces child containerWidth
+	// Subtract horizontal padding (handle both shorthand and individual properties)
+	// This ensures child sections receive reduced containerWidth accounting for wrapper padding
+	padding := c.getAttribute("padding")
+	if padding != "" {
+		if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+			effectiveWidth -= int(sp.Left + sp.Right)
+		}
+	}
+
+	// Individual properties override shorthand
 	if pl := c.getAttribute(constants.MJMLPaddingLeft); pl != "" {
 		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
+			// If we already subtracted from shorthand, add it back first
+			if padding != "" {
+				if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+					effectiveWidth += int(sp.Left)
+				}
+			}
 			effectiveWidth -= int(px.Value)
 		}
 	}
 	if pr := c.getAttribute(constants.MJMLPaddingRight); pr != "" {
 		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
+			// If we already subtracted from shorthand, add it back first
+			if padding != "" {
+				if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+					effectiveWidth += int(sp.Right)
+				}
+			}
 			effectiveWidth -= int(px.Value)
 		}
 	}
@@ -243,6 +265,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 			}
 			continue
 		}
+		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
 		if err := child.Render(w); err != nil {
 			return err
@@ -416,6 +439,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 			}
 			continue
 		}
+		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
 		if err := child.Render(w); err != nil {
 			return err
