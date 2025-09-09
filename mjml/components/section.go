@@ -8,7 +8,6 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
-	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -122,33 +121,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// MSO conditional comment - table wrapper for Outlook (inside VML textbox if present)
-	// Compute effective MSO inner width by subtracting horizontal padding
-	// from the container width to match MRML (e.g., 600 -> 560)
-	effectiveWidth := c.GetEffectiveWidth()
-	if padding != "" {
-		if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
-			effectiveWidth -= int(sp.Left + sp.Right)
-		}
-	}
-	if pa := c.GetAttribute(constants.MJMLPaddingLeft); pa != nil && *pa != "" {
-		if px, err := styles.ParsePixel(*pa); err == nil && px != nil {
-			if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
-				effectiveWidth += int(sp.Left)
-			}
-			effectiveWidth -= int(px.Value)
-		}
-	}
-	if pa := c.GetAttribute(constants.MJMLPaddingRight); pa != nil && *pa != "" {
-		if px, err := styles.ParsePixel(*pa); err == nil && px != nil {
-			if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
-				effectiveWidth += int(sp.Right)
-			}
-			effectiveWidth -= int(px.Value)
-		}
-	}
-	if effectiveWidth < 0 {
-		effectiveWidth = 0
-	}
+	// Use full container width for MSO table as per MJML spec - padding only affects inner content
+	msoTableWidth := c.GetEffectiveWidth()
 
 	// Get align from attributes (including mj-class)
 	alignAttr := c.GetAttributeWithDefault(c, "align")
@@ -158,8 +132,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	msoTable := html.NewTableTag().
 		AddAttribute("align", alignAttr).
-		AddAttribute("width", strconv.Itoa(effectiveWidth)).
-		AddStyle("width", getPixelWidthString(effectiveWidth))
+		AddAttribute("width", strconv.Itoa(msoTableWidth)).
+		AddAttribute("cellpadding", "0").
+		AddAttribute("cellspacing", "0").
+		AddStyle("width", getPixelWidthString(msoTableWidth))
 
 	// Add bgcolor attribute for MSO compatibility if background color is set
 	if backgroundColor != "" {

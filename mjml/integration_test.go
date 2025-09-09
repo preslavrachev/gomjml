@@ -99,6 +99,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-section",
 		"mj-section-background-vml",
 		"mj-section-bg-cover-no-repeat",
+		"mj-section-width",
 		"mj-section-with-columns",
 		"mj-section-class",
 		"mj-column",

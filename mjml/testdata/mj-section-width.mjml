@@ -1,0 +1,11 @@
+<mjml>
+  <mj-body>
+    <mj-section padding-left="20px" padding-right="20px">
+      <mj-column>
+        <mj-text>
+          Test for 560px inner table width in Outlook MSO HTML
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
