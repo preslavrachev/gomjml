@@ -296,7 +296,60 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// No inner MSO wrapper here; per MRML, inner column MSO wrappers are handled separately
+	// Always render inner MSO table wrapper for section content (MRML behavior)
+	// This provides the MSO table structure that content (including comments) sits within
+	// Only add inner MSO table wrapper for sections that have ONLY text content (no child components)
+	// Sections with columns/components already get MSO tables from their children
+	hasTextContent := strings.TrimSpace(c.Node.Text) != ""
+	hasChildContent := len(c.Children) > 0
+	needsContentMSOTable := hasTextContent && !hasChildContent
+
+	if needsContentMSOTable {
+		// Section has only text/comments - needs MSO table wrapper
+		innerMsoTable := html.NewTableTag()
+		innerMsoTr := html.NewHTMLTag("tr")
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderOpen(w); err != nil {
+			return err
+		}
+		if err := innerMsoTr.RenderOpen(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
+
+		// Render text content (including comments) - goes directly in TR, no TD
+		if _, err := w.WriteString(c.Node.Text); err != nil {
+			return err
+		}
+	} else if !hasChildContent && !hasTextContent {
+		// Empty section: render empty MSO table structure
+		innerMsoTable := html.NewTableTag()
+		innerMsoTr := html.NewHTMLTag("tr")
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderOpen(w); err != nil {
+			return err
+		}
+		if err := innerMsoTr.RenderOpen(w); err != nil {
+			return err
+		}
+		if err := innerMsoTr.RenderClose(w); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderClose(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
+	}
 
 	// Calculate sibling counts for width calculations (following MRML logic)
 	siblings := len(c.Children)
@@ -307,8 +360,37 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Render child columns and groups (section provides MSO TR, columns provide MSO TDs)
+	// Check if we have columns that need shared MSO table structure
+	hasColumns := false
+	for _, child := range c.Children {
+		if !child.IsRawElement() {
+			if _, ok := child.(*MJColumnComponent); ok {
+				hasColumns = true
+				break
+			}
+		}
+	}
+
+	// Open shared MSO table structure for all columns
+	if hasColumns {
+		sharedMsoTable := html.NewTableTag()
+		sharedMsoTr := html.NewHTMLTag("tr")
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := sharedMsoTable.RenderOpen(w); err != nil {
+			return err
+		}
+		if err := sharedMsoTr.RenderOpen(w); err != nil {
+			return err
+		}
+		// Don't close MSO conditional here - let first column TD continue the block
+	}
+
+	// Render child columns and groups (section provides shared MSO TR, columns provide MSO TDs)
 	// AIDEV-NOTE: width-flow-start; section initiates width flow by passing effective width to columns
+	columnIndex := 0
 	for _, child := range c.Children {
 		if child.IsRawElement() {
 			if err := child.Render(w); err != nil {
@@ -322,12 +404,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		child.SetSiblings(siblings)
 		child.SetRawSiblings(rawSiblings)
 
-		// Generate MSO conditional TD for each column (following MRML's render_wrapped_children pattern)
+		// Generate MSO TD for each column (within shared MSO table)
 		if columnComp, ok := child.(*MJColumnComponent); ok {
-			msoTable := html.NewTableTag()
-
-			msoTr := html.NewHTMLTag("tr")
-
 			msoTd := html.NewHTMLTag("td")
 			// Add styles in MRML insertion order: vertical-align first, then width
 			getAttr := func(name string) string {
@@ -339,9 +417,27 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
 			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
 
-			if err := html.RenderMSOTableTrOpenConditional(w, msoTable, msoTr, msoTd); err != nil {
-				return err
+			if columnIndex == 0 {
+				// First column: continue the MSO conditional from table+tr
+				if err := msoTd.RenderOpen(w); err != nil {
+					return err
+				}
+				if _, err := w.WriteString("<![endif]-->"); err != nil {
+					return err
+				}
+			} else {
+				// Subsequent columns: close previous TD and open new TD in one MSO block (MJML pattern)
+				if _, err := w.WriteString("<!--[if mso | IE]></td>"); err != nil {
+					return err
+				}
+				if err := msoTd.RenderOpen(w); err != nil {
+					return err
+				}
+				if _, err := w.WriteString("<![endif]-->"); err != nil {
+					return err
+				}
 			}
+			columnIndex++
 		} else if groupComp, ok := child.(*MJGroupComponent); ok {
 			// Groups also need MSO conditionals like columns
 			groupComp.SetContainerWidth(c.GetEffectiveWidth())
@@ -374,15 +470,36 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			return err
 		}
 
-		// Close MSO conditional TD/TR/TABLE for columns and groups
-		if _, ok := child.(*MJColumnComponent); ok {
+		// Groups get their own individual MSO tables (they handle this internally)
+		if _, ok := child.(*MJGroupComponent); ok {
 			if err := html.RenderMSOGroupTableClose(w); err != nil {
 				return err
 			}
-		} else if _, ok := child.(*MJGroupComponent); ok {
-			if err := html.RenderMSOGroupTableClose(w); err != nil {
-				return err
-			}
+		}
+	}
+
+	// Close shared MSO table structure for columns
+	if hasColumns {
+		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+			return err
+		}
+	}
+
+	// Close inner MSO table wrapper if we opened one for content
+	if needsContentMSOTable {
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		innerMsoTable := html.NewTableTag()
+		innerMsoTr := html.NewHTMLTag("tr")
+		if err := innerMsoTr.RenderClose(w); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderClose(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
 		}
 	}
 

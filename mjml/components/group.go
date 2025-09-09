@@ -125,9 +125,14 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO conditional table structure
-	if err := html.RenderMSOConditional(w,
-		"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr>"); err != nil {
+	// MSO conditional table structure with dynamic bgcolor
+	msoTableTag := "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\""
+	if backgroundColor != "" {
+		msoTableTag += " bgcolor=\"" + backgroundColor + "\""
+	}
+	msoTableTag += "><tr>"
+
+	if err := html.RenderMSOConditional(w, msoTableTag); err != nil {
 		return err
 	}
 

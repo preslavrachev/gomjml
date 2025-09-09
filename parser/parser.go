@@ -104,8 +104,8 @@ type MixedContentPart struct {
 
 // ParseMJML parses an MJML string into an AST
 func ParseMJML(mjmlContent string) (*MJMLNode, error) {
-	// AIDEV-NOTE: comment-stripping; Strip non-MSO XML comments per MJML spec
-	// Regular XML comments are not preserved in MJML output, only MSO conditionals
+	// AIDEV-NOTE: comment-preservation; Preserve all XML comments for MRML compatibility
+	// MRML preserves regular XML comments and wraps them with MSO conditionals
 	processedContent := stripNonMSOComments(mjmlContent)
 
 	// Pre-process HTML entities that XML parser doesn't handle
