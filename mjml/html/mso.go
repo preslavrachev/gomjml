@@ -408,7 +408,14 @@ func RenderMSOTableTrOpenConditional(w io.StringWriter, table, tr, td *HTMLTag) 
 	return nil
 }
 
-// RenderMSOWrapperTableOpen renders MSO wrapper table opening directly to Writer without string allocation
+// RenderMSOWrapperTableOpen renders the opening Outlook wrapper table with all
+// required attributes. The generated structure matches MRML's output exactly so
+// that integration tests comparing against reference HTML don't report spurious
+// differences.
+//
+// Example output for width=600:
+//
+//	<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="600" style="width:600px;"><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
 func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int) error {
 	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\""); err != nil {
 		return err

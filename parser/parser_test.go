@@ -644,14 +644,19 @@ func TestStripNonMSOComments(t *testing.T) {
 			expected: "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
 		},
 		{
-			name:     "MSO conditional comment should be preserved",
+			name:     "MSO conditional comment before root is stripped",
 			input:    "<!--[if mso]><xml>MSO content</xml><![endif]--><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
-			expected: "<!--[if mso]><xml>MSO content</xml><![endif]--><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
 		},
 		{
-			name:     "mixed comments - preserve MSO, strip regular",
+			name:     "mixed comments before root are stripped",
 			input:    "<!-- Regular comment --><!--[if mso]><xml>MSO</xml><![endif]--><!-- Another comment --><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
-			expected: "<!--[if mso]><xml>MSO</xml><![endif]--><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+		},
+		{
+			name:     "comment inside mjml should be preserved",
+			input:    "<mjml><!-- inside --><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<mjml><!-- inside --><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
 		},
 		{
 			name:     "real world case - AIDEV comments before mjml",

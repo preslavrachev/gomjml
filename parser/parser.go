@@ -274,56 +274,41 @@ func isEntityTerminator(c byte) bool {
 		c == '"' || c == '\'' || c == '<' || c == '>'
 }
 
-// AIDEV-NOTE: mso-comment-preservation; Preserve MSO conditional comments per MJML spec
-// stripNonMSOComments removes regular XML comments but preserves MSO conditional comments
-// that are essential for email client compatibility (Outlook-specific rendering)
+// stripNonMSOComments removes comments that appear before the <mjml> root node.
+// Comments inside the document are preserved so they can be rendered in the
+// output HTML. This mirrors the behaviour of the MRML reference implementation
+// which keeps user comments intact while ensuring the XML decoder starts at the
+// root element.
 func stripNonMSOComments(content string) string {
-	if !strings.Contains(content, "<!--") {
+	idx := strings.Index(strings.ToLower(content), "<mjml")
+	if idx == -1 {
 		return content
 	}
 
-	var result strings.Builder
-	result.Grow(len(content))
+	prefix := content[:idx]
+	rest := content[idx:]
 
-	i := 0
-	for i < len(content) {
-		commentStart := strings.Index(content[i:], "<!--")
-		if commentStart == -1 {
-			// No more comments, append rest of content
-			result.WriteString(content[i:])
+	// Strip all HTML comments from the prefix to avoid parse errors when the
+	// XML decoder expects a start element.
+	for {
+		start := strings.Index(prefix, "<!--")
+		if start == -1 {
 			break
 		}
-
-		// Adjust commentStart to absolute position
-		commentStart += i
-
-		// Append content before comment
-		result.WriteString(content[i:commentStart])
-
-		// Find comment end
-		commentEnd := strings.Index(content[commentStart:], "-->")
-		if commentEnd == -1 {
-			// Malformed comment, just append the rest
-			result.WriteString(content[commentStart:])
+		end := strings.Index(prefix[start+4:], "-->")
+		if end == -1 {
+			// Malformed comment; drop everything from start
+			prefix = prefix[:start]
 			break
 		}
-
-		// Adjust commentEnd to absolute position and include "-->"
-		commentEnd = commentStart + commentEnd + 3
-
-		// Extract the full comment
-		comment := content[commentStart:commentEnd]
-
-		// Check if this is an MSO conditional comment
-		if isMSOConditionalComment(comment) {
-			result.WriteString(comment)
-		}
-		// If not MSO conditional, skip it (strip it out)
-
-		i = commentEnd
+		end += start + 4 + 3 // include "<!--" and "-->"
+		prefix = prefix[:start] + prefix[end:]
 	}
 
-	return strings.TrimLeft(result.String(), " \t\r\n")
+	// Trim any leftover whitespace before the root element
+	prefix = strings.TrimLeft(prefix, " \t\r\n")
+
+	return prefix + rest
 }
 
 // isMSOConditionalComment checks if a comment is an MSO conditional comment
