@@ -93,10 +93,23 @@ type MixedContentPart struct {
 	Node *MJMLNode
 }
 
+// AIDEV-NOTE: mjml-spec-structure; MJML document structure per official spec
+// Minimal valid MJML structure:
+// <mjml>
+//   <mj-body> (required)
+//     <!-- at least one component -->
+//   </mj-body>
+// </mjml>
+// The <mj-head> section is OPTIONAL and can be omitted entirely.
+
 // ParseMJML parses an MJML string into an AST
 func ParseMJML(mjmlContent string) (*MJMLNode, error) {
+	// AIDEV-NOTE: comment-stripping; Strip non-MSO XML comments per MJML spec
+	// Regular XML comments are not preserved in MJML output, only MSO conditionals
+	processedContent := stripNonMSOComments(mjmlContent)
+
 	// Pre-process HTML entities that XML parser doesn't handle
-	processedContent := preprocessHTMLEntities(mjmlContent)
+	processedContent = preprocessHTMLEntities(processedContent)
 
 	// Wrap mj-text inner content in CDATA to preserve raw HTML
 	processedContent = wrapMJTextContent(processedContent)
@@ -259,6 +272,82 @@ func isHexDigit(b byte) bool {
 func isEntityTerminator(c byte) bool {
 	return c == ';' || c == '&' || c == ' ' || c == '\n' || c == '\t' ||
 		c == '"' || c == '\'' || c == '<' || c == '>'
+}
+
+// AIDEV-NOTE: mso-comment-preservation; Preserve MSO conditional comments per MJML spec
+// stripNonMSOComments removes regular XML comments but preserves MSO conditional comments
+// that are essential for email client compatibility (Outlook-specific rendering)
+func stripNonMSOComments(content string) string {
+	if !strings.Contains(content, "<!--") {
+		return content
+	}
+
+	var result strings.Builder
+	result.Grow(len(content))
+
+	i := 0
+	for i < len(content) {
+		commentStart := strings.Index(content[i:], "<!--")
+		if commentStart == -1 {
+			// No more comments, append rest of content
+			result.WriteString(content[i:])
+			break
+		}
+
+		// Adjust commentStart to absolute position
+		commentStart += i
+
+		// Append content before comment
+		result.WriteString(content[i:commentStart])
+
+		// Find comment end
+		commentEnd := strings.Index(content[commentStart:], "-->")
+		if commentEnd == -1 {
+			// Malformed comment, just append the rest
+			result.WriteString(content[commentStart:])
+			break
+		}
+
+		// Adjust commentEnd to absolute position and include "-->"
+		commentEnd = commentStart + commentEnd + 3
+
+		// Extract the full comment
+		comment := content[commentStart:commentEnd]
+
+		// Check if this is an MSO conditional comment
+		if isMSOConditionalComment(comment) {
+			result.WriteString(comment)
+		}
+		// If not MSO conditional, skip it (strip it out)
+
+		i = commentEnd
+	}
+
+	return strings.TrimLeft(result.String(), " \t\r\n")
+}
+
+// isMSOConditionalComment checks if a comment is an MSO conditional comment
+// that should be preserved for email client compatibility
+func isMSOConditionalComment(comment string) bool {
+	// MSO conditional comments patterns
+	msoPatterns := []string{
+		"<!--[if mso",
+		"<!--[if !mso",
+		"<!--[if lte mso",
+		"<!--[if gte mso",
+		"<!--[if lt mso",
+		"<!--[if gt mso",
+		"<![endif]-->",
+	}
+
+	commentLower := strings.ToLower(comment)
+	for _, pattern := range msoPatterns {
+		if strings.Contains(commentLower, pattern) {
+			return true
+		}
+	}
+
+	return false
 }
 
 const (

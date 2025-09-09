@@ -616,3 +616,152 @@ func TestPreprocessHTMLEntitiesIntegration(t *testing.T) {
 		})
 	}
 }
+
+func TestStripNonMSOComments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no comments",
+			input:    "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+		},
+		{
+			name:     "regular comment should be stripped",
+			input:    "<!-- This is a regular comment --><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+		},
+		{
+			name:     "AIDEV comment should be stripped",
+			input:    "<!-- AIDEV-NOTE: test comment --><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+		},
+		{
+			name:     "multiple regular comments should be stripped",
+			input:    "<!-- Comment 1 --><!-- Comment 2 --><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+		},
+		{
+			name:     "MSO conditional comment should be preserved",
+			input:    "<!--[if mso]><xml>MSO content</xml><![endif]--><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<!--[if mso]><xml>MSO content</xml><![endif]--><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+		},
+		{
+			name:     "mixed comments - preserve MSO, strip regular",
+			input:    "<!-- Regular comment --><!--[if mso]><xml>MSO</xml><![endif]--><!-- Another comment --><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+			expected: "<!--[if mso]><xml>MSO</xml><![endif]--><mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>",
+		},
+		{
+			name:     "real world case - AIDEV comments before mjml",
+			input:    "<!-- AIDEV-NOTE: width-calculation-test; tests wrapper padding reducing section max-width -->\n<!-- Wrapper padding=\"20px\" should reduce child section containerWidth from 600px to 560px -->\n<mjml>\n  <mj-body background-color=\"#f8f9fa\">\n  </mj-body>\n</mjml>",
+			expected: "<mjml>\n  <mj-body background-color=\"#f8f9fa\">\n  </mj-body>\n</mjml>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := stripNonMSOComments(tt.input)
+			if result != tt.expected {
+				t.Errorf("stripNonMSOComments() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsMSOConditionalComment(t *testing.T) {
+	tests := []struct {
+		name     string
+		comment  string
+		expected bool
+	}{
+		{
+			name:     "regular comment",
+			comment:  "<!-- This is a regular comment -->",
+			expected: false,
+		},
+		{
+			name:     "AIDEV comment",
+			comment:  "<!-- AIDEV-NOTE: test comment -->",
+			expected: false,
+		},
+		{
+			name:     "MSO if comment",
+			comment:  "<!--[if mso]>",
+			expected: true,
+		},
+		{
+			name:     "MSO if not comment",
+			comment:  "<!--[if !mso]>",
+			expected: true,
+		},
+		{
+			name:     "MSO endif comment",
+			comment:  "<![endif]-->",
+			expected: true,
+		},
+		{
+			name:     "MSO lte comment",
+			comment:  "<!--[if lte mso 15]>",
+			expected: true,
+		},
+		{
+			name:     "complete MSO conditional block",
+			comment:  "<!--[if mso]><xml>content</xml><![endif]-->",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isMSOConditionalComment(tt.comment)
+			if result != tt.expected {
+				t.Errorf("isMSOConditionalComment(%q) = %v, want %v", tt.comment, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseMJMLWithComments(t *testing.T) {
+	// Test the actual failing case
+	input := `<!-- AIDEV-NOTE: width-calculation-test; tests wrapper padding reducing section max-width -->
+<!-- Wrapper padding="20px" should reduce child section containerWidth from 600px to 560px -->
+<mjml>
+  <mj-body background-color="#f8f9fa">
+    <mj-wrapper padding="20px">
+      <mj-section full-width="full-width" padding="80px 20px">
+        <mj-column width="100%" padding="0">
+          <mj-text>Background Image Section</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>`
+
+	// Debug: check what the stripped content looks like
+	stripped := stripNonMSOComments(input)
+	t.Logf("Stripped content: %q", stripped)
+
+	root, err := ParseMJML(input)
+	if err != nil {
+		t.Fatalf("ParseMJML failed: %v", err)
+	}
+
+	if root.GetTagName() != "mjml" {
+		t.Errorf("Expected root tag 'mjml', got '%s'", root.GetTagName())
+	}
+
+	// Verify the structure is correct
+	body := root.FindFirstChild("mj-body")
+	if body == nil {
+		t.Error("Expected to find mj-body child")
+	}
+
+	if body != nil {
+		wrapper := body.FindFirstChild("mj-wrapper")
+		if wrapper == nil {
+			t.Error("Expected to find mj-wrapper child")
+		}
+	}
+}
