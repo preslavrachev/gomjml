@@ -196,6 +196,23 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				t.Fatalf("Failed to render MJML: %v", err)
 			}
 
+			// Check for MSO table attribute differences FIRST (before DOM comparison)
+			// because MSO conditionals are not part of DOM and will be ignored by DOM comparison
+			msoTableDiff := checkMSOTableAttributeDifferences(expected, actual)
+			if msoTableDiff != "" {
+				t.Errorf("MSO table attribute differences found:\n%s", msoTableDiff)
+				writeDebugFiles(testName, expected, actual)
+				return
+			}
+
+			// Check for MSO conditional comment differences
+			msoDiff := checkMSOConditionalDifferences(expected, actual)
+			if msoDiff != "" {
+				t.Errorf("MSO conditional comment differences found:\n%s", msoDiff)
+				writeDebugFiles(testName, expected, actual)
+				return
+			}
+
 			// Compare outputs using DOM tree comparison
 			if !compareDOMTrees(expected, actual) {
 				// Check for HTML entity encoding differences first
@@ -206,26 +223,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 					return
 				}
 
-				// Check for MSO conditional comment differences
-				msoDiff := checkMSOConditionalDifferences(expected, actual)
-				if msoDiff != "" {
-					t.Errorf("MSO conditional comment differences found:\n%s", msoDiff)
-					writeDebugFiles(testName, expected, actual)
-					return
-				}
-
 				// Check for VML attribute differences
 				vmlDiff := checkVMLAttributeDifferences(expected, actual)
 				if vmlDiff != "" {
 					t.Errorf("VML attribute differences found:\n%s", vmlDiff)
-					writeDebugFiles(testName, expected, actual)
-					return
-				}
-
-				// Check for MSO table attribute differences
-				msoTableDiff := checkMSOTableAttributeDifferences(expected, actual)
-				if msoTableDiff != "" {
-					t.Errorf("MSO table attribute differences found:\n%s", msoTableDiff)
 					writeDebugFiles(testName, expected, actual)
 					return
 				}
@@ -1168,8 +1169,8 @@ func checkMSOTableAttributeDifferences(expected, actual string) string {
 	var differences []string
 
 	for _, attr := range msoTableAttrs {
-		// Look for MSO conditional table attributes
-		expectedPattern := fmt.Sprintf(`<!--\[if mso.*?<table[^>]*%s="([^"]*)"`, attr)
+		// Look for MSO conditional table attributes - simplified pattern
+		expectedPattern := fmt.Sprintf(`if mso[^>]*>.*?%s="([^"]*)"`, attr)
 		actualPattern := expectedPattern
 
 		expectedMatches := findRegexMatches(expected, expectedPattern)
@@ -1179,6 +1180,15 @@ func checkMSOTableAttributeDifferences(expected, actual string) string {
 			differences = append(differences,
 				fmt.Sprintf("MSO table %s attribute count mismatch: expected %d, actual %d",
 					attr, len(expectedMatches), len(actualMatches)))
+		} else {
+			// Check for value differences when counts match
+			for i, expectedVal := range expectedMatches {
+				if i < len(actualMatches) && expectedVal != actualMatches[i] {
+					differences = append(differences,
+						fmt.Sprintf("MSO table %s attribute value mismatch: expected '%s', actual '%s'",
+							attr, expectedVal, actualMatches[i]))
+				}
+			}
 		}
 	}
 
