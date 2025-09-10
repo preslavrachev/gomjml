@@ -3,7 +3,6 @@ package components
 import (
 	"io"
 	"strconv"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -49,16 +48,6 @@ func (c *MJWrapperComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-func parseBorderWidth(attr string) int {
-	parts := strings.Fields(attr)
-	if len(parts) > 0 {
-		if px, err := styles.ParsePixel(parts[0]); err == nil && px != nil {
-			return int(px.Value)
-		}
-	}
-	return 0
-}
-
 // getBorderWidth calculates total horizontal border width taking into account
 // shorthand border, border-left, and border-right overrides.
 func (c *MJWrapperComponent) getBorderWidth() int {
@@ -70,16 +59,16 @@ func (c *MJWrapperComponent) getBorderWidth() int {
 func (c *MJWrapperComponent) getBorderLRWidths() (int, int) {
 	var left, right int
 	if border := c.getAttribute("border"); border != "" {
-		w := parseBorderWidth(border)
+		w := styles.ParseBorderWidth(border)
 		left, right = w, w
 	}
 	if bl := c.getAttribute("border-left"); bl != "" {
-		if w := parseBorderWidth(bl); w > 0 {
+		if w := styles.ParseBorderWidth(bl); w > 0 {
 			left = w
 		}
 	}
 	if br := c.getAttribute("border-right"); br != "" {
-		if w := parseBorderWidth(br); w > 0 {
+		if w := styles.ParseBorderWidth(br); w > 0 {
 			right = w
 		}
 	}

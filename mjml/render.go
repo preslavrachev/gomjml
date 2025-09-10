@@ -1208,6 +1208,17 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
+	// Render mj-raw components inside head
+	if c.Head != nil {
+		for _, child := range c.Head.Children {
+			if rawComp, ok := child.(*components.MJRawComponent); ok {
+				if err := rawComp.Render(w); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	if _, err := w.WriteString(`</head>`); err != nil {
 		return err
 	}

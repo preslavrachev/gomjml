@@ -97,6 +97,7 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	paddingRight := c.GetAttributeWithDefault(c, constants.MJMLPaddingRight)
 	paddingBottom := c.GetAttributeWithDefault(c, constants.MJMLPaddingBottom)
 	paddingLeft := c.GetAttributeWithDefault(c, constants.MJMLPaddingLeft)
+	height := c.GetAttributeWithDefault(c, constants.MJMLHeight)
 
 	// Font-related attributes (needed by both td and content elements)
 	fontFamily := c.GetAttributeWithDefault(c, constants.MJMLFontFamily)
@@ -209,6 +210,9 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	}
 
 	buttonTdTag.AddStyle("cursor", "auto")
+	if height != "" {
+		buttonTdTag.AddStyle(constants.CSSHeight, height)
+	}
 	if fontStyle != "" {
 		buttonTdTag.AddStyle(constants.CSSFontStyle, fontStyle)
 	}

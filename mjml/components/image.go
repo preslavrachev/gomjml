@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
@@ -29,26 +30,31 @@ func (c *MJImageComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJImageComponent
 func (c *MJImageComponent) Render(w io.StringWriter) error {
-	// Helper function to get attribute with default
-	getAttr := func(name string) string {
-		if attr := c.GetAttribute(name); attr != nil {
-			return *attr
-		}
-		return c.GetDefaultAttribute(name)
-	}
+	// Get attributes with proper resolution order (element -> class -> global -> default)
+	align := c.GetAttributeWithDefault(c, constants.MJMLAlign)
+	border := c.GetAttributeWithDefault(c, constants.MJMLBorder)
+	borderRadius := c.GetAttributeWithDefault(c, constants.MJMLBorderRadius)
+	height := c.GetAttributeWithDefault(c, constants.MJMLHeight)
+	href := c.GetAttributeWithDefault(c, constants.MJMLHref)
+	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
+	rel := c.GetAttributeWithDefault(c, "rel")
+	src := c.GetAttributeWithDefault(c, constants.MJMLSrc)
+	target := c.GetAttributeWithDefault(c, constants.MJMLTarget)
+	title := c.GetAttributeWithDefault(c, constants.MJMLTitle)
 
-	// Get attributes with defaults
-	align := getAttr("align")
-	border := getAttr("border")
-	borderRadius := getAttr("border-radius")
-	height := getAttr("height")
-	href := getAttr("href")
-	padding := getAttr("padding")
-	rel := getAttr("rel")
-	src := getAttr("src")
-	target := getAttr("target")
-	title := getAttr("title")
-	width := getAttr("width")
+	widthAttr := c.GetAttribute("width")
+	width := ""
+	if widthAttr != nil && *widthAttr != "" {
+		width = *widthAttr
+	} else {
+		width = c.calculateDefaultWidth()
+	}
+	containerBackground := c.GetAttributeWithDefault(c, constants.MJMLContainerBackgroundColor)
+	fluidOnMobile := c.GetAttributeWithDefault(c, "fluid-on-mobile")
+	paddingTop := c.GetAttributeWithDefault(c, constants.MJMLPaddingTop)
+	paddingRight := c.GetAttributeWithDefault(c, constants.MJMLPaddingRight)
+	paddingBottom := c.GetAttributeWithDefault(c, constants.MJMLPaddingBottom)
+	paddingLeft := c.GetAttributeWithDefault(c, constants.MJMLPaddingLeft)
 
 	// Handle alt attribute specially - only include if explicitly set in MJML
 	var alt *string
@@ -79,10 +85,26 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 
 	// Create TD container with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
-		AddAttribute("align", align).
-		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
+		AddAttribute(constants.AttrAlign, align).
+		AddStyle(constants.CSSFontSize, "0px").
+		AddStyle(constants.CSSPadding, padding).
 		AddStyle("word-break", "break-word")
+
+	if containerBackground != "" {
+		tdTag.AddStyle(constants.CSSBackground, containerBackground)
+	}
+	if paddingTop != "" {
+		tdTag.AddStyle(constants.CSSPaddingTop, paddingTop)
+	}
+	if paddingRight != "" {
+		tdTag.AddStyle(constants.CSSPaddingRight, paddingRight)
+	}
+	if paddingBottom != "" {
+		tdTag.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft != "" {
+		tdTag.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	}
 
 	// Add css-class if present
 	if cssClass := c.BuildClassAttribute(); cssClass != "" {
@@ -95,12 +117,16 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 
 	// Image table
 	tableTag := html.NewHTMLTag("table").
-		AddAttribute("border", "0").
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation").
-		AddStyle("border-collapse", "collapse").
+		AddAttribute(constants.AttrBorder, "0").
+		AddAttribute(constants.AttrCellPadding, "0").
+		AddAttribute(constants.AttrCellSpacing, "0").
+		AddAttribute(constants.AttrRole, "presentation").
+		AddStyle(constants.CSSBorderCollapse, "collapse").
 		AddStyle("border-spacing", "0px")
+
+	if fluidOnMobile == "true" {
+		tableTag.AddAttribute(constants.AttrClass, "mj-full-width-mobile")
+	}
 
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err
@@ -112,7 +138,10 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 	// Image cell with width constraint
 	imageTdTag := html.NewHTMLTag("td")
 	if width != "" {
-		imageTdTag.AddStyle("width", width)
+		imageTdTag.AddStyle(constants.CSSWidth, width)
+	}
+	if fluidOnMobile == "true" {
+		imageTdTag.AddAttribute(constants.AttrClass, "mj-full-width-mobile")
 	}
 
 	if err := imageTdTag.RenderOpen(w); err != nil {
@@ -122,13 +151,13 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 	// Optional link wrapper
 	if href != "" {
 		linkTag := html.NewHTMLTag("a").
-			AddAttribute("href", href)
+			AddAttribute(constants.AttrHref, href)
 
 		if rel != "" {
-			linkTag.AddAttribute("rel", rel)
+			linkTag.AddAttribute(constants.AttrRel, rel)
 		}
 		if target != "" {
-			linkTag.AddAttribute("target", target)
+			linkTag.AddAttribute(constants.AttrTarget, target)
 		}
 
 		if err := linkTag.RenderOpen(w); err != nil {
@@ -145,24 +174,24 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 		imgTag.AddAttribute("alt", *alt)
 	}
 	if imgHeight != "" {
-		imgTag.AddAttribute("height", imgHeight)
+		imgTag.AddAttribute(constants.AttrHeight, imgHeight)
 	}
-	imgTag.AddAttribute("src", src)
+	imgTag.AddAttribute(constants.AttrSrc, src)
 	if title != "" {
-		imgTag.AddAttribute("title", title)
+		imgTag.AddAttribute(constants.AttrTitle, title)
 	}
 	if imgWidth != "" {
-		imgTag.AddAttribute("width", imgWidth)
+		imgTag.AddAttribute(constants.AttrWidth, imgWidth)
 	}
 
 	// Apply image styles
-	imgTag.AddStyle("border", border).
+	imgTag.AddStyle(constants.CSSBorder, border).
 		AddStyle("display", "block").
 		AddStyle("outline", "none").
 		AddStyle("text-decoration", "none").
-		AddStyle("height", height).
-		AddStyle("width", "100%").
-		AddStyle("font-size", "13px")
+		AddStyle(constants.CSSHeight, height).
+		AddStyle(constants.CSSWidth, "100%").
+		AddStyle(constants.CSSFontSize, "13px")
 
 	if borderRadius != "" {
 		imgTag.AddStyle("border-radius", borderRadius)
@@ -226,6 +255,10 @@ func (c *MJImageComponent) GetDefaultAttribute(name string) string {
 		return ""
 	case "width":
 		return c.calculateDefaultWidth()
+	case "fluid-on-mobile":
+		return "false"
+	case constants.MJMLContainerBackgroundColor:
+		return ""
 	default:
 		return ""
 	}
@@ -236,20 +269,38 @@ func (c *MJImageComponent) GetDefaultAttribute(name string) string {
 func (c *MJImageComponent) calculateDefaultWidth() string {
 	containerWidth := c.GetEffectiveWidth()
 
-	// Get padding and calculate horizontal padding
-	paddingAttr := c.GetAttribute("padding")
-	horizontalPadding := 50 // Default: 25px left + 25px right
-
-	if paddingAttr != nil {
-		if spacing, err := styles.ParseSpacing(*paddingAttr); err == nil {
-			horizontalPadding = int(spacing.Left + spacing.Right)
+	// Determine horizontal padding using shorthand and individual overrides
+	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
+	left, right := 0.0, 0.0
+	if spacing, err := styles.ParseSpacing(padding); err == nil && spacing != nil {
+		left, right = spacing.Left, spacing.Right
+	} else if parts := strings.Fields(padding); len(parts) == 3 {
+		if lr, err := styles.ParsePixel(parts[1]); err == nil && lr != nil {
+			left, right = lr.Value, lr.Value
 		}
+	}
+	if pl := c.GetAttributeWithDefault(c, constants.MJMLPaddingLeft); pl != "" {
+		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
+			left = px.Value
+		}
+	}
+	if pr := c.GetAttributeWithDefault(c, constants.MJMLPaddingRight); pr != "" {
+		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
+			right = px.Value
+		}
+	}
+	horizontalPadding := int(left + right)
+
+	// Subtract border widths if present
+	if border := c.GetAttributeWithDefault(c, constants.MJMLBorder); border != "" && border != "none" {
+		bw := styles.ParseBorderWidth(border)
+		horizontalPadding += bw * 2
 	}
 
 	// Calculate available width
 	availableWidth := containerWidth - horizontalPadding
 	if availableWidth <= 0 {
-		availableWidth = containerWidth // Fallback to container width
+		availableWidth = containerWidth
 	}
 
 	return getPixelWidthString(availableWidth)
