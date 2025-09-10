@@ -106,6 +106,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-column-padding",
 		"mj-column-class",
 		"mj-wrapper",
+		"mj-wrapper-border-radius",
 		// MJ-RAW tests
 		"mj-raw",
 		"mj-raw-conditional-comment",
