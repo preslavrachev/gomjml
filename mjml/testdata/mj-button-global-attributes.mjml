@@ -1,0 +1,60 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-button
+        color="#ffffff"
+        font-size="16px"
+        font-weight="bold"
+        align="center"
+        font-family="Arial, sans-serif"
+        text-decoration="none"
+        padding-left="25px"
+        text-transform="none"
+        background-color="#007bff"
+        padding="10px 25px"
+        padding-right="25px"
+        font-style="normal"
+        padding-bottom="15px"
+        line-height="120%"
+        vertical-align="middle"
+        border-radius="4px"
+        target="_blank"
+        rel="noopener noreferrer"
+        border="none"
+        padding-top="15px"
+        inner-padding="12px 24px"
+      />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f8f9fa" width="600px">
+    <mj-section>
+      <mj-column>
+        <mj-button
+          font-family="Arial, sans-serif"
+          line-height="120%"
+          rel="noopener noreferrer"
+          align="center"
+          text-transform="none"
+          border="none"
+          border-radius="30px"
+          background-color="#EC407A"
+          padding-top="0px"
+          inner-padding="16px 32px"
+          font-size="18px"
+          padding-bottom="0px"
+          padding-left="25px"
+          vertical-align="middle"
+          href="#"
+          font-weight="bold"
+          color="#ffffff"
+          text-decoration="none"
+          font-style="normal"
+          padding-right="25px"
+          target="_blank"
+          padding="10px 25px"
+          >Get Started Today</mj-button
+        >
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

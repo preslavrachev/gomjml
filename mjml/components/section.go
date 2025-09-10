@@ -8,6 +8,7 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -71,7 +72,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			// Apply background color only
 			c.ApplyBackgroundStyles(outerTable, c)
 		}
-		c.ApplyBorderStyles(outerTable, c)
+		// Only border-radius applies to the outer table. Border
+		// properties belong to the inner content container.
+		if br := c.GetAttributeWithDefault(c, "border-radius"); br != "" {
+			outerTable.AddStyle("border-radius", br)
+		}
 		outerTable.AddStyle("width", "100%")
 
 		if err := outerTable.RenderOpen(w); err != nil {
@@ -289,6 +294,24 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
 		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
 	}
+
+	// Apply border styles to the content container. Global attributes for
+	// mj-section define border properties that should apply to the inner
+	// TD rather than the wrapping tables.
+	toPtr := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
+	styles.ApplyBorderStyles(tdTag,
+		toPtr(c.GetAttributeFast(c, constants.MJMLBorder)),
+		nil,
+		toPtr(c.GetAttributeFast(c, "border-top")),
+		toPtr(c.GetAttributeFast(c, "border-right")),
+		toPtr(c.GetAttributeFast(c, "border-bottom")),
+		toPtr(c.GetAttributeFast(c, "border-left")),
+	)
 
 	tdTag.AddStyle("text-align", textAlign)
 
