@@ -369,19 +369,38 @@ func getPixelWidthString(widthPx int) string {
 // Style Mixin Methods - Common styling patterns that components can use
 
 // ApplyBackgroundStyles applies background-related CSS styles to an HTML tag
-func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag) *html.HTMLTag {
-	bgcolor := bc.GetAttribute("background-color")
-	bgImage := bc.GetAttribute("background-image")
-	if bgImage == nil || *bgImage == "" {
+func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
+	toPtr := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
+
+	bgcolor := bc.GetAttributeFast(comp, "background-color")
+	bgImage := bc.GetAttributeFast(comp, "background-image")
+	if bgImage == "" {
 		// MJML commonly uses the "background-url" attribute. Fall back to it
 		// when "background-image" is not provided to mirror MRML's behaviour.
-		bgImage = bc.GetAttribute(constants.MJMLBackgroundUrl)
+		bgImage = bc.GetAttributeFast(comp, constants.MJMLBackgroundUrl)
 	}
-	bgRepeat := bc.GetAttribute("background-repeat")
-	bgSize := bc.GetAttribute("background-size")
-	bgPosition := bc.GetAttribute("background-position")
+	bgRepeat := bc.GetAttributeFast(comp, "background-repeat")
+	bgSize := bc.GetAttributeFast(comp, "background-size")
+	bgPosition := bc.GetAttributeFast(comp, "background-position")
 
-	return styles.ApplyBackgroundStyles(tag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition)
+	// When only a transparent background color is specified, MRML outputs only
+	// background-color without the shorthand background property.
+	if bgImage == "" && bgcolor == "transparent" {
+		tag.AddStyle("background-color", bgcolor)
+		return tag
+	}
+
+	return styles.ApplyBackgroundStyles(tag,
+		toPtr(bgcolor),
+		toPtr(bgImage),
+		toPtr(bgRepeat),
+		toPtr(bgSize),
+		toPtr(bgPosition))
 }
 
 // ApplyBorderStyles applies border-related CSS styles to an HTML tag

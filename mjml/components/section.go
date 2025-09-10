@@ -69,7 +69,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		} else {
 			// Apply background color only
-			c.ApplyBackgroundStyles(outerTable)
+			c.ApplyBackgroundStyles(outerTable, c)
 		}
 		c.ApplyBorderStyles(outerTable, c)
 		outerTable.AddStyle("width", "100%")
@@ -197,7 +197,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		} else if backgroundColor != "" {
 			// Color-only background
-			c.ApplyBackgroundStyles(sectionDiv)
+			c.ApplyBackgroundStyles(sectionDiv, c)
 		}
 	}
 
@@ -251,7 +251,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	} else if fullWidth == "" {
 		// No background image: apply defaults (color-only etc.)
 		if backgroundColor == "" || (backgroundColor != "" && fullWidth == "") {
-			c.ApplyBackgroundStyles(innerTable)
+			c.ApplyBackgroundStyles(innerTable, c)
 		}
 	}
 

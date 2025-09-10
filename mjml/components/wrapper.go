@@ -154,8 +154,8 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center")
 
-	// Apply background styles to outer table and add width:100%
-	c.ApplyBackgroundStyles(outerTable)
+		// Apply background styles to outer table and add width:100%
+	c.ApplyBackgroundStyles(outerTable, c)
 	outerTable.AddStyle("width", "100%")
 
 	if err := outerTable.RenderOpen(w); err != nil {
@@ -348,7 +348,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	c.AddDebugAttribute(wrapperDiv, "wrapper")
 
 	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(wrapperDiv)
+	c.ApplyBackgroundStyles(wrapperDiv, c)
 
 	wrapperDiv.AddStyle("margin", "0px auto")
 
@@ -376,8 +376,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center")
 
-	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(innerTable)
+		// Apply background styles first to match MRML order
+	c.ApplyBackgroundStyles(innerTable, c)
 
 	innerTable.AddStyle("width", "100%")
 

@@ -48,16 +48,8 @@ func (c *MJColumnComponent) calculateEffectiveContentWidth() int {
 		}
 	}
 
-	// Get column padding (defaults to no padding)
-	getAttr := func(name string) string {
-		if attr := c.GetAttribute(name); attr != nil {
-			return *attr
-		}
-		return c.GetDefaultAttribute(name)
-	}
-
-	// Parse padding to get left + right values
-	padding := getAttr("padding")
+	// Get column padding (defaults to no padding) using full attribute resolution
+	padding := c.GetAttributeWithDefault(c, "padding")
 	leftPadding, rightPadding := c.parsePaddingLeftRight(padding)
 
 	// Subtract total horizontal padding
@@ -113,17 +105,9 @@ func (c *MJColumnComponent) parsePaddingLeftRight(padding string) (left, right i
 
 // Render implements optimized Writer-based rendering for MJColumnComponent
 func (c *MJColumnComponent) Render(w io.StringWriter) error {
-	// Helper function to get attribute with default
-	getAttr := func(name string) string {
-		if attr := c.GetAttribute(name); attr != nil {
-			return *attr
-		}
-		return c.GetDefaultAttribute(name)
-	}
-
-	// Get attributes
-	verticalAlign := getAttr("vertical-align")
-	direction := getAttr("direction")
+	// Get attributes using full resolution order (element, class, global, default)
+	verticalAlign := c.GetAttributeWithDefault(c, "vertical-align")
+	direction := c.GetAttributeWithDefault(c, "direction")
 
 	// Get column class and mobile width following MRML logic
 	className, _ := c.GetColumnClass()
@@ -177,18 +161,12 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 	innerTable := html.NewTableTag().AddAttribute("width", "100%")
 
 	// Apply background and border styles directly to the table to match MRML
-	c.ApplyBackgroundStyles(innerTable)
+	c.ApplyBackgroundStyles(innerTable, c)
 	c.ApplyBorderStyles(innerTable, c)
 
 	// Only add vertical-align when not inside a gutter (gutter TD handles vertical-align)
 	if includeStyles {
-		getAttr := func(name string) string {
-			if attr := c.GetAttribute(name); attr != nil {
-				return *attr
-			}
-			return c.GetDefaultAttribute(name)
-		}
-		verticalAlign := getAttr("vertical-align")
+		verticalAlign := c.GetAttributeWithDefault(c, "vertical-align")
 		innerTable.AddStyle("vertical-align", verticalAlign)
 	}
 
@@ -367,7 +345,7 @@ func (c *MJColumnComponent) GetMSOTDStyles() map[string]string {
 func (c *MJColumnComponent) hasGutter() bool {
 	paddingAttrs := []string{constants.MJMLPadding, constants.MJMLPaddingTop, constants.MJMLPaddingRight, constants.MJMLPaddingBottom, constants.MJMLPaddingLeft}
 	for _, attr := range paddingAttrs {
-		if c.GetAttribute(attr) != nil {
+		if c.GetAttributeFast(c, attr) != "" {
 			return true
 		}
 	}
@@ -376,15 +354,7 @@ func (c *MJColumnComponent) hasGutter() bool {
 
 // renderGutter creates the gutter table wrapper when padding is present
 func (c *MJColumnComponent) renderGutter(w io.StringWriter) error {
-	// Helper function to get attribute with default
-	getAttr := func(name string) string {
-		if attr := c.GetAttribute(name); attr != nil {
-			return *attr
-		}
-		return c.GetDefaultAttribute(name)
-	}
-
-	verticalAlign := getAttr("vertical-align")
+	verticalAlign := c.GetAttributeWithDefault(c, "vertical-align")
 
 	// Outer gutter table
 	gutterTable := html.NewTableTag().AddAttribute("width", "100%")
@@ -397,23 +367,25 @@ func (c *MJColumnComponent) renderGutter(w io.StringWriter) error {
 
 	// TD with padding styles (this is where the padding gets applied)
 	gutterTd := html.NewHTMLTag("td")
+	c.ApplyBackgroundStyles(gutterTd, c)
+	c.ApplyBorderStyles(gutterTd, c)
 	gutterTd.AddStyle("vertical-align", verticalAlign)
 
 	// Apply padding attributes to the gutter TD
-	if padding := c.GetAttribute("padding"); padding != nil {
-		gutterTd.AddStyle("padding", *padding)
+	if padding := c.GetAttributeFast(c, "padding"); padding != "" {
+		gutterTd.AddStyle("padding", padding)
 	}
-	if paddingTop := c.GetAttribute(constants.MJMLPaddingTop); paddingTop != nil {
-		gutterTd.AddStyle(constants.CSSPaddingTop, *paddingTop)
+	if paddingTop := c.GetAttributeFast(c, constants.MJMLPaddingTop); paddingTop != "" {
+		gutterTd.AddStyle(constants.CSSPaddingTop, paddingTop)
 	}
-	if paddingRight := c.GetAttribute(constants.MJMLPaddingRight); paddingRight != nil {
-		gutterTd.AddStyle(constants.CSSPaddingRight, *paddingRight)
+	if paddingRight := c.GetAttributeFast(c, constants.MJMLPaddingRight); paddingRight != "" {
+		gutterTd.AddStyle(constants.CSSPaddingRight, paddingRight)
 	}
-	if paddingBottom := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottom != nil {
-		gutterTd.AddStyle(constants.CSSPaddingBottom, *paddingBottom)
+	if paddingBottom := c.GetAttributeFast(c, constants.MJMLPaddingBottom); paddingBottom != "" {
+		gutterTd.AddStyle(constants.CSSPaddingBottom, paddingBottom)
 	}
-	if paddingLeft := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeft != nil {
-		gutterTd.AddStyle(constants.CSSPaddingLeft, *paddingLeft)
+	if paddingLeft := c.GetAttributeFast(c, constants.MJMLPaddingLeft); paddingLeft != "" {
+		gutterTd.AddStyle(constants.CSSPaddingLeft, paddingLeft)
 	}
 
 	if err := gutterTd.RenderOpen(w); err != nil {
