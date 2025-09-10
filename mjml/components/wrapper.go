@@ -49,32 +49,48 @@ func (c *MJWrapperComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-// getBorderWidth calculates the total border width from border attribute
-func (c *MJWrapperComponent) getBorderWidth() int {
-	border := c.getAttribute("border")
-	if border == "" {
-		return 0
-	}
-
-	// Parse border width (e.g., "2px solid #333" -> 2)
-	// Simple parsing for the common case
-	if strings.Contains(border, "1px") {
-		return 2 // 1px on each side
-	}
-	if strings.Contains(border, "2px") {
-		return 4 // 2px on each side
-	}
-	if strings.Contains(border, "3px") {
-		return 6 // 3px on each side
+func parseBorderWidth(attr string) int {
+	parts := strings.Fields(attr)
+	if len(parts) > 0 {
+		if px, err := styles.ParsePixel(parts[0]); err == nil && px != nil {
+			return int(px.Value)
+		}
 	}
 	return 0
+}
+
+// getBorderWidth calculates total horizontal border width taking into account
+// shorthand border, border-left, and border-right overrides.
+func (c *MJWrapperComponent) getBorderWidth() int {
+	left, right := c.getBorderLRWidths()
+	return left + right
+}
+
+// getBorderLRWidths returns individual left and right border widths in pixels.
+func (c *MJWrapperComponent) getBorderLRWidths() (int, int) {
+	var left, right int
+	if border := c.getAttribute("border"); border != "" {
+		w := parseBorderWidth(border)
+		left, right = w, w
+	}
+	if bl := c.getAttribute("border-left"); bl != "" {
+		if w := parseBorderWidth(bl); w > 0 {
+			left = w
+		}
+	}
+	if br := c.getAttribute("border-right"); br != "" {
+		if w := parseBorderWidth(br); w > 0 {
+			right = w
+		}
+	}
+	return left, right
 }
 
 // getEffectiveWidth calculates width minus border width
 func (c *MJWrapperComponent) getEffectiveWidth() int {
 	baseWidth := GetDefaultBodyWidthPixels()
-	borderWidth := c.getBorderWidth()
-	effectiveWidth := baseWidth - borderWidth
+	borderLeft, borderRight := c.getBorderLRWidths()
+	effectiveWidth := baseWidth - borderLeft - borderRight
 
 	// AIDEV-NOTE: wrapper-width-flow; wrapper padding reduces child containerWidth
 	// Subtract horizontal padding (handle both shorthand and individual properties)
@@ -154,7 +170,11 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center")
 
-		// Apply background styles to outer table and add width:100%
+	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+		outerTable.AddAttribute("class", cssClass)
+	}
+
+	// Apply background styles to outer table and add width:100%
 	c.ApplyBackgroundStyles(outerTable, c)
 	outerTable.AddStyle("width", "100%")
 
@@ -200,11 +220,6 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddStyle("margin", "0px auto").
 		AddStyle("max-width", GetDefaultBodyWidth())
 
-	// Add css-class support for inner div
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
-		innerDiv.AddAttribute("class", cssClass)
-	}
-
 	if err := innerDiv.RenderOpen(w); err != nil {
 		return err
 	}
@@ -226,8 +241,25 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	// Inner TD
-	innerTd := html.NewHTMLTag("td").
-		AddStyle("direction", direction).
+	innerTd := html.NewHTMLTag("td")
+
+	if border := c.getAttribute("border"); border != "" {
+		innerTd.AddStyle("border", border)
+	}
+	if borderBottom := c.getAttribute("border-bottom"); borderBottom != "" {
+		innerTd.AddStyle("border-bottom", borderBottom)
+	}
+	if borderLeft := c.getAttribute("border-left"); borderLeft != "" {
+		innerTd.AddStyle("border-left", borderLeft)
+	}
+	if borderRight := c.getAttribute("border-right"); borderRight != "" {
+		innerTd.AddStyle("border-right", borderRight)
+	}
+	if borderTop := c.getAttribute("border-top"); borderTop != "" {
+		innerTd.AddStyle("border-top", borderTop)
+	}
+
+	innerTd.AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
@@ -399,6 +431,19 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Add border first to match MRML order
 	if border := c.getAttribute("border"); border != "" {
 		mainTd.AddStyle("border", border)
+	}
+
+	if borderBottom := c.getAttribute("border-bottom"); borderBottom != "" {
+		mainTd.AddStyle("border-bottom", borderBottom)
+	}
+	if borderLeft := c.getAttribute("border-left"); borderLeft != "" {
+		mainTd.AddStyle("border-left", borderLeft)
+	}
+	if borderRight := c.getAttribute("border-right"); borderRight != "" {
+		mainTd.AddStyle("border-right", borderRight)
+	}
+	if borderTop := c.getAttribute("border-top"); borderTop != "" {
+		mainTd.AddStyle("border-top", borderTop)
 	}
 
 	mainTd.AddStyle("direction", direction).

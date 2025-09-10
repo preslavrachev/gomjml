@@ -39,6 +39,7 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	// Get attributes using full resolution order (element > mj-class > global > default)
 	align := c.GetAttributeFast(c, constants.MJMLAlign)
 	padding := c.GetAttributeFast(c, constants.MJMLPadding)
+	containerBg := c.GetAttributeFast(c, constants.MJMLContainerBackgroundColor)
 
 	// Create TR element
 	if _, err := w.WriteString("<tr>"); err != nil {
@@ -47,8 +48,13 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 
 	// Create TD with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
-		AddAttribute(constants.AttrAlign, align).
-		AddStyle(constants.CSSFontSize, "0px").
+		AddAttribute(constants.AttrAlign, align)
+
+	if containerBg != "" {
+		tdTag.AddStyle(constants.CSSBackground, containerBg)
+	}
+
+	tdTag.AddStyle(constants.CSSFontSize, "0px").
 		AddStyle(constants.CSSPadding, padding)
 
 	// Add css-class if present
