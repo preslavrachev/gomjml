@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -32,6 +33,35 @@ func NewMJBodyComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJBody
 
 func (c *MJBodyComponent) GetTagName() string {
 	return "mj-body"
+}
+
+// GetEffectiveWidth returns the body width in pixels, allowing the width
+// attribute to override the default 600px container width. This ensures
+// section children inherit the correct width.
+func (c *MJBodyComponent) GetEffectiveWidth() int {
+	if c.ContainerWidth > 0 {
+		return c.ContainerWidth
+	}
+	if widthAttr := c.GetAttributeWithDefault(c, "width"); widthAttr != "" {
+		if size, err := styles.ParseSize(widthAttr); err == nil && size.IsPixel() {
+			return int(size.Value())
+		}
+	}
+	return GetDefaultBodyWidthPixels()
+}
+
+// GetEffectiveWidthString returns the body width as a pixel string, honoring
+// the width attribute when provided.
+func (c *MJBodyComponent) GetEffectiveWidthString() string {
+	if c.ContainerWidth > 0 {
+		return getPixelWidthString(c.ContainerWidth)
+	}
+	if widthAttr := c.GetAttributeWithDefault(c, "width"); widthAttr != "" {
+		if size, err := styles.ParseSize(widthAttr); err == nil && size.IsPixel() {
+			return getPixelWidthString(int(size.Value()))
+		}
+	}
+	return GetDefaultBodyWidth()
 }
 
 // Render implements optimized Writer-based rendering for MJBodyComponent

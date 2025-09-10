@@ -46,13 +46,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Check if we have a background image for VML generation (only for full-width sections)
 	hasBackgroundImage := backgroundUrl != "" && fullWidth != ""
 
-	// For full-width sections with any background (color or image), add
-	// outer table wrapper (like MRML does). Previously we only checked for
-	// background color which skipped cases where only background-url was
-	// provided, causing significant diffs in complex templates.
-	if fullWidth != "" && (backgroundColor != "" || backgroundUrl != "") {
+	// For full-width sections, add an outer table wrapper like MRML does.
+	// This wrapper is always present for full-width sections, even when no
+	// background is specified, ensuring proper structure and alignment.
+	if fullWidth != "" {
 		outerTable := html.NewTableTag().
-			AddAttribute("align", "center")
+			AddAttribute("align", "center").
+			AddStyle("width", "100%")
 
 		// Apply background styles properly for full-width sections
 		if backgroundUrl != "" {
@@ -68,8 +68,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				// Also add the background attribute for email client compatibility (use same encoding as VML src)
 				outerTable.AddAttribute("background", htmlEscape(backgroundUrl))
 			}
-		} else {
-			// Apply background color only
+		} else if backgroundColor != "" {
+			// Apply background color only when provided
 			c.ApplyBackgroundStyles(outerTable, c)
 		}
 		// Only border-radius applies to the outer table. Border
@@ -77,7 +77,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if br := c.GetAttributeWithDefault(c, "border-radius"); br != "" {
 			outerTable.AddStyle("border-radius", br)
 		}
-		outerTable.AddStyle("width", "100%")
 
 		if err := outerTable.RenderOpen(w); err != nil {
 			return err
@@ -547,8 +546,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Close outer table if we added one for full-width background
-	if fullWidth != "" && (backgroundColor != "" || backgroundUrl != "") {
+	// Close outer table if we added one for full-width sections
+	if fullWidth != "" {
 		// Close VML first if present, then outer table
 		if hasBackgroundImage {
 			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect>"); err != nil {

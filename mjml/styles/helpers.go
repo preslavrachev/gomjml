@@ -27,6 +27,8 @@ import (
 //	tag := html.NewHTMLTag("div")
 //	ApplyBackgroundStyles(tag, ptrString("#f0f0f0"), ptrString("bg.jpg"), ptrString("no-repeat"), ptrString("cover"), ptrString("center"))
 func ApplyBackgroundStyles(tag *html.HTMLTag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition *string) *html.HTMLTag {
+	// Apply both "background" and "background-color" for compatibility
+	// with email clients and to match MRML's output.
 	tag.MaybeAddStyle("background", bgcolor)
 	tag.MaybeAddStyle("background-color", bgcolor)
 
