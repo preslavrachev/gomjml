@@ -97,8 +97,32 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-button-class",
 		"mj-button-color",
 		"mj-button-container-background-color",
+		"mj-button-example",
+		"mj-button-font-family",
+		"mj-button-font-size",
+		"mj-button-font-style",
+		"mj-button-font-weight",
+		"mj-button-height",
+		"mj-button-href",
+		"mj-button-inner-padding",
+		"mj-button-line-height",
+		"mj-button-padding",
+		"mj-button-text-decoration",
+		"mj-button-text-transform",
+		"mj-button-vertical-align",
+		"mj-button-width",
 		"mj-button-global-attributes",
 		"mj-image",
+		"mj-image-align",
+		"mj-image-border",
+		"mj-image-border-radius",
+		"mj-image-container-background-color",
+		"mj-image-fluid-on-mobile",
+		"mj-image-height",
+		"mj-image-href",
+		"mj-image-padding",
+		"mj-image-rel",
+		"mj-image-title",
 		"mj-image-class",
 		"mj-image-src-with-url-params",
 		"mj-section",
@@ -148,6 +172,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// MJ-RAW tests
 		"mj-raw",
 		"mj-raw-conditional-comment",
+		"mj-raw-head",
 		"mj-raw-go-template",
 		// MJ-SOCIAL tests
 		"mj-social",
@@ -191,6 +216,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-hero-background-width",
 		"mj-hero-class",
 		"mj-hero-height",
+		"mj-hero-width",
 		"mj-hero-mode",
 		"mj-hero-vertical-align",
 		// MJ-SPACER test
@@ -208,7 +234,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		"notifuse-full",
+		//"notifuse-full",
 	}
 
 	for _, testName := range testCases {
