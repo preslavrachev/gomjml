@@ -1,0 +1,38 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-column
+        width="100%"
+        padding-right="0px"
+        padding-bottom="0px"
+        border-top="none"
+        vertical-align="top"
+        inner-border-radius="0px"
+        inner-border-top="none"
+        inner-border-bottom="none"
+        border="none"
+        padding="0"
+        border-right="none"
+        padding-top="0px"
+        inner-border="none"
+        inner-border-right="none"
+        inner-background-color="transparent"
+        border-radius="0px"
+        inner-border-left="none"
+        border-bottom="none"
+        padding-left="0px"
+        background-color="transparent"
+        border-left="none"
+      />
+    </mj-attributes>
+    <mj-preview
+      >Welcome! See how sections provide borders and groups prevent mobile
+      stacking.</mj-preview
+    >
+  </mj-head>
+  <mj-body background-color="#f8f9fa" width="600px">
+    <mj-section>
+      <mj-column></mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
