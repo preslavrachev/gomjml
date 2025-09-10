@@ -71,7 +71,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			// Apply background color only
 			c.ApplyBackgroundStyles(outerTable)
 		}
-		c.ApplyBorderStyles(outerTable)
+		c.ApplyBorderStyles(outerTable, c)
 		outerTable.AddStyle("width", "100%")
 
 		if err := outerTable.RenderOpen(w); err != nil {

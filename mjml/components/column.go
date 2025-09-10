@@ -144,10 +144,6 @@ func (c *MJColumnComponent) Render(w io.StringWriter) error {
 		AddStyle("vertical-align", verticalAlign).
 		AddStyle("width", mobileWidth.String())
 
-	// Apply background and border styles if any
-	c.ApplyBackgroundStyles(columnDiv)
-	c.ApplyBorderStyles(columnDiv)
-
 	if err := columnDiv.RenderOpen(w); err != nil {
 		return err
 	}
@@ -179,6 +175,10 @@ func (c *MJColumnComponent) renderColumnToWriter(w io.StringWriter) error {
 func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, includeStyles bool) error {
 	// Inner table for column content
 	innerTable := html.NewTableTag().AddAttribute("width", "100%")
+
+	// Apply background and border styles directly to the table to match MRML
+	c.ApplyBackgroundStyles(innerTable)
+	c.ApplyBorderStyles(innerTable, c)
 
 	// Only add vertical-align when not inside a gutter (gutter TD handles vertical-align)
 	if includeStyles {

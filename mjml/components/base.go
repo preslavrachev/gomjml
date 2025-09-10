@@ -385,15 +385,28 @@ func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag) *html.HTMLTag 
 }
 
 // ApplyBorderStyles applies border-related CSS styles to an HTML tag
-func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag) *html.HTMLTag {
-	border := bc.GetAttribute("border")
-	borderRadius := bc.GetAttribute("border-radius")
-	borderTop := bc.GetAttribute("border-top")
-	borderRight := bc.GetAttribute("border-right")
-	borderBottom := bc.GetAttribute("border-bottom")
-	borderLeft := bc.GetAttribute("border-left")
+func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
+	toPtr := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
 
-	return styles.ApplyBorderStyles(tag, border, borderRadius, borderTop, borderRight, borderBottom, borderLeft)
+	border := bc.GetAttributeFast(comp, constants.MJMLBorder)
+	borderRadius := bc.GetAttributeFast(comp, constants.MJMLBorderRadius)
+	borderTop := bc.GetAttributeFast(comp, "border-top")
+	borderRight := bc.GetAttributeFast(comp, "border-right")
+	borderBottom := bc.GetAttributeFast(comp, "border-bottom")
+	borderLeft := bc.GetAttributeFast(comp, "border-left")
+
+	return styles.ApplyBorderStyles(tag,
+		toPtr(border),
+		toPtr(borderRadius),
+		toPtr(borderTop),
+		toPtr(borderRight),
+		toPtr(borderBottom),
+		toPtr(borderLeft))
 }
 
 // ApplyPaddingStyles applies padding CSS styles to an HTML tag
