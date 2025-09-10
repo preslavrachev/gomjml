@@ -105,6 +105,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-column",
 		"mj-column-padding",
 		"mj-column-class",
+		"mj-column-global-attributes",
 		"mj-wrapper",
 		"mj-wrapper-border-radius",
 		// MJ-RAW tests
@@ -198,60 +199,57 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				t.Fatalf("Failed to render MJML: %v", err)
 			}
 
+			// Collect ALL difference types instead of early returns for comprehensive analysis
+			var allDifferences []string
+
 			// Check for MSO table attribute differences FIRST (before DOM comparison)
 			// because MSO conditionals are not part of DOM and will be ignored by DOM comparison
 			msoTableDiff := checkMSOTableAttributeDifferences(expected, actual)
 			if msoTableDiff != "" {
-				t.Errorf("MSO table attribute differences found:\n%s", msoTableDiff)
-				writeDebugFiles(testName, expected, actual)
-				return
+				allDifferences = append(allDifferences, "MSO table attribute differences found:\n"+msoTableDiff)
 			}
 
 			// Check for MSO conditional comment differences
 			msoDiff := checkMSOConditionalDifferences(expected, actual)
 			if msoDiff != "" {
-				t.Errorf("MSO conditional comment differences found:\n%s", msoDiff)
-				writeDebugFiles(testName, expected, actual)
-				return
+				allDifferences = append(allDifferences, "MSO conditional comment differences found:\n"+msoDiff)
 			}
 
 			// Compare outputs using DOM tree comparison
-			if !compareDOMTrees(expected, actual) {
-				// Check for HTML entity encoding differences first
+			domTreesMatch := compareDOMTrees(expected, actual)
+			if !domTreesMatch {
+				// Check for HTML entity encoding differences
 				entityDiff := checkHTMLEntityDifferences(expected, actual)
 				if entityDiff != "" {
-					t.Errorf("HTML entity encoding differences found:\n%s", entityDiff)
-					writeDebugFiles(testName, expected, actual)
-					return
+					allDifferences = append(allDifferences, "HTML entity encoding differences found:\n"+entityDiff)
 				}
 
 				// Check for VML attribute differences
 				vmlDiff := checkVMLAttributeDifferences(expected, actual)
 				if vmlDiff != "" {
-					t.Errorf("VML attribute differences found:\n%s", vmlDiff)
-					writeDebugFiles(testName, expected, actual)
-					return
+					allDifferences = append(allDifferences, "VML attribute differences found:\n"+vmlDiff)
 				}
 
 				// Check for background CSS property differences
 				bgDiff := checkBackgroundPropertyDifferences(expected, actual)
 				if bgDiff != "" {
-					t.Errorf("Background CSS property differences found:\n%s", bgDiff)
-					writeDebugFiles(testName, expected, actual)
-					return
+					allDifferences = append(allDifferences, "Background CSS property differences found:\n"+bgDiff)
 				}
 
 				// Enhanced DOM-based diff with debugging
 				domDiff := createDOMDiff(expected, actual)
-				t.Errorf("\n%s", domDiff)
+				if domDiff != "" {
+					allDifferences = append(allDifferences, "DOM structure differences:\n"+domDiff)
+				}
 
 				// Enhanced debugging: analyze style differences with precise element identification
 				// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
 				styleResult := testutils.CompareStylesPrecise(expected, actual)
 				if styleResult.ParseError != nil {
-					t.Logf("DOM parsing failed: %v", styleResult.ParseError)
+					allDifferences = append(allDifferences, fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError))
 				} else if styleResult.HasDifferences {
-					t.Logf("Style differences for %s:", testName)
+					var styleDiffs []string
+					styleDiffs = append(styleDiffs, fmt.Sprintf("Style differences for %s:", testName))
 					for _, element := range styleResult.Elements {
 						switch element.Status {
 						case testutils.ElementExtra:
@@ -259,34 +257,42 @@ func TestMJMLAgainstExpected(t *testing.T) {
 							if element.Component != "" {
 								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
 							}
-							t.Logf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
-								element.Index, element.Tag, element.Classes, element.Actual, componentInfo)
+							styleDiffs = append(styleDiffs, fmt.Sprintf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
+								element.Index, element.Tag, element.Classes, element.Actual, componentInfo))
 						case testutils.ElementMissing:
-							t.Logf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
-								element.Index, element.Tag, element.Classes, element.Expected)
+							styleDiffs = append(styleDiffs, fmt.Sprintf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
+								element.Index, element.Tag, element.Classes, element.Expected))
 						case testutils.ElementDifferent:
 							componentInfo := ""
 							if element.Component != "" {
 								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
 							}
-							t.Logf("  Style diff element[%d]: <%s class=\"%s\">%s",
-								element.Index, element.Tag, element.Classes, componentInfo)
-							t.Logf("    Expected: style=\"%s\"", element.Expected)
-							t.Logf("    Actual:   style=\"%s\"", element.Actual)
+							styleDiffs = append(styleDiffs, fmt.Sprintf("  Style diff element[%d]: <%s class=\"%s\">%s",
+								element.Index, element.Tag, element.Classes, componentInfo))
+							styleDiffs = append(styleDiffs, fmt.Sprintf("    Expected: style=\"%s\"", element.Expected))
+							styleDiffs = append(styleDiffs, fmt.Sprintf("    Actual:   style=\"%s\"", element.Actual))
 							if !element.StyleDiff.IsEmpty() {
-								t.Logf("    %s", element.StyleDiff.String())
+								styleDiffs = append(styleDiffs, fmt.Sprintf("    %s", element.StyleDiff.String()))
 							}
 						}
 					}
+					if len(styleDiffs) > 0 {
+						allDifferences = append(allDifferences, strings.Join(styleDiffs, "\n"))
+					}
 				}
+			}
 
+			// Check for self-closing tag serialization differences regardless of DOM tree match
+			selfClosingDiff := checkSelfClosingTagDifferences(expected, actual)
+			if selfClosingDiff != "" {
+				allDifferences = append(allDifferences, "Self-closing tag serialization differences found:\n"+selfClosingDiff)
+			}
+
+			// Report ALL collected differences
+			if len(allDifferences) > 0 {
 				writeDebugFiles(testName, expected, actual)
-			} else {
-				// DOM trees match, but check for self-closing tag serialization differences
-				if selfClosingDiff := checkSelfClosingTagDifferences(expected, actual); selfClosingDiff != "" {
-					t.Errorf("Self-closing tag serialization differences found:\n%s", selfClosingDiff)
-					writeDebugFiles(testName, expected, actual)
-				}
+				t.Errorf("\n=== COMPREHENSIVE DIFFERENCE ANALYSIS ===\n%s\n===========================================",
+					strings.Join(allDifferences, "\n\n"))
 			}
 		})
 	}
