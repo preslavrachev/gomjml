@@ -300,7 +300,9 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// This provides the MSO table structure that content (including comments) sits within
 	// Only add inner MSO table wrapper for sections that have ONLY text content (no child components)
 	// Sections with columns/components already get MSO tables from their children
-	hasTextContent := strings.TrimSpace(c.Node.Text) != ""
+	textContent := c.Node.Text
+	trimmedText := strings.TrimSpace(textContent)
+	hasTextContent := trimmedText != "" || (textContent != "" && !strings.Contains(textContent, "\n"))
 	hasChildContent := len(c.Children) > 0
 	needsContentMSOTable := hasTextContent && !hasChildContent
 
@@ -338,6 +340,18 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 			// Render text content (including comments) - goes directly in TR, no TD
 			if _, err := w.WriteString(c.Node.Text); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := innerMsoTr.RenderClose(w); err != nil {
+				return err
+			}
+			if err := innerMsoTable.RenderClose(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
 				return err
 			}
 		}
@@ -480,24 +494,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Close shared MSO table structure for columns
 	if hasColumns {
 		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
-			return err
-		}
-	}
-
-	// Close inner MSO table wrapper if we opened one for content
-	if needsContentMSOTable {
-		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-			return err
-		}
-		innerMsoTable := html.NewTableTag()
-		innerMsoTr := html.NewHTMLTag("tr")
-		if err := innerMsoTr.RenderClose(w); err != nil {
-			return err
-		}
-		if err := innerMsoTable.RenderClose(w); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("<![endif]-->"); err != nil {
 			return err
 		}
 	}
