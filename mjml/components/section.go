@@ -306,47 +306,46 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	if needsContentMSOTable {
 		// Section has only text/comments - needs MSO table wrapper
-		innerMsoTable := html.NewTableTag()
-		innerMsoTr := html.NewHTMLTag("tr")
+		if c.RenderOpts.InsideWrapper {
+			// Inside wrapper: use split conditional pattern for text content
+			if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><![endif]-->"); err != nil {
+				return err
+			}
+			// Render text content
+			if _, err := w.WriteString(c.Node.Text); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
+				return err
+			}
+		} else {
+			// Standalone: use simple pattern for text content
+			innerMsoTable := html.NewTableTag()
+			innerMsoTr := html.NewHTMLTag("tr")
 
-		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-			return err
-		}
-		if err := innerMsoTable.RenderOpen(w); err != nil {
-			return err
-		}
-		if err := innerMsoTr.RenderOpen(w); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("<![endif]-->"); err != nil {
-			return err
-		}
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := innerMsoTable.RenderOpen(w); err != nil {
+				return err
+			}
+			if err := innerMsoTr.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
+				return err
+			}
 
-		// Render text content (including comments) - goes directly in TR, no TD
-		if _, err := w.WriteString(c.Node.Text); err != nil {
-			return err
+			// Render text content (including comments) - goes directly in TR, no TD
+			if _, err := w.WriteString(c.Node.Text); err != nil {
+				return err
+			}
 		}
 	} else if !hasChildContent && !hasTextContent {
-		// Empty section: render empty MSO table structure
-		innerMsoTable := html.NewTableTag()
-		innerMsoTr := html.NewHTMLTag("tr")
-
-		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-			return err
-		}
-		if err := innerMsoTable.RenderOpen(w); err != nil {
-			return err
-		}
-		if err := innerMsoTr.RenderOpen(w); err != nil {
-			return err
-		}
-		if err := innerMsoTr.RenderClose(w); err != nil {
-			return err
-		}
-		if err := innerMsoTable.RenderClose(w); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("<![endif]-->"); err != nil {
+		// Empty section: always use simple pattern for truly empty sections
+		// MJML uses simple pattern for completely empty sections, even inside wrappers
+		// Only sections with whitespace content use the split pattern
+		if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr></tr></table><![endif]-->"); err != nil {
 			return err
 		}
 	}

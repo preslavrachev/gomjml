@@ -41,10 +41,11 @@ func (ft *FontTracker) GetFonts() []string {
 
 // RenderOpts contains options for MJML rendering
 type RenderOpts struct {
-	DebugTags   bool         // Whether to include debug attributes in output
-	InsideGroup bool         // Whether the component is being rendered inside a group
-	InsideHero  bool         // Whether the component is being rendered inside a hero
-	FontTracker *FontTracker // Tracks fonts used during rendering
-	UseCache    bool         // Whether to enable AST caching
-	Lang        string       // Language attribute from root MJML element
+	DebugTags     bool         // Whether to include debug attributes in output
+	InsideGroup   bool         // Whether the component is being rendered inside a group
+	InsideHero    bool         // Whether the component is being rendered inside a hero
+	InsideWrapper bool         // Whether the component is being rendered inside a wrapper
+	FontTracker   *FontTracker // Tracks fonts used during rendering
+	UseCache      bool         // Whether to enable AST caching
+	Lang          string       // Language attribute from root MJML element
 }
