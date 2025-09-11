@@ -8,8 +8,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
+
+	"github.com/preslavrachev/gomjml/mjml/testutils"
 )
 
 // Color constants for diff output
@@ -402,10 +403,9 @@ func filterOrderOnlyDifferences(diffContent string) string {
 			// 2. Same length and good entropy
 			// 3. No href, src, or other URL attributes that shouldn't be reordered
 			if len(removedLine) == len(addedLine) && len(removedLine) > 20 &&
-				strings.Contains(removedLine, "style=") && strings.Contains(addedLine, "style=") &&
 				!strings.Contains(removedLine, "href=") && !strings.Contains(addedLine, "href=") &&
 				!strings.Contains(removedLine, "src=") && !strings.Contains(addedLine, "src=") &&
-				sortString(removedLine) == sortString(addedLine) {
+				testutils.NormalizeHTMLAttributes(removedLine) == testutils.NormalizeHTMLAttributes(addedLine) {
 				// Skip both lines - likely just CSS property reordering
 				i += 2
 				continue
@@ -417,12 +417,6 @@ func filterOrderOnlyDifferences(diffContent string) string {
 	}
 
 	return strings.Join(result, "\n")
-}
-
-func sortString(s string) string {
-	chars := strings.Split(s, "")
-	sort.Strings(chars)
-	return strings.Join(chars, "")
 }
 
 func countDifferences(diffContent string) int {
