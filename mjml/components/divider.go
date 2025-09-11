@@ -7,6 +7,7 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -112,7 +113,7 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 		AddStyle("margin", margin)
 
 	// Add width (MRML includes default width of 100%)
-	width := c.getAttribute("width")
+	width := c.getAttribute(constants.MJMLWidth)
 	p = p.AddStyle("width", width)
 
 	// Render paragraph - must be empty, not self-closing to match MRML
@@ -133,7 +134,30 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 
 	// Parse divider padding to get accurate left + right values
 	leftPadding, rightPadding := c.parseDividerPaddingLeftRight(padding)
-	msoWidth := containerWidth - leftPadding - rightPadding
+
+	// Override with individual padding attributes if present
+	if pl := c.GetAttributeFast(c, constants.MJMLPaddingLeft); pl != "" {
+		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
+			leftPadding = int(px.Value)
+		}
+	}
+	if pr := c.GetAttributeFast(c, constants.MJMLPaddingRight); pr != "" {
+		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
+			rightPadding = int(px.Value)
+		}
+	}
+
+	availableWidth := containerWidth - leftPadding - rightPadding
+	msoWidth := availableWidth
+
+	// Apply width attribute (supports percentages)
+	if size, err := styles.ParseSize(width); err == nil {
+		if size.IsPercent() {
+			msoWidth = int(float64(availableWidth) * size.Value() / 100.0)
+		} else {
+			msoWidth = int(size.Value())
+		}
+	}
 
 	// Build MSO table directly to writer to avoid fmt.Sprintf allocation
 	if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="`); err != nil {
