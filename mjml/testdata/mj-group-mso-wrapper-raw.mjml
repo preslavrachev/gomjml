@@ -1,0 +1,22 @@
+<mjml>
+  <mj-body>
+    <mj-wrapper padding-left="20px" padding-right="20px">
+      <mj-section padding="0">
+        <mj-group>
+          <mj-column>
+            <mj-text>Left</mj-text>
+          </mj-column>
+          <mj-column>
+            <mj-text>Right</mj-text>
+          </mj-column>
+        </mj-group>
+      </mj-section>
+      <mj-raw><div>RAW</div></mj-raw>
+      <mj-section>
+        <mj-column>
+          <mj-text>After</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>
