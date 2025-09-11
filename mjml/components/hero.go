@@ -29,6 +29,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	backgroundRepeat := constants.BackgroundRepeatNoRepeat
 	backgroundUrl := c.GetAttributeWithDefault(c, constants.MJMLBackgroundUrl)
 	backgroundHeight := c.GetAttributeWithDefault(c, constants.MJMLBackgroundHeight)
+	backgroundWidth := c.GetAttributeWithDefault(c, constants.MJMLBackgroundWidth)
 	height := c.GetAttributeWithDefault(c, constants.MJMLHeight)
 	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
 	verticalAlign := c.GetAttributeWithDefault(c, constants.MJMLVerticalAlign)
@@ -58,18 +59,26 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Add VML image for Outlook if background-url is provided
+	// Add VML image for Outlook
+	widthAttr := containerWidthPx
+	if backgroundWidth != "" && backgroundWidth != "0px" {
+		widthAttr = backgroundWidth
+	}
 	if backgroundUrl != "" {
-		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", containerWidthPx)
+		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
 		if backgroundHeight != "" && backgroundHeight != "0px" {
-			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, containerWidthPx)
+			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
 		}
 		vmlImage := fmt.Sprintf(`<v:image src="%s" xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, backgroundUrl, vmlStyle)
 		if _, err := w.WriteString(vmlImage); err != nil {
 			return err
 		}
 	} else {
-		vmlImage := fmt.Sprintf(`<v:image xmlns:v="urn:schemas-microsoft-com:vml" style="border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;" />`, containerWidthPx)
+		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
+		if backgroundHeight != "" && backgroundHeight != "0px" {
+			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
+		}
+		vmlImage := fmt.Sprintf(`<v:image xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, vmlStyle)
 		if _, err := w.WriteString(vmlImage); err != nil {
 			return err
 		}

@@ -280,31 +280,26 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 	// Render children with standard body width
 	// Add MSO section transitions between section children (like MRML does)
-	msoOpen := true
+	prevWasRaw := false
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if msoOpen {
-				if err := html.RenderMSOWrapperTableClose(w); err != nil {
-					return err
-				}
-				msoOpen = false
-			}
-			// Open MSO row for the raw element
 			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
 				return err
 			}
 			if err := child.Render(w); err != nil {
 				return err
 			}
+			prevWasRaw = true
 			continue
 		}
 
-		// Add MSO section transition between sections (but not before the first section)
-		if i > 0 && child.GetTagName() == "mj-section" {
+		// Add MSO section transition between sections (but not before the first section or after raw)
+		if i > 0 && child.GetTagName() == "mj-section" && !prevWasRaw {
 			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
 				return err
 			}
 		}
+		prevWasRaw = false
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
@@ -313,10 +308,8 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		}
 	}
 
-	if msoOpen {
-		if err := html.RenderMSOWrapperTableClose(w); err != nil {
-			return err
-		}
+	if err := html.RenderMSOWrapperTableClose(w); err != nil {
+		return err
 	}
 
 	if err := innerTd.RenderClose(w); err != nil {
@@ -489,30 +482,26 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 	// Render children - pass the effective width (600px - border width)
 	// Add MSO section transitions between section children (like MRML does)
-	msoOpen := true
+	prevWasRaw := false
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if msoOpen {
-				if err := html.RenderMSOWrapperTableClose(w); err != nil {
-					return err
-				}
-				msoOpen = false
-			}
 			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
 				return err
 			}
 			if err := child.Render(w); err != nil {
 				return err
 			}
+			prevWasRaw = true
 			continue
 		}
 
-		// Add MSO section transition between sections (but not before the first section)
-		if i > 0 && child.GetTagName() == "mj-section" {
+		// Add MSO section transition between sections (but not before the first section or after raw)
+		if i > 0 && child.GetTagName() == "mj-section" && !prevWasRaw {
 			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
 				return err
 			}
 		}
+		prevWasRaw = false
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
@@ -521,10 +510,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		}
 	}
 
-	if msoOpen {
-		if err := html.RenderMSOWrapperTableClose(w); err != nil {
-			return err
-		}
+	if err := html.RenderMSOWrapperTableClose(w); err != nil {
+		return err
 	}
 
 	if err := mainTd.RenderClose(w); err != nil {

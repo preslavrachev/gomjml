@@ -134,17 +134,16 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		alignAttr = "center" // default align for MSO table
 	}
 
-	msoTable := html.NewTableTag().
-		AddAttribute("align", alignAttr).
-		AddAttribute("width", strconv.Itoa(msoTableWidth)).
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddStyle("width", getPixelWidthString(msoTableWidth))
+	msoTable := html.NewTableTag()
 
-	// Add bgcolor attribute for MSO compatibility if background color is set
+	// Add bgcolor before align/width to match MRML attribute order
 	if backgroundColor != "" {
 		msoTable.AddAttribute("bgcolor", backgroundColor)
 	}
+
+	msoTable.AddAttribute("align", alignAttr).
+		AddAttribute("width", strconv.Itoa(msoTableWidth)).
+		AddStyle("width", getPixelWidthString(msoTableWidth))
 
 	// Add css-class-outlook if present
 	if cssClass := c.GetCSSClass(); cssClass != "" {
@@ -442,6 +441,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		// Generate MSO TD for each column (within shared MSO table)
 		if columnComp, ok := child.(*MJColumnComponent); ok {
 			msoTd := html.NewHTMLTag("td")
+			// Add class attribute if css-class is set (with -outlook suffix)
+			if css := columnComp.GetAttribute(constants.MJMLCSSClass); css != nil && *css != "" {
+				msoTd.AddAttribute("class", *css+"-outlook")
+			}
+
 			// Add styles in MRML insertion order: vertical-align first, then width
 			getAttr := func(name string) string {
 				if attr := columnComp.GetAttribute(name); attr != nil {
