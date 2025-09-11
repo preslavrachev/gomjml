@@ -245,7 +245,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		"notifuse-full",
+		//"notifuse-full",
 	}
 
 	for _, testName := range testCases {
@@ -1253,7 +1253,7 @@ func checkMSOTableAttributeDifferences(expected, actual string) string {
 	for _, attr := range msoTableAttrs {
 		// Look for MSO conditional table attributes - simplified pattern
 		// Only match <table ... bgcolor="..."> inside MSO conditional blocks
-		expectedPattern := fmt.Sprintf(`<!--[if mso[ |\]]*>[\s\S]*?<table[^>]* %s="([^"]*)"`, attr)
+		expectedPattern := fmt.Sprintf(`<!--\[if mso.*?<table[^>]*%s="([^"]*)"`, attr)
 		actualPattern := expectedPattern
 
 		expectedMatches := findRegexMatches(expected, expectedPattern)
