@@ -43,8 +43,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	textAlign := c.GetAttributeWithDefault(c, "text-align")
 	fullWidth := c.GetAttributeWithDefault(c, "full-width")
 
-	// Check if we have a background image for VML generation (only for full-width sections)
-	hasBackgroundImage := backgroundUrl != "" && fullWidth != ""
+	// Check if we have a background image for VML generation
+	hasBackgroundImage := backgroundUrl != ""
 
 	// For full-width sections, add an outer table wrapper like MRML does.
 	// This wrapper is always present for full-width sections, even when no
@@ -169,8 +169,37 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	if _, err := w.WriteString("<![endif]-->"); err != nil {
-		return err
+	if hasBackgroundImage && fullWidth == "" {
+		posX, posY := parseBackgroundPosition(backgroundPosition)
+		posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
+		vOriginX, vOriginY, vPosX, vPosY := computeVMLPosition(posX, posY, backgroundSize, backgroundRepeat)
+		vSizeAttrs, vAspect := computeVMLSize(backgroundSize)
+		vmlType := computeVMLType(backgroundRepeat, backgroundSize)
+
+		sizeFragment := ""
+		if vSizeAttrs != "" {
+			sizeFragment = " " + vSizeAttrs
+		}
+		aspectFragment := ""
+		if vAspect != "" {
+			aspectFragment = ` aspect="` + vAspect + `"`
+		}
+		colorFragment := ""
+		if backgroundColor != "" {
+			colorFragment = ` color="` + backgroundColor + `"`
+		}
+
+		vmlOpen := `<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:` + strconv.Itoa(msoTableWidth) + `px;"><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY + `" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment + sizeFragment + ` type="` + vmlType + `"` + aspectFragment + ` /><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;">`
+		if _, err := w.WriteString(vmlOpen); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	// Main section div with styles
@@ -560,8 +589,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close MSO table structure
-	if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
-		return err
+	if hasBackgroundImage && fullWidth == "" {
+		if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect></td></tr></table><![endif]-->"); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	// Close outer table if we added one for full-width sections
