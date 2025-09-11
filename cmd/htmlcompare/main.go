@@ -21,6 +21,12 @@ const (
 	ColorYellow = "\033[33m"
 )
 
+// Diff line prefixes
+const (
+	MRMLPrefix   = "- MRML: "
+	GomjmlPrefix = "+ gomjml: "
+)
+
 type Config struct {
 	TestCase     string
 	Verbose      bool
@@ -234,6 +240,47 @@ func beautifyHTML(inputFile, outputFile string) error {
 	return os.WriteFile(outputFile, []byte(beautified), 0o644)
 }
 
+// normalizeHTMLFile normalizes HTML content for semantic comparison by:
+// 1. Stripping leading/trailing whitespace from each line
+// 2. Normalizing HTML attributes and CSS properties order
+// This eliminates false positives from formatting and attribute ordering differences
+func normalizeHTMLFile(inputFile, outputFile string) error {
+	file, err := os.Open(inputFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	outFile, err := os.Create(outputFile)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			normalizedLine := testutils.NormalizeHTMLAttributes(line)
+			if _, err := outFile.WriteString(normalizedLine + "\n"); err != nil {
+				return err
+			}
+		}
+	}
+
+	return scanner.Err()
+}
+
+// normalizeHTML formats HTML content for human-readable display by:
+// 1. Normalizing whitespace and adding consistent line breaks
+// 2. Separating text content from HTML tags
+// 3. Adding proper indentation based on HTML nesting depth
+// This function is used for creating pretty-printed HTML files for manual inspection.
+// For semantic comparison (diff), use normalizeHTMLFile instead.
+//
+// Note: This function cannot be removed as it serves a different purpose than normalizeHTMLFile:
+// - normalizeHTML: Creates indented, human-readable HTML for the *_pretty.html files
+// - normalizeHTMLFile: Creates flat, attribute-normalized HTML for semantic diffing
 func normalizeHTML(content string) string {
 	// Normalize whitespace first
 	whitespaceRe := regexp.MustCompile(`\s+`)
@@ -291,14 +338,32 @@ func normalizeHTML(content string) string {
 func generateDiff(referenceFile, gomjmlFile, outputFile string, config *Config) error {
 	fmt.Println("Generating diff...")
 
-	// Use semantic diff - ignore whitespace differences
-	cmd := exec.Command("diff", "-u", "-w", "-B", referenceFile, gomjmlFile)
+	// Create normalized temp files for semantic comparison
+	normalizedReferenceFile := filepath.Join(config.OutputDir, "normalized_reference.html")
+	normalizedGomjmlFile := filepath.Join(config.OutputDir, "normalized_gomjml.html")
+
+	fmt.Println("Normalizing HTML files for semantic comparison...")
+	if err := normalizeHTMLFile(referenceFile, normalizedReferenceFile); err != nil {
+		return fmt.Errorf("failed to normalize reference file: %v", err)
+	}
+	if err := normalizeHTMLFile(gomjmlFile, normalizedGomjmlFile); err != nil {
+		return fmt.Errorf("failed to normalize gomjml file: %v", err)
+	}
+
+	// Use line-by-line diff format on normalized files
+	cmd := exec.Command("diff", "-B",
+		"--old-line-format="+MRMLPrefix+"%L",
+		"--new-line-format="+GomjmlPrefix+"%L",
+		"--unchanged-line-format=",
+		"--minimal",
+		normalizedReferenceFile, normalizedGomjmlFile)
 
 	output, _ := cmd.CombinedOutput()
 	diffContent := string(output)
 
-	// AIDEV-NOTE: hack to ignore same-length lines that differ only by ordering; proper CSS/HTML parsing would be better
-	diffContent = filterOrderOnlyDifferences(diffContent)
+	// Clean up normalized temp files
+	os.Remove(normalizedReferenceFile)
+	os.Remove(normalizedGomjmlFile)
 
 	// Count differences
 	diffCount := countDifferences(diffContent)
@@ -381,42 +446,6 @@ func cleanup(config *Config) {
 
 	// Remove directory if empty
 	os.Remove(config.OutputDir)
-}
-
-// filterOrderOnlyDifferences removes diff lines that are identical when sorted alphabetically,
-// but only for cases that are clearly just CSS property reordering, not real content differences.
-func filterOrderOnlyDifferences(diffContent string) string {
-	lines := strings.Split(diffContent, "\n")
-	var result []string
-	i := 0
-
-	for i < len(lines) {
-		line := lines[i]
-
-		// Look for pairs of +/- lines
-		if strings.HasPrefix(line, "-") && i+1 < len(lines) && strings.HasPrefix(lines[i+1], "+") {
-			removedLine := strings.TrimPrefix(line, "-")
-			addedLine := strings.TrimPrefix(lines[i+1], "+")
-
-			// Only consider CSS style reordering if:
-			// 1. Both lines contain 'style=' attributes
-			// 2. Same length and good entropy
-			// 3. No href, src, or other URL attributes that shouldn't be reordered
-			if len(removedLine) == len(addedLine) && len(removedLine) > 20 &&
-				!strings.Contains(removedLine, "href=") && !strings.Contains(addedLine, "href=") &&
-				!strings.Contains(removedLine, "src=") && !strings.Contains(addedLine, "src=") &&
-				testutils.NormalizeHTMLAttributes(removedLine) == testutils.NormalizeHTMLAttributes(addedLine) {
-				// Skip both lines - likely just CSS property reordering
-				i += 2
-				continue
-			}
-		}
-
-		result = append(result, line)
-		i++
-	}
-
-	return strings.Join(result, "\n")
 }
 
 func countDifferences(diffContent string) int {
