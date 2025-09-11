@@ -478,7 +478,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 			columnIndex++
 		} else if groupComp, ok := child.(*MJGroupComponent); ok {
-			// Groups also need MSO conditionals like columns
+			// Groups need their own MSO table wrappers
 			groupComp.SetContainerWidth(c.GetEffectiveWidth())
 
 			msoTable := html.NewTableTag()
@@ -491,29 +491,43 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				groupWidth = *groupComp.GetAttribute("width")
 			}
 
+			// Apply group vertical-align and css-class to the MSO wrapper TD
+			vAlign := groupComp.GetAttributeWithDefault(groupComp, constants.MJMLVerticalAlign)
+			if vAlign != constants.VAlignTop {
+				msoTd.AddStyle(constants.CSSVerticalAlign, vAlign)
+			}
+
 			if strings.HasSuffix(groupWidth, "px") {
 				// Use the group's pixel width directly
-				msoTd.AddStyle("width", groupWidth)
+				msoTd.AddStyle(constants.CSSWidth, groupWidth)
 			} else {
 				// Use section's effective width for percentage-based groups
-				msoTd.AddStyle("width", c.GetEffectiveWidthString())
+				msoTd.AddStyle(constants.CSSWidth, c.GetEffectiveWidthString())
+			}
+
+			if cssClass := groupComp.GetCSSClass(); cssClass != "" {
+				msoTd.AddAttribute(constants.AttrClass, cssClass+"-outlook")
 			}
 
 			if err := html.RenderMSOTableTrOpenConditional(w, msoTable, msoTr, msoTd); err != nil {
 				return err
 			}
+
+			// Render group content inside its MSO wrapper
+			if err := child.Render(w); err != nil {
+				return err
+			}
+
+			if err := html.RenderMSOTableCloseConditional(w, msoTd, msoTable); err != nil {
+				return err
+			}
+
+			continue
 		}
 
 		// Use optimized rendering with fallback to string-based
 		if err := child.Render(w); err != nil {
 			return err
-		}
-
-		// Groups get their own individual MSO tables (they handle this internally)
-		if _, ok := child.(*MJGroupComponent); ok {
-			if err := html.RenderMSOGroupTableClose(w); err != nil {
-				return err
-			}
 		}
 	}
 

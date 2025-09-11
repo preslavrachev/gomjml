@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -176,10 +177,11 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			// Ensure child columns receive the group's full width for internal calculations
 			columnComp.SetContainerWidth(groupWidthPx)
 
-			// MSO conditional TD for each column with correct width
+			// MSO conditional TD for each column with correct width and vertical alignment
 			msoWidth := getPixelWidthString(childWidthPx)
+			colVAlign := columnComp.GetAttributeWithDefault(columnComp, constants.MJMLVerticalAlign)
 
-			if err := html.RenderMSOGroupTDOpen(w, c.GetMSOClassAttribute(), verticalAlign, msoWidth); err != nil {
+			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth); err != nil {
 				return err
 			}
 
