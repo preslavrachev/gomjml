@@ -316,6 +316,11 @@ func TestSpecificFalsePositiveCases(t *testing.T) {
 			line1: `<img height="auto" src="https://placehold.co/150x60/E3F2FD/1976D2?font=playfair-display&text=LOGO" width="150" style="border:none;border-radius:0px;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" />`,
 			line2: `<img height="auto" src="https://placehold.co/150x60/E3F2FD/1976D2?font=playfair-display&text=LOGO" width="150" style="border:none;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;border-radius:0px;" />`,
 		},
+		{
+			name:  "TD with complex CSS property reordering",
+			line1: `<td style="background-color:transparent;border:none;border-bottom:none;border-left:none;border-radius:0px;border-right:none;border-top:none;vertical-align:top;padding:0;padding-top:0px;padding-right:0px;padding-bottom:0px;padding-left:0px;">`,
+			line2: `<td style="background-color:transparent;border:none;border-radius:0px;border-top:none;border-right:none;border-bottom:none;border-left:none;vertical-align:top;padding:0;padding-top:0px;padding-right:0px;padding-bottom:0px;padding-left:0px;">`,
+		},
 	}
 
 	for _, tt := range tests {
