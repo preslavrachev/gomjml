@@ -244,7 +244,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		//"notifuse-full",
+		"notifuse-full",
 	}
 
 	for _, testName := range testCases {
