@@ -4,6 +4,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/preslavrachev/gomjml/mjml/constants"
 )
 
 // RenderMSOConditional wraps content in MSO/Outlook conditional comments.
@@ -416,8 +418,19 @@ func RenderMSOTableTrOpenConditional(w io.StringWriter, table, tr, td *HTMLTag) 
 // Example output for width=600:
 //
 //	<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="600" style="width:600px;"><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int) error {
-	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\""); err != nil {
+func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int, align string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td"); err != nil {
+		return err
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
@@ -437,8 +450,19 @@ func RenderMSOWrapperTableClose(w io.StringWriter) error {
 // RenderMSOSectionTransition renders MSO conditional comment that bridges between sections in a wrapper.
 // This generates the pattern: <!--[if mso | IE]></td></tr><tr><td width="600px"><![endif]-->
 // widthPx should typically be the body width (600 by default).
-func RenderMSOSectionTransition(w io.StringWriter, widthPx int) error {
-	if _, err := w.WriteString("<!--[if mso | IE]></td></tr><tr><td width=\""); err != nil {
+func RenderMSOSectionTransition(w io.StringWriter, widthPx int, align string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]></td></tr><tr><td"); err != nil {
+		return err
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {

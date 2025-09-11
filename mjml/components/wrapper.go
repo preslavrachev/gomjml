@@ -118,6 +118,15 @@ func (c *MJWrapperComponent) getEffectiveWidth() int {
 	return effectiveWidth
 }
 
+// getChildAlign returns the align attribute for a section child if specified.
+// Only mj-section children can provide alignment for MSO wrapper tables.
+func getChildAlign(child Component) string {
+	if sec, ok := child.(*MJSectionComponent); ok {
+		return sec.GetAttributeWithDefault(sec, "align")
+	}
+	return ""
+}
+
 func (c *MJWrapperComponent) isFullWidth() bool {
 	// Full width only if explicitly set
 	return c.getAttribute("full-width") == "full-width"
@@ -274,7 +283,15 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	// MSO conditional for wrapper content
-	if err := html.RenderMSOWrapperTableOpen(w, effectiveWidth); err != nil {
+	firstAlign := ""
+	for _, ch := range c.Children {
+		if !ch.IsRawElement() {
+			firstAlign = getChildAlign(ch)
+			break
+		}
+	}
+
+	if err := html.RenderMSOWrapperTableOpen(w, effectiveWidth, firstAlign); err != nil {
 		return err
 	}
 
@@ -282,7 +299,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	// Add MSO section transitions between section children (like MRML does)
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), ""); err != nil {
 				return err
 			}
 			if err := child.Render(w); err != nil {
@@ -293,7 +310,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 		// Add MSO section transition between successive sections
 		if i > 0 && child.GetTagName() == "mj-section" {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
 				return err
 			}
 		}
@@ -471,9 +488,17 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		return err
 	}
 
+	firstAlign := ""
+	for _, ch := range c.Children {
+		if !ch.IsRawElement() {
+			firstAlign = getChildAlign(ch)
+			break
+		}
+	}
+
 	// For basic wrapper, we need a specific MSO conditional pattern
 	// that matches MRML's output more closely - use original body width for wrapper MSO
-	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels()); err != nil {
+	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels(), firstAlign); err != nil {
 		return err
 	}
 
@@ -481,7 +506,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Add MSO section transitions between section children (like MRML does)
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), ""); err != nil {
 				return err
 			}
 			if err := child.Render(w); err != nil {
@@ -492,7 +517,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 		// Add MSO section transition between sections (but not before the first section)
 		if i > 0 && child.GetTagName() == "mj-section" {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
 				return err
 			}
 		}
