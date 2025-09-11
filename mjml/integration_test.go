@@ -163,9 +163,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-column-global-attributes",
 		"mj-wrapper",
 		"mj-wrapper-border",
+		"mj-wrapper-border-radius",
+		"mj-wrapper-multiple-sections",
 		"mj-wrapper-other",
 		"mj-wrapper-padding",
-		"mj-wrapper-border-radius",
 		// MJ-Text tests
 		"mj-text",
 		"mj-text-align",

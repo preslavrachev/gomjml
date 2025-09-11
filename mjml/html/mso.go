@@ -434,6 +434,22 @@ func RenderMSOWrapperTableClose(w io.StringWriter) error {
 	return RenderMSOConditional(w, "</td></tr></table>")
 }
 
+// RenderMSOSectionTransition renders MSO conditional comment that bridges between sections in a wrapper.
+// This generates the pattern: <!--[if mso | IE]></td></tr><tr><td width="600px"><![endif]-->
+// widthPx should typically be the body width (600 by default).
+func RenderMSOSectionTransition(w io.StringWriter, widthPx int) error {
+	if _, err := w.WriteString("<!--[if mso | IE]></td></tr><tr><td width=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px\"><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RenderMSOGroupTDOpen renders MSO group TD opening directly to Writer without string allocation
 func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx string) error {
 	if _, err := w.WriteString("<!--[if mso | IE]><td"); err != nil {

@@ -4,6 +4,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -48,34 +49,55 @@ func (c *MJDividerComponent) getAttribute(name string) string {
 
 // Render implements optimized Writer-based rendering for MJDividerComponent
 func (c *MJDividerComponent) Render(w io.StringWriter) error {
-	padding := c.getAttribute("padding")
+	padding := c.getAttribute(constants.MJMLPadding)
 	borderColor := c.getAttribute("border-color")
 	borderStyle := c.getAttribute("border-style")
 	borderWidth := c.getAttribute("border-width")
-	align := c.getAttribute("align")
+	align := c.getAttribute(constants.MJMLAlign)
 
-	// Calculate margin based on alignment (matching MRML logic)
-	var margin string
-	switch align {
-	case "left":
-		margin = "0px"
-	case "right":
-		margin = "0px 0px 0px auto"
-	default:
-		margin = "0px auto"
-	}
+	// Margin is always centered - alignment handled on the TD element
+	margin := "0px auto"
 
 	// Create TR element
 	if _, err := w.WriteString("<tr>"); err != nil {
 		return err
 	}
 
-	// Table cell with padding and center alignment
-	td := html.NewHTMLTag("td").
-		AddAttribute("align", "center").
-		AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("word-break", "break-word")
+	// Table cell with padding and alignment
+	td := html.NewHTMLTag("td")
+	if align != "" {
+		td.AddAttribute(constants.AttrAlign, align)
+	}
+
+	// Add css-class if present
+	if cssClass := c.BuildClassAttribute(); cssClass != "" {
+		td.AddAttribute(constants.AttrClass, cssClass)
+	}
+
+	td.AddStyle(constants.CSSFontSize, "0px").
+		AddStyle(constants.CSSPadding, padding).
+		AddStyle(constants.CSSWordBreak, "break-word")
+
+	// Handle container background color
+	containerBgAttr := c.Node.GetAttribute(constants.MJMLContainerBackgroundColor)
+	containerBg := c.GetAttributeFast(c, constants.MJMLContainerBackgroundColor)
+	if containerBgAttr != "" || containerBg != c.GetDefaultAttribute(constants.MJMLContainerBackgroundColor) {
+		td.AddStyle(constants.CSSBackground, containerBg)
+	}
+
+	// Handle individual padding properties
+	if paddingTop := c.GetAttributeFast(c, constants.MJMLPaddingTop); paddingTop != "" {
+		td.AddStyle(constants.CSSPaddingTop, paddingTop)
+	}
+	if paddingRight := c.GetAttributeFast(c, constants.MJMLPaddingRight); paddingRight != "" {
+		td.AddStyle(constants.CSSPaddingRight, paddingRight)
+	}
+	if paddingBottom := c.GetAttributeFast(c, constants.MJMLPaddingBottom); paddingBottom != "" {
+		td.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft := c.GetAttributeFast(c, constants.MJMLPaddingLeft); paddingLeft != "" {
+		td.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	}
 
 	if err := td.RenderOpen(w); err != nil {
 		return err

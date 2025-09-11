@@ -1,0 +1,23 @@
+<mjml>
+  <mj-head>
+  </mj-head>
+  <mj-body width="600px">
+    <mj-wrapper>
+      <mj-section background-color="#ffffff">
+        <mj-column>
+          <mj-text>First section content</mj-text>
+        </mj-column>
+      </mj-section>
+      <mj-section background-color="#f0f0f0">
+        <mj-column>
+          <mj-text>Second section content</mj-text>
+        </mj-column>
+      </mj-section>
+      <mj-section background-color="#ffffff">
+        <mj-column>
+          <mj-text>Third section content</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>
