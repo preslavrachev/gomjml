@@ -280,8 +280,19 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 	// Render children with standard body width
 	// Add MSO section transitions between section children (like MRML does)
+	msoOpen := true
 	for i, child := range c.Children {
 		if child.IsRawElement() {
+			if msoOpen {
+				if err := html.RenderMSOWrapperTableClose(w); err != nil {
+					return err
+				}
+				msoOpen = false
+			}
+			// Open MSO row for the raw element
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
+				return err
+			}
 			if err := child.Render(w); err != nil {
 				return err
 			}
@@ -302,8 +313,10 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		}
 	}
 
-	if err := html.RenderMSOWrapperTableClose(w); err != nil {
-		return err
+	if msoOpen {
+		if err := html.RenderMSOWrapperTableClose(w); err != nil {
+			return err
+		}
 	}
 
 	if err := innerTd.RenderClose(w); err != nil {
@@ -476,8 +489,18 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 	// Render children - pass the effective width (600px - border width)
 	// Add MSO section transitions between section children (like MRML does)
+	msoOpen := true
 	for i, child := range c.Children {
 		if child.IsRawElement() {
+			if msoOpen {
+				if err := html.RenderMSOWrapperTableClose(w); err != nil {
+					return err
+				}
+				msoOpen = false
+			}
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels()); err != nil {
+				return err
+			}
 			if err := child.Render(w); err != nil {
 				return err
 			}
@@ -498,8 +521,10 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		}
 	}
 
-	if err := html.RenderMSOWrapperTableClose(w); err != nil {
-		return err
+	if msoOpen {
+		if err := html.RenderMSOWrapperTableClose(w); err != nil {
+			return err
+		}
 	}
 
 	if err := mainTd.RenderClose(w); err != nil {
