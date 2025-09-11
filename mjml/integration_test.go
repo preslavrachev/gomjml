@@ -245,7 +245,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
-		//"notifuse-full",
+		"notifuse-full",
 	}
 
 	for _, testName := range testCases {
@@ -1178,12 +1178,14 @@ func checkMSOConditionalDifferences(expected, actual string) string {
 		{"<!--<![endif]-->", "endif"},
 		{"<!--[if mso | IE]>", "mso-or-ie-opening"},
 		{"<!--[if !mso | IE]><!-->", "not-mso-or-ie-opening"},
+		{"<!--[if IE] mso |>", "ie-mso-opening"}, // Added missing pattern
 		{"<!--[if lte mso 11]>", "mso-lte-11-opening"},
 		{"<![endif]-->", "simple-endif"},
 	}
 
 	var differences []string
 
+	// Check for count differences first
 	for _, pattern := range msoPatterns {
 		expectedCount := strings.Count(expected, pattern.pattern)
 		actualCount := strings.Count(actual, pattern.pattern)
@@ -1192,6 +1194,28 @@ func checkMSOConditionalDifferences(expected, actual string) string {
 			differences = append(differences,
 				fmt.Sprintf("MSO conditional %s mismatch: expected %d, actual %d",
 					pattern.name, expectedCount, actualCount))
+		}
+	}
+
+	// Check for sequence/ordering differences by comparing MSO blocks
+	if len(differences) == 0 {
+		// Extract sequences of MSO conditionals + HTML elements for comparison
+		expectedSequence := extractMSOSequences(expected)
+		actualSequence := extractMSOSequences(actual)
+
+		if len(expectedSequence) != len(actualSequence) {
+			differences = append(differences,
+				fmt.Sprintf("MSO sequence count mismatch: expected %d blocks, actual %d blocks",
+					len(expectedSequence), len(actualSequence)))
+		} else {
+			// Compare each sequence block
+			for i, expectedBlock := range expectedSequence {
+				if i < len(actualSequence) && expectedBlock != actualSequence[i] {
+					differences = append(differences,
+						fmt.Sprintf("MSO sequence differs at block %d:\n  Expected: %s\n  Actual: %s",
+							i, expectedBlock, actualSequence[i]))
+				}
+			}
 		}
 	}
 
@@ -1342,4 +1366,24 @@ func findRegexMatches(text, pattern string) []string {
 		}
 	}
 	return results
+}
+
+// extractMSOSequences extracts sequences of MSO conditional comments and adjacent HTML elements
+// for comparison of ordering differences that DOM parsing would normalize away
+func extractMSOSequences(html string) []string {
+	// Pattern to match MSO conditional blocks with their surrounding content
+	// This captures MSO conditionals and the next few HTML elements following them
+	re := regexp.MustCompile(`<!--\[if[^>]*>[\s\S]*?<!\[endif\]-->`)
+	matches := re.FindAllString(html, -1)
+
+	var sequences []string
+	for _, match := range matches {
+		// Normalize whitespace for comparison
+		normalized := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(match), " ")
+		if normalized != "" {
+			sequences = append(sequences, normalized)
+		}
+	}
+
+	return sequences
 }
