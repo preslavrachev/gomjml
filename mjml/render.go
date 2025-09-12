@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"hash/maphash"
 	"io"
+	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"sort"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
 	"github.com/preslavrachev/gomjml/mjml/debug"
@@ -870,6 +869,16 @@ func (c *MJMLComponent) hasCarouselComponents() bool {
 	})
 }
 
+// shouldImportDefaultFonts determines if default fonts should be auto-imported
+// based on detected fonts, social components presence, and custom global fonts
+func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, hasSocial, hasOnlyDefaultFonts bool) bool {
+	noFontsDetected := len(detectedFonts) == 0
+	socialWithDefaults := hasSocial && hasOnlyDefaultFonts
+	hasCustomGlobals := c.hasCustomGlobalFonts()
+
+	return (noFontsDetected || socialWithDefaults) && hasSocial && !hasCustomGlobals
+}
+
 // hasTextComponentsRecursive recursively checks for text components
 func (c *MJMLComponent) hasTextComponentsRecursive(component Component) bool {
 	// Check if this component is a text component
@@ -1112,7 +1121,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// Also respect custom global fonts from mj-all attributes
 	// Special case: social components with only default fonts should trigger Ubuntu fallback
 	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
-	if (len(detectedFonts) == 0 || (hasSocial && hasOnlyDefaultFonts)) && hasSocial && !c.hasCustomGlobalFonts() {
+	if c.shouldImportDefaultFonts(detectedFonts, hasSocial, hasOnlyDefaultFonts) {
 		debug.DebugLogWithData(
 			"font-detection",
 			"check-defaults",
