@@ -798,18 +798,22 @@ func (n *MJMLNode) GetTextContent() string {
 // GetMixedContent returns the full mixed content including HTML child elements
 // This reconstructs the original content like "Share <b>test</b> hi" from the AST
 func (n *MJMLNode) GetMixedContent() string {
-	debug.DebugLogWithData("parser", "mixed-content", "Processing mixed content", map[string]interface{}{
-		"tag_name":       n.XMLName.Local,
-		"plain_text":     n.Text,
-		"children_count": len(n.Children),
-		"has_children":   len(n.Children) > 0,
-	})
+	if debug.Enabled() {
+		debug.DebugLogWithData("parser", "mixed-content", "Processing mixed content", map[string]any{
+			"tag_name":       n.XMLName.Local,
+			"plain_text":     n.Text,
+			"children_count": len(n.Children),
+			"has_children":   len(n.Children) > 0,
+		})
+	}
 
 	if len(n.MixedContent) == 0 {
 		result := strings.TrimSpace(n.Text)
-		debug.DebugLogWithData("parser", "text-only", "Returning plain text content", map[string]interface{}{
-			"content": result,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData("parser", "text-only", "Returning plain text content", map[string]any{
+				"content": result,
+			})
+		}
 		return result
 	}
 
@@ -848,11 +852,13 @@ func (n *MJMLNode) GetMixedContent() string {
 	}
 
 	finalResult := strings.TrimSpace(result.String())
-	debug.DebugLogWithData("parser", "mixed-complete", "Mixed content reconstructed", map[string]interface{}{
-		"original_text":     n.Text,
-		"final_content":     finalResult,
-		"children_rendered": len(n.Children),
-	})
+	if debug.Enabled() {
+		debug.DebugLogWithData("parser", "mixed-complete", "Mixed content reconstructed", map[string]any{
+			"original_text":     n.Text,
+			"final_content":     finalResult,
+			"children_rendered": len(n.Children),
+		})
+	}
 	return finalResult
 }
 

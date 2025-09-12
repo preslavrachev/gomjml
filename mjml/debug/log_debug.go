@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// Enabled reports whether debug logging is enabled.
+// When built with the "debug" tag, this returns true so callers
+// can guard expensive debug data construction.
+func Enabled() bool { return true }
+
 // DebugLog logs a debug message with component, phase, and formatted message.
 // Format: [COMPONENT:phase] message: formatted_args
 func DebugLog(component, phase, message string, args ...interface{}) {

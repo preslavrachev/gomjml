@@ -30,11 +30,12 @@ func (c *MJTextComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJTextComponent
 func (c *MJTextComponent) Render(w io.StringWriter) error {
-	debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
-
-	debug.DebugLogWithData("mj-text", "content", "Processing text content", map[string]interface{}{
-		"container_width": c.GetContainerWidth(),
-	})
+	if debug.Enabled() {
+		debug.DebugLog("mj-text", "render-start", "Starting text component rendering")
+		debug.DebugLogWithData("mj-text", "content", "Processing text content", map[string]any{
+			"container_width": c.GetContainerWidth(),
+		})
+	}
 
 	// Get attributes using full resolution order (element > mj-class > global > default)
 	align := c.GetAttributeFast(c, constants.MJMLAlign)

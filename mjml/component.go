@@ -29,11 +29,13 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 	tagName := node.GetTagName()
 
 	// Log component creation
-	debug.DebugLogWithData("component", "create", "Creating component", map[string]interface{}{
-		"tag_name":     tagName,
-		"has_children": len(node.Children) > 0,
-		"attr_count":   len(node.Attrs),
-	})
+	if debug.Enabled() {
+		debug.DebugLogWithData("component", "create", "Creating component", map[string]any{
+			"tag_name":     tagName,
+			"has_children": len(node.Children) > 0,
+			"attr_count":   len(node.Attrs),
+		})
+	}
 
 	switch tagName {
 	case "mjml":

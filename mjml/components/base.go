@@ -178,10 +178,12 @@ func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
 func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) string {
 	// 1. Check element attributes first
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": value,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": value,
+			})
+		}
 		// Track font families
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(value)
@@ -191,11 +193,13 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 
 	// 2. Check mj-class definitions
 	if classValue := bc.getClassAttribute(name); classValue != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-class", "Using mj-class attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": classValue,
-			"classes":    bc.Attrs["mj-class"],
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-class", "Using mj-class attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": classValue,
+				"classes":    bc.Attrs["mj-class"],
+			})
+		}
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(classValue)
 		}
@@ -204,10 +208,12 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 
 	// 3. Check global attributes if available (we'll get this via external function)
 	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": globalValue,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": globalValue,
+			})
+		}
 		// Track font families
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(globalValue)
@@ -218,10 +224,12 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 	// 4. Check component defaults via interface method (properly calls overridden method)
 	defaultValue := comp.GetDefaultAttribute(name)
 	if defaultValue != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": defaultValue,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": defaultValue,
+			})
+		}
 		// Track font families
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(defaultValue)
