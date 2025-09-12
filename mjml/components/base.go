@@ -513,29 +513,69 @@ func (bc *BaseComponent) GetCSSClass() string {
 // BuildClassAttribute combines existing CSS classes with the css-class attribute
 // Usage: component.BuildClassAttribute("mj-column-per-100", "mj-outlook-group-fix")
 func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
-	var classes []string
-
-	// Add existing classes
-	for _, class := range existingClasses {
-		if class != "" {
-			classes = append(classes, class)
-		}
-	}
-
 	// Determine css-class from element or mj-class definitions
 	cssClass := bc.GetCSSClass()
 	if cssClass == "" {
 		cssClass = bc.getClassAttribute("css-class")
 	}
+
+	// Count total classes
+	total := 0
+	for _, class := range existingClasses {
+		if class != "" {
+			total++
+		}
+	}
 	if cssClass != "" {
-		classes = append(classes, cssClass)
+		total++
 	}
 
-	if len(classes) == 0 {
+	if total == 0 {
 		return ""
 	}
 
-	return strings.Join(classes, " ")
+	if total == 1 {
+		for _, class := range existingClasses {
+			if class != "" {
+				return class
+			}
+		}
+		return cssClass
+	}
+
+	// More than one class: build string efficiently
+	// Pre-calculate buffer size
+	totalLen := total - 1 // spaces between classes
+	for _, class := range existingClasses {
+		if class != "" {
+			totalLen += len(class)
+		}
+	}
+	if cssClass != "" {
+		totalLen += len(cssClass)
+	}
+
+	var b strings.Builder
+	b.Grow(totalLen)
+	first := true
+	for _, class := range existingClasses {
+		if class == "" {
+			continue
+		}
+		if !first {
+			b.WriteByte(' ')
+		} else {
+			first = false
+		}
+		b.WriteString(class)
+	}
+	if cssClass != "" {
+		if !first {
+			b.WriteByte(' ')
+		}
+		b.WriteString(cssClass)
+	}
+	return b.String()
 }
 
 // GetMSOClassAttribute returns the MSO conditional comment class attribute with -outlook suffix

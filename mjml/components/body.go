@@ -2,7 +2,6 @@ package components
 
 import (
 	"io"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
@@ -72,26 +71,43 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	// Build class attribute: just use the user's css-class if present
 	classAttr := c.BuildClassAttribute("")
 
-	var b strings.Builder
-	b.WriteString("<div")
+	if _, err := w.WriteString("<div"); err != nil {
+		return err
+	}
 	if langAttr != "" {
-		b.WriteString(` lang="`)
-		b.WriteString(langAttr)
-		b.WriteString(`"`)
+		if _, err := w.WriteString(` lang="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(langAttr); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
 	}
 	if classAttr != "" {
-		b.WriteString(` class="`)
-		b.WriteString(classAttr)
-		b.WriteString(`"`)
+		if _, err := w.WriteString(` class="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(classAttr); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
 	}
 	if backgroundColor != nil && *backgroundColor != "" {
-		b.WriteString(` style="background-color:`)
-		b.WriteString(*backgroundColor)
-		b.WriteString(`;"`)
+		if _, err := w.WriteString(` style="background-color:`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(*backgroundColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`;"`); err != nil {
+			return err
+		}
 	}
-	b.WriteString(">")
-
-	if _, err := w.WriteString(b.String()); err != nil {
+	if _, err := w.WriteString(">"); err != nil {
 		return err
 	}
 
