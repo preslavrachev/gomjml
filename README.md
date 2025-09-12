@@ -13,7 +13,7 @@ A native Go implementation of the MJML email framework, providing fast compilati
 ## 🚀 Features
 
 - **Complete MJML Implementation**: 100% feature-complete with all 26 MJML components implemented and tested against MRML (the Rust implementation of MJML). A well-structured Go library with clean package separation
-- **Email Compatible**: Generates HTML that works across email clients (Outlook, Gmail, Apple Mail, etc.)
+- **Enhanced Email Compatibility**: Generates HTML that works reliably across all email clients with robust Microsoft Outlook support and VML background rendering for legacy versions
 - **Fast Performance**: Native Go performance, comparable to Rust MRML implementation
 - **Optional AST Caching**: Opt-in template caching for speedup on repeated renders
 - **Complete Component System**: Support for essential MJML components with proper inheritance
@@ -279,7 +279,7 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-table` | ✅ **Implemented** | Email-safe table component with border and styling support |
 
 ### Implementation Summary
-- **✅ Implemented: 26 components** - All essential layout, content, head components, accordion, navbar, hero, spacer, table, and carousel components work
+- **✅ Implemented: 26 components** - All essential layout, content, head components, accordion, navbar, hero, spacer, table, and carousel components with enhanced rendering robustness
 - **❌ Not Implemented: 0 components** - Full MJML specification coverage achieved
 - **Total MJML Components: 26** - Complete coverage of all major MJML specification components
 
@@ -290,19 +290,19 @@ Based on the integration test suite in `mjml/integration_test.go`, the implement
 
 | Benchmark                                        |  Time   | Memory  | Allocs |
 | :----------------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8                | 0.41ms  | 0.56MB  |  4.7K  |
-| BenchmarkMJMLRender_10_Sections_Cache-8          | 0.23ms  | 0.48MB  |  2.7K  |
-| BenchmarkMJMLRender_100_Sections-8               | 4.74ms  | 5.83MB  | 45.0K  |
-| BenchmarkMJMLRender_100_Sections_Cache-8         | 3.08ms  | 5.13MB  | 25.7K  |
-| BenchmarkMJMLRender_1000_Sections-8              | 42.61ms | 59.22MB | 447.3K |
-| BenchmarkMJMLRender_1000_Sections_Cache-8        | 29.23ms | 52.19MB | 255.2K |
-| BenchmarkMJMLRender_10_Sections_Memory-8         | 0.51ms  | 0.56MB  |  4.7K  |
-| BenchmarkMJMLRender_10_Sections_Memory_Cache-8   | 0.31ms  | 0.48MB  |  2.7K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8        | 4.82ms  | 5.83MB  | 45.0K  |
-| BenchmarkMJMLRender_100_Sections_Memory_Cache-8  | 2.83ms  | 5.13MB  | 25.7K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8       | 44.00ms | 59.22MB | 447.3K |
-| BenchmarkMJMLRender_1000_Sections_Memory_Cache-8 | 24.69ms | 52.19MB | 255.2K |
-| BenchmarkMJMLRender_100_Sections_Writer-8        | 2.64ms  | 4.69MB  | 20.1K  |
+| BenchmarkMJMLRender_10_Sections-8                | 0.46ms  | 0.59MB  |  4.1K  |
+| BenchmarkMJMLRender_10_Sections_Cache-8          | 0.21ms  | 0.46MB  |  1.9K  |
+| BenchmarkMJMLRender_100_Sections-8               | 5.21ms  | 6.09MB  | 38.6K  |
+| BenchmarkMJMLRender_100_Sections_Cache-8         | 2.57ms  | 4.83MB  | 18.3K  |
+| BenchmarkMJMLRender_1000_Sections-8              | 46.63ms | 62.65MB | 383.3K |
+| BenchmarkMJMLRender_1000_Sections_Cache-8        | 21.71ms | 49.26MB | 182.2K |
+| BenchmarkMJMLRender_10_Sections_Memory-8         | 0.60ms  | 0.59MB  |  4.1K  |
+| BenchmarkMJMLRender_10_Sections_Memory_Cache-8   | 0.26ms  | 0.46MB  |  1.9K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8        | 4.88ms  | 6.08MB  | 38.6K  |
+| BenchmarkMJMLRender_100_Sections_Memory_Cache-8  | 2.36ms  | 4.83MB  | 18.3K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8       | 47.47ms | 62.67MB | 383.3K |
+| BenchmarkMJMLRender_1000_Sections_Memory_Cache-8 | 22.07ms | 49.26MB | 182.2K |
+| BenchmarkMJMLRender_100_Sections_Writer-8        | 2.37ms  | 4.37MB  | 14.0K  |
 
 For comprehensive performance analysis including comparisons with other MJML implementations, see our dedicated [performance benchmarks documentation](docs/benchmarks.md).
 
@@ -461,7 +461,8 @@ Generated HTML works across all major email clients:
 
 ### Email-Specific Features
 
-- **MSO Conditional Comments**: Outlook-specific styling and layout fixes
+- **Enhanced MSO Conditional Comments**: Comprehensive Outlook-specific styling and layout fixes
+- **VML Background Support**: Legacy Outlook compatibility with Vector Markup Language backgrounds
 - **CSS Inlining Ready**: Structure compatible with CSS inlining tools
 - **Mobile Responsive**: Automatic mobile breakpoints and media queries
 - **Web Font Support**: Google Fonts integration with fallbacks
