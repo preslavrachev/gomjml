@@ -31,6 +31,7 @@ func (c *MJSectionComponent) GetTagName() string {
 // Render implements optimized Writer-based rendering for MJSectionComponent
 func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Get section attributes using proper attribute resolution (includes mj-attributes)
+	// Cache all attribute lookups at once to avoid repeated calls
 	backgroundColor := c.GetAttributeWithDefault(c, "background-color")
 	backgroundUrl := c.GetAttributeWithDefault(c, constants.MJMLBackgroundUrl)
 	backgroundPosition := c.GetAttributeWithDefault(c, "background-position")
@@ -42,6 +43,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	direction := c.GetAttributeWithDefault(c, "direction")
 	textAlign := c.GetAttributeWithDefault(c, "text-align")
 	fullWidth := c.GetAttributeWithDefault(c, "full-width")
+	borderRadius := c.GetAttributeWithDefault(c, "border-radius")
+	align := c.GetAttributeWithDefault(c, "align")
 
 	// Check if we have a background image for VML generation
 	hasBackgroundImage := backgroundUrl != ""
@@ -74,8 +77,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 		// Only border-radius applies to the outer table. Border
 		// properties belong to the inner content container.
-		if br := c.GetAttributeWithDefault(c, "border-radius"); br != "" {
-			outerTable.AddStyle("border-radius", br)
+		if borderRadius != "" {
+			outerTable.AddStyle("border-radius", borderRadius)
 		}
 
 		if err := outerTable.RenderOpen(w); err != nil {
@@ -129,7 +132,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	msoTableWidth := c.GetEffectiveWidth()
 
 	// Get align from attributes (including mj-class)
-	alignAttr := c.GetAttributeWithDefault(c, "align")
+	alignAttr := align
 	if alignAttr == "" {
 		alignAttr = "center" // default align for MSO table
 	}
@@ -242,7 +245,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddStyle("max-width", strconv.Itoa(c.GetContainerWidth())+"px")
 
 	// Add border-radius if specified
-	if borderRadius := c.GetAttributeWithDefault(c, "border-radius"); borderRadius != "" {
+	if borderRadius != "" {
 		sectionDiv.AddStyle("border-radius", borderRadius)
 	}
 
@@ -291,7 +294,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	innerTable.AddStyle("width", "100%")
 
 	// Add border-radius if specified
-	if borderRadius := c.GetAttributeWithDefault(c, "border-radius"); borderRadius != "" {
+	if borderRadius != "" {
 		innerTable.AddStyle("border-radius", borderRadius)
 	}
 

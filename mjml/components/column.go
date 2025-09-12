@@ -105,7 +105,7 @@ func (c *MJColumnComponent) parsePaddingLeftRight(padding string) (left, right i
 
 // Render implements optimized Writer-based rendering for MJColumnComponent
 func (c *MJColumnComponent) Render(w io.StringWriter) error {
-	// Get attributes using full resolution order (element, class, global, default)
+	// Cache attribute lookups to avoid repeated calls
 	verticalAlign := c.GetAttributeWithDefault(c, "vertical-align")
 	direction := c.GetAttributeWithDefault(c, "direction")
 
