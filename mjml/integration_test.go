@@ -528,14 +528,6 @@ func parseStyleProperties(style string) map[string]string {
 	return props
 }
 
-// max returns the maximum of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 // StyleDiff represents differences between expected and actual CSS properties
 type StyleDiff struct {
 	Missing    map[string]string    // prop: expectedValue
