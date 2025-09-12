@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -33,25 +34,80 @@ func (c *MJBodyComponent) GetTagName() string {
 	return "mj-body"
 }
 
+// GetEffectiveWidth returns the body width in pixels, allowing the width
+// attribute to override the default 600px container width. This ensures
+// section children inherit the correct width.
+func (c *MJBodyComponent) GetEffectiveWidth() int {
+	if c.ContainerWidth > 0 {
+		return c.ContainerWidth
+	}
+	if widthAttr := c.GetAttributeWithDefault(c, "width"); widthAttr != "" {
+		if size, err := styles.ParseSize(widthAttr); err == nil && size.IsPixel() {
+			return int(size.Value())
+		}
+	}
+	return GetDefaultBodyWidthPixels()
+}
+
+// GetEffectiveWidthString returns the body width as a pixel string, honoring
+// the width attribute when provided.
+func (c *MJBodyComponent) GetEffectiveWidthString() string {
+	if c.ContainerWidth > 0 {
+		return getPixelWidthString(c.ContainerWidth)
+	}
+	if widthAttr := c.GetAttributeWithDefault(c, "width"); widthAttr != "" {
+		if size, err := styles.ParseSize(widthAttr); err == nil && size.IsPixel() {
+			return getPixelWidthString(int(size.Value()))
+		}
+	}
+	return GetDefaultBodyWidth()
+}
+
 // Render implements optimized Writer-based rendering for MJBodyComponent
 func (c *MJBodyComponent) Render(w io.StringWriter) error {
-	// Apply background-color to div if specified (matching MRML's set_body_style)
 	backgroundColor := c.GetAttribute("background-color")
-
-	// Get lang attribute from render options (set by root MJML component)
 	langAttr := c.RenderOpts.Lang
 
-	// Build div tag with attributes
-	divTag := `<div`
+	// Build class attribute: just use the user's css-class if present
+	classAttr := c.BuildClassAttribute("")
+
+	if _, err := w.WriteString("<div"); err != nil {
+		return err
+	}
 	if langAttr != "" {
-		divTag += ` lang="` + langAttr + `"`
+		if _, err := w.WriteString(` lang="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(langAttr); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
+	}
+	if classAttr != "" {
+		if _, err := w.WriteString(` class="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(classAttr); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
 	}
 	if backgroundColor != nil && *backgroundColor != "" {
-		divTag += ` style="background-color:` + *backgroundColor + `;"`
+		if _, err := w.WriteString(` style="background-color:`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(*backgroundColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`;"`); err != nil {
+			return err
+		}
 	}
-	divTag += `>`
-
-	if _, err := w.WriteString(divTag); err != nil {
+	if _, err := w.WriteString(">"); err != nil {
 		return err
 	}
 
@@ -61,11 +117,8 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	if _, err := w.WriteString(`</div>`); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := w.WriteString("</div>")
+	return err
 }
 
 func (c *MJBodyComponent) GetDefaultAttribute(name string) string {

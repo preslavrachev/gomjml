@@ -4,6 +4,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/preslavrachev/gomjml/mjml/constants"
 )
 
 // RenderMSOConditional wraps content in MSO/Outlook conditional comments.
@@ -408,9 +410,27 @@ func RenderMSOTableTrOpenConditional(w io.StringWriter, table, tr, td *HTMLTag) 
 	return nil
 }
 
-// RenderMSOWrapperTableOpen renders MSO wrapper table opening directly to Writer without string allocation
-func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int) error {
-	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td width=\""); err != nil {
+// RenderMSOWrapperTableOpen renders the opening Outlook wrapper table with all
+// required attributes. The generated structure matches MRML's output exactly so
+// that integration tests comparing against reference HTML don't report spurious
+// differences.
+//
+// Example output for width=600:
+//
+//	<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="600" style="width:600px;"><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int, align string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td"); err != nil {
+		return err
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
@@ -425,6 +445,33 @@ func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int) error {
 // RenderMSOWrapperTableClose renders MSO wrapper table closing directly to Writer
 func RenderMSOWrapperTableClose(w io.StringWriter) error {
 	return RenderMSOConditional(w, "</td></tr></table>")
+}
+
+// RenderMSOSectionTransition renders MSO conditional comment that bridges between sections in a wrapper.
+// This generates the pattern: <!--[if mso | IE]></td></tr><tr><td width="600px"><![endif]-->
+// widthPx should typically be the body width (600 by default).
+func RenderMSOSectionTransition(w io.StringWriter, widthPx int, align string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]></td></tr><tr><td"); err != nil {
+		return err
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px\"><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
 }
 
 // RenderMSOGroupTDOpen renders MSO group TD opening directly to Writer without string allocation
@@ -460,5 +507,5 @@ func RenderMSOGroupTDClose(w io.StringWriter) error {
 
 // RenderMSOGroupTableClose renders MSO group table closing directly to Writer
 func RenderMSOGroupTableClose(w io.StringWriter) error {
-	return RenderMSOConditional(w, "</td></tr></table>")
+	return RenderMSOConditional(w, "</tr></table>")
 }

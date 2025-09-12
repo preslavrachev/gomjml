@@ -3,11 +3,11 @@ package components
 import (
 	"io"
 	"strconv"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -48,32 +48,83 @@ func (c *MJWrapperComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-// getBorderWidth calculates the total border width from border attribute
+// getBorderWidth calculates total horizontal border width taking into account
+// shorthand border, border-left, and border-right overrides.
 func (c *MJWrapperComponent) getBorderWidth() int {
-	border := c.getAttribute("border")
-	if border == "" {
-		return 0
-	}
+	left, right := c.getBorderLRWidths()
+	return left + right
+}
 
-	// Parse border width (e.g., "2px solid #333" -> 2)
-	// Simple parsing for the common case
-	if strings.Contains(border, "1px") {
-		return 2 // 1px on each side
+// getBorderLRWidths returns individual left and right border widths in pixels.
+func (c *MJWrapperComponent) getBorderLRWidths() (int, int) {
+	var left, right int
+	if border := c.getAttribute("border"); border != "" {
+		w := styles.ParseBorderWidth(border)
+		left, right = w, w
 	}
-	if strings.Contains(border, "2px") {
-		return 4 // 2px on each side
+	if bl := c.getAttribute("border-left"); bl != "" {
+		if w := styles.ParseBorderWidth(bl); w > 0 {
+			left = w
+		}
 	}
-	if strings.Contains(border, "3px") {
-		return 6 // 3px on each side
+	if br := c.getAttribute("border-right"); br != "" {
+		if w := styles.ParseBorderWidth(br); w > 0 {
+			right = w
+		}
 	}
-	return 0
+	return left, right
 }
 
 // getEffectiveWidth calculates width minus border width
 func (c *MJWrapperComponent) getEffectiveWidth() int {
 	baseWidth := GetDefaultBodyWidthPixels()
-	borderWidth := c.getBorderWidth()
-	return baseWidth - borderWidth
+	borderLeft, borderRight := c.getBorderLRWidths()
+	effectiveWidth := baseWidth - borderLeft - borderRight
+
+	// AIDEV-NOTE: wrapper-width-flow; wrapper padding reduces child containerWidth
+	// Subtract horizontal padding (handle both shorthand and individual properties)
+	// This ensures child sections receive reduced containerWidth accounting for wrapper padding
+	padding := c.getAttribute("padding")
+	if padding != "" {
+		if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+			effectiveWidth -= int(sp.Left + sp.Right)
+		}
+	}
+
+	// Individual properties override shorthand
+	if pl := c.getAttribute(constants.MJMLPaddingLeft); pl != "" {
+		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
+			// If we already subtracted from shorthand, add it back first
+			if padding != "" {
+				if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+					effectiveWidth += int(sp.Left)
+				}
+			}
+			effectiveWidth -= int(px.Value)
+		}
+	}
+	if pr := c.getAttribute(constants.MJMLPaddingRight); pr != "" {
+		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
+			// If we already subtracted from shorthand, add it back first
+			if padding != "" {
+				if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
+					effectiveWidth += int(sp.Right)
+				}
+			}
+			effectiveWidth -= int(px.Value)
+		}
+	}
+
+	return effectiveWidth
+}
+
+// getChildAlign returns the align attribute for a section child if specified.
+// Only mj-section children can provide alignment for MSO wrapper tables.
+func getChildAlign(child Component) string {
+	if sec, ok := child.(*MJSectionComponent); ok {
+		return sec.GetAttributeWithDefault(sec, "align")
+	}
+	return ""
 }
 
 func (c *MJWrapperComponent) isFullWidth() bool {
@@ -96,6 +147,19 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
 
+	// Calculate effective content width by subtracting horizontal padding and border widths
+	effectiveWidth := GetDefaultBodyWidthPixels() - c.getBorderWidth()
+	if pl := c.getAttribute(constants.MJMLPaddingLeft); pl != "" {
+		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
+			effectiveWidth -= int(px.Value)
+		}
+	}
+	if pr := c.getAttribute(constants.MJMLPaddingRight); pr != "" {
+		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
+			effectiveWidth -= int(px.Value)
+		}
+	}
+
 	// Outer full-width table (MRML pattern)
 	outerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
@@ -104,8 +168,12 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center")
 
+	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+		outerTable.AddAttribute("class", cssClass)
+	}
+
 	// Apply background styles to outer table and add width:100%
-	c.ApplyBackgroundStyles(outerTable)
+	c.ApplyBackgroundStyles(outerTable, c)
 	outerTable.AddStyle("width", "100%")
 
 	if err := outerTable.RenderOpen(w); err != nil {
@@ -150,11 +218,6 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddStyle("margin", "0px auto").
 		AddStyle("max-width", GetDefaultBodyWidth())
 
-	// Add css-class support for inner div
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
-		innerDiv.AddAttribute("class", cssClass)
-	}
-
 	if err := innerDiv.RenderOpen(w); err != nil {
 		return err
 	}
@@ -176,14 +239,38 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	// Inner TD
-	innerTd := html.NewHTMLTag("td").
-		AddStyle("direction", direction).
+	innerTd := html.NewHTMLTag("td")
+
+	if border := c.getAttribute("border"); border != "" {
+		innerTd.AddStyle("border", border)
+	}
+	if borderBottom := c.getAttribute("border-bottom"); borderBottom != "" {
+		innerTd.AddStyle("border-bottom", borderBottom)
+	}
+	if borderLeft := c.getAttribute("border-left"); borderLeft != "" {
+		innerTd.AddStyle("border-left", borderLeft)
+	}
+	if borderRight := c.getAttribute("border-right"); borderRight != "" {
+		innerTd.AddStyle("border-right", borderRight)
+	}
+	if borderTop := c.getAttribute("border-top"); borderTop != "" {
+		innerTd.AddStyle("border-top", borderTop)
+	}
+
+	innerTd.AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
-	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
+	// Add individual padding properties after shorthand to match MRML order:
+	// bottom, left, right, then top.
 	if paddingBottom := c.getAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
 		innerTd.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft := c.getAttribute(constants.MJMLPaddingLeft); paddingLeft != "" {
+		innerTd.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	}
+	if paddingRight := c.getAttribute(constants.MJMLPaddingRight); paddingRight != "" {
+		innerTd.AddStyle(constants.CSSPaddingRight, paddingRight)
 	}
 	if paddingTop := c.getAttribute(constants.MJMLPaddingTop); paddingTop != "" {
 		innerTd.AddStyle(constants.CSSPaddingTop, paddingTop)
@@ -196,19 +283,40 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	// MSO conditional for wrapper content
-	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels()); err != nil {
+	firstAlign := ""
+	for _, ch := range c.Children {
+		if !ch.IsRawElement() {
+			firstAlign = getChildAlign(ch)
+			break
+		}
+	}
+
+	if err := html.RenderMSOWrapperTableOpen(w, effectiveWidth, firstAlign); err != nil {
 		return err
 	}
 
 	// Render children with standard body width
-	for _, child := range c.Children {
+	// Add MSO section transitions between section children (like MRML does)
+	for i, child := range c.Children {
 		if child.IsRawElement() {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), ""); err != nil {
+				return err
+			}
 			if err := child.Render(w); err != nil {
 				return err
 			}
 			continue
 		}
-		child.SetContainerWidth(GetDefaultBodyWidthPixels())
+
+		// Add MSO section transition between successive sections
+		if i > 0 && child.GetTagName() == "mj-section" {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
+				return err
+			}
+		}
+
+		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
+		child.SetContainerWidth(effectiveWidth)
 		if err := child.Render(w); err != nil {
 			return err
 		}
@@ -290,7 +398,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	c.AddDebugAttribute(wrapperDiv, "wrapper")
 
 	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(wrapperDiv)
+	c.ApplyBackgroundStyles(wrapperDiv, c)
 
 	wrapperDiv.AddStyle("margin", "0px auto")
 
@@ -318,8 +426,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center")
 
-	// Apply background styles first to match MRML order
-	c.ApplyBackgroundStyles(innerTable)
+		// Apply background styles first to match MRML order
+	c.ApplyBackgroundStyles(innerTable, c)
 
 	innerTable.AddStyle("width", "100%")
 
@@ -343,13 +451,32 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		mainTd.AddStyle("border", border)
 	}
 
+	if borderBottom := c.getAttribute("border-bottom"); borderBottom != "" {
+		mainTd.AddStyle("border-bottom", borderBottom)
+	}
+	if borderLeft := c.getAttribute("border-left"); borderLeft != "" {
+		mainTd.AddStyle("border-left", borderLeft)
+	}
+	if borderRight := c.getAttribute("border-right"); borderRight != "" {
+		mainTd.AddStyle("border-right", borderRight)
+	}
+	if borderTop := c.getAttribute("border-top"); borderTop != "" {
+		mainTd.AddStyle("border-top", borderTop)
+	}
+
 	mainTd.AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
 
-	// Add individual padding properties after shorthand to match MRML order (bottom first, then top)
+	// Add individual padding properties after shorthand to match MRML order
 	if paddingBottom := c.getAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
 		mainTd.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft := c.getAttribute(constants.MJMLPaddingLeft); paddingLeft != "" {
+		mainTd.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	}
+	if paddingRight := c.getAttribute(constants.MJMLPaddingRight); paddingRight != "" {
+		mainTd.AddStyle(constants.CSSPaddingRight, paddingRight)
 	}
 	if paddingTop := c.getAttribute(constants.MJMLPaddingTop); paddingTop != "" {
 		mainTd.AddStyle(constants.CSSPaddingTop, paddingTop)
@@ -361,20 +488,41 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		return err
 	}
 
+	firstAlign := ""
+	for _, ch := range c.Children {
+		if !ch.IsRawElement() {
+			firstAlign = getChildAlign(ch)
+			break
+		}
+	}
+
 	// For basic wrapper, we need a specific MSO conditional pattern
 	// that matches MRML's output more closely - use original body width for wrapper MSO
-	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels()); err != nil {
+	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels(), firstAlign); err != nil {
 		return err
 	}
 
 	// Render children - pass the effective width (600px - border width)
-	for _, child := range c.Children {
+	// Add MSO section transitions between section children (like MRML does)
+	for i, child := range c.Children {
 		if child.IsRawElement() {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), ""); err != nil {
+				return err
+			}
 			if err := child.Render(w); err != nil {
 				return err
 			}
 			continue
 		}
+
+		// Add MSO section transition between sections (but not before the first section)
+		if i > 0 && child.GetTagName() == "mj-section" {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
+				return err
+			}
+		}
+
+		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
 		if err := child.Render(w); err != nil {
 			return err

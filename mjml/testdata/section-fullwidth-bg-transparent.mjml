@@ -1,0 +1,14 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-section background-color="transparent" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body>
+    <mj-section full-width="full-width" background-url="https://example.com/bg.jpg" background-size="cover">
+      <mj-column>
+        <mj-text>Full-width with transparent background</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -1,0 +1,13 @@
+<mjml>
+  <!-- Test case: Social elements WITH text content should trigger Ubuntu font injection -->
+  <!-- because the text renders with default Ubuntu font-family -->
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-social>
+          <mj-social-element name="facebook">Facebook</mj-social-element>
+        </mj-social>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

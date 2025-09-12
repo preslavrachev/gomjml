@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"io"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -686,7 +687,14 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 
 	// Standard responsive media query
 	css.WriteString(`<style type="text/css">@media only screen and (min-width:480px) { `)
-	for className, size := range c.columnClasses {
+	// Deterministic ordering to match MRML byte output
+	keys := make([]string, 0, len(c.columnClasses))
+	for k := range c.columnClasses {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, className := range keys {
+		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
 		css.WriteString(`.`)
 		css.WriteString(className)
@@ -700,7 +708,8 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 
 	// Mozilla-specific responsive media query
 	css.WriteString(`<style media="screen and (min-width:480px)">`)
-	for className, size := range c.columnClasses {
+	for _, className := range keys {
+		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
 		css.WriteString(`.moz-text-html .`)
 		css.WriteString(className)
@@ -858,6 +867,16 @@ func (c *MJMLComponent) hasCarouselComponents() bool {
 		}
 		return false
 	})
+}
+
+// shouldImportDefaultFonts determines if default fonts should be auto-imported
+// based on detected fonts, social components presence, and custom global fonts
+func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, hasSocial, hasOnlyDefaultFonts bool) bool {
+	noFontsDetected := len(detectedFonts) == 0
+	socialWithDefaults := hasSocial && hasOnlyDefaultFonts
+	hasCustomGlobals := c.hasCustomGlobalFonts()
+
+	return (noFontsDetected || socialWithDefaults) && hasSocial && !hasCustomGlobals
 }
 
 // hasTextComponentsRecursive recursively checks for text components
@@ -1099,7 +1118,10 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	// Only auto-import default fonts if no fonts were already detected from content
 	// This matches MRML's behavior: explicit fonts override default font imports
-	if len(detectedFonts) == 0 && hasSocial {
+	// Also respect custom global fonts from mj-all attributes
+	// Special case: social components with only default fonts should trigger Ubuntu fallback
+	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
+	if c.shouldImportDefaultFonts(detectedFonts, hasSocial, hasOnlyDefaultFonts) {
 		debug.DebugLogWithData(
 			"font-detection",
 			"check-defaults",
@@ -1193,6 +1215,17 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	customStyles := c.generateCustomStyles()
 	if _, err := w.WriteString(customStyles); err != nil {
 		return err
+	}
+
+	// Render mj-raw components inside head
+	if c.Head != nil {
+		for _, child := range c.Head.Children {
+			if rawComp, ok := child.(*components.MJRawComponent); ok {
+				if err := rawComp.Render(w); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	if _, err := w.WriteString(`</head>`); err != nil {

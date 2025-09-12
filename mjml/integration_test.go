@@ -3,18 +3,26 @@ package mjml
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/testutils"
 )
 
 /*
 TestMJMLAgainstExpected runs a suite of integration tests to verify that the MJML rendering
 implementation produces HTML output matching the expected results for a variety of MJML input files,
 created using the MRML CLI.
+
+// AIDEV-NOTE: If you are unsure about a test output, try the htmlcompare utility for a semantic diff.
+// Example:
+//   cd mjml/testdata && ../../bin/htmlcompare basic
+// Or from project root:
+//   ./bin/htmlcompare basic --testdata-dir mjml/testdata
 
 For each test case, it reads the corresponding MJML file from the "testdata" directory, using the test case name
 (e.g., "basic") to construct the filename "testdata/basic.mjml". It then renders the MJML to HTML using the Render function,
@@ -35,7 +43,11 @@ func TestMJMLAgainstExpected(t *testing.T) {
 	testCases := []string{
 		"mjml",
 		"mj-body",
+		"mj-body-background-color",
+		"mj-body-class",
+		"mj-body-width",
 		"basic",
+		"comment",
 		"with-head",
 		"complex-layout",
 		"wrapper-basic",
@@ -43,6 +55,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"wrapper-fullwidth",
 		"wrapper-border",
 		"group-footer-test",
+		"section-bg-vml-color",
+		"section-fullwidth-background-image",
+		"section-fullwidth-bg-transparent",
 		"section-padding-top-zero",
 		//"austin-layout-from-mjml-io", // Commented out
 		// Austin layout component tests
@@ -53,6 +68,15 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"austin-buttons",
 		"austin-two-column-images",
 		"austin-divider",
+		"mj-divider",
+		"mj-divider-alignment",
+		"mj-divider-border",
+		"mj-divider-class",
+		"mj-divider-container-background-color",
+		"mj-divider-in-mj-text",
+		"mj-divider-padding",
+		"mj-divider-width",
+		"mj-divider-container-background-transparent",
 		"austin-two-column-text",
 		"austin-full-width-wrapper",
 		//"austin-social-media", // Commented out
@@ -65,38 +89,110 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mrml-text-basic",
 		"mrml-button-basic",
 		"body-wrapper-section",
+		"mj-attributes",
 		// MJ-Group tests from MRML
 		"mj-group",
 		"mj-group-background-color",
 		"mj-group-class",
+		"mj-group-mso-wrapper-raw",
 		"mj-group-direction",
 		"mj-group-vertical-align",
 		"mj-group-width",
 		// Simple MJML components from MRML test suite
-		"mj-text",
-		"mj-text-class",
 		"mj-button",
+		"mj-button-align",
+		"mj-button-background",
+		"mj-button-border",
+		"mj-button-border-radius",
 		"mj-button-class",
+		"mj-button-color",
+		"mj-button-container-background-color",
+		"mj-button-example",
+		"mj-button-font-family",
+		"mj-button-font-size",
+		"mj-button-font-style",
+		"mj-button-font-weight",
+		"mj-button-height",
+		"mj-button-href",
+		"mj-button-inner-padding",
+		"mj-button-line-height",
+		"mj-button-padding",
+		"mj-button-text-decoration",
+		"mj-button-text-transform",
+		"mj-button-vertical-align",
+		"mj-button-width",
+		"mj-button-global-attributes",
 		"mj-image",
+		"mj-image-align",
+		"mj-image-border",
+		"mj-image-border-radius",
+		"mj-image-container-background-color",
+		"mj-image-fluid-on-mobile",
+		"mj-image-height",
+		"mj-image-href",
+		"mj-image-padding",
+		"mj-image-rel",
+		"mj-image-title",
 		"mj-image-class",
 		"mj-image-src-with-url-params",
-		"mj-section-with-columns",
 		"mj-section",
+		"mj-section-background-vml",
+		"mj-section-background-color",
+		"mj-section-background-url",
+		"mj-section-background-url-full",
+		"mj-section-body-width",
+		"mj-section-border",
+		"mj-section-border-radius",
+		"mj-section-direction",
+		"mj-section-full-width",
+		"mj-section-padding",
+		"mj-section-text-align",
+		"mj-section-bg-cover-no-repeat",
+		"mj-section-global-attributes",
+		"mj-section-width",
+		"mj-section-with-columns",
 		"mj-section-class",
 		"mj-column",
+		"mj-column-background-color",
+		"mj-column-border",
+		"mj-column-border-issue-466",
+		"mj-column-border-radius",
+		"mj-column-inner-background-color",
+		"mj-column-vertical-align",
 		"mj-column-padding",
 		"mj-column-class",
+		"mj-column-global-attributes",
 		"mj-wrapper",
+		"mj-wrapper-border",
+		"mj-wrapper-border-radius",
+		"mj-wrapper-multiple-sections",
+		"mj-wrapper-other",
+		"mj-wrapper-padding",
+		// MJ-Text tests
+		"mj-text",
+		"mj-text-align",
+		"mj-text-color",
+		"mj-text-container-background-color",
+		"mj-text-decoration",
+		"mj-text-example",
+		"mj-text-font-family",
+		"mj-text-font-size",
+		"mj-text-font-style",
+		"mj-text-font-weight",
+		"mj-text-class",
 		// MJ-RAW tests
 		"mj-raw",
 		"mj-raw-conditional-comment",
+		"mj-raw-head",
 		"mj-raw-go-template",
 		// MJ-SOCIAL tests
 		"mj-social",
+		"mj-social-anchors",
 		"mj-social-align",
 		"mj-social-border-radius",
 		"mj-social-class",
 		"mj-social-color",
+		"mj-social-complex-styling",
 		"mj-social-container-background-color",
 		"mj-social-element-ending",
 		"mj-social-font-family",
@@ -104,8 +200,14 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-social-icon",
 		"mj-social-link",
 		"mj-social-mode",
+		"mj-social-notifuse",
 		"mj-social-padding",
+		"mj-social-structure-basic",
 		"mj-social-text",
+		"mj-social-text-wrapper",
+		"mj-social-no-ubuntu-fonts-overridden",
+		"mj-social-ubuntu-fonts-with-text-content",
+		"mj-social-ubuntu-fonts-icons-only-fallback",
 		// MJ-ACCORDION tests
 		"mj-accordion",
 		"mj-accordion-font-padding",
@@ -125,6 +227,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-hero-background-width",
 		"mj-hero-class",
 		"mj-hero-height",
+		"mj-hero-width",
 		"mj-hero-mode",
 		"mj-hero-vertical-align",
 		// MJ-SPACER test
@@ -142,6 +245,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-carousel-thumbnails",
 		// Custom test cases
 		"notifuse-open-br-tags",
+		"notifuse-full",
 	}
 
 	for _, testName := range testCases {
@@ -169,23 +273,100 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				t.Fatalf("Failed to render MJML: %v", err)
 			}
 
+			// Collect ALL difference types instead of early returns for comprehensive analysis
+			var allDifferences []string
+
+			// Check for MSO table attribute differences FIRST (before DOM comparison)
+			// because MSO conditionals are not part of DOM and will be ignored by DOM comparison
+			msoTableDiff := checkMSOTableAttributeDifferences(expected, actual)
+			if msoTableDiff != "" {
+				allDifferences = append(allDifferences, "MSO table attribute differences found:\n"+msoTableDiff)
+			}
+
+			// Check for MSO conditional comment differences
+			msoDiff := checkMSOConditionalDifferences(expected, actual)
+			if msoDiff != "" {
+				allDifferences = append(allDifferences, "MSO conditional comment differences found:\n"+msoDiff)
+			}
+
 			// Compare outputs using DOM tree comparison
-			if !compareDOMTrees(expected, actual) {
+			domTreesMatch := compareDOMTrees(expected, actual)
+			if !domTreesMatch {
+				// Check for HTML entity encoding differences
+				entityDiff := checkHTMLEntityDifferences(expected, actual)
+				if entityDiff != "" {
+					allDifferences = append(allDifferences, "HTML entity encoding differences found:\n"+entityDiff)
+				}
+
+				// Check for VML attribute differences
+				vmlDiff := checkVMLAttributeDifferences(expected, actual)
+				if vmlDiff != "" {
+					allDifferences = append(allDifferences, "VML attribute differences found:\n"+vmlDiff)
+				}
+
+				// Check for background CSS property differences
+				bgDiff := checkBackgroundPropertyDifferences(expected, actual)
+				if bgDiff != "" {
+					allDifferences = append(allDifferences, "Background CSS property differences found:\n"+bgDiff)
+				}
+
 				// Enhanced DOM-based diff with debugging
 				domDiff := createDOMDiff(expected, actual)
-				t.Errorf("\n%s", domDiff)
+				if domDiff != "" {
+					allDifferences = append(allDifferences, "DOM structure differences:\n"+domDiff)
+				}
 
 				// Enhanced debugging: analyze style differences with precise element identification
-				t.Logf("Style differences for %s:", testName)
-				compareStylesPrecise(t, expected, actual)
-
-				writeDebugFiles(testName, expected, actual)
-			} else {
-				// DOM trees match, but check for self-closing tag serialization differences
-				if selfClosingDiff := checkSelfClosingTagDifferences(expected, actual); selfClosingDiff != "" {
-					t.Errorf("Self-closing tag serialization differences found:\n%s", selfClosingDiff)
-					writeDebugFiles(testName, expected, actual)
+				// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
+				styleResult := testutils.CompareStylesPrecise(expected, actual)
+				if styleResult.ParseError != nil {
+					allDifferences = append(allDifferences, fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError))
+				} else if styleResult.HasDifferences {
+					var styleDiffs []string
+					styleDiffs = append(styleDiffs, fmt.Sprintf("Style differences for %s:", testName))
+					for _, element := range styleResult.Elements {
+						switch element.Status {
+						case testutils.ElementExtra:
+							componentInfo := ""
+							if element.Component != "" {
+								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+							}
+							styleDiffs = append(styleDiffs, fmt.Sprintf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
+								element.Index, element.Tag, element.Classes, element.Actual, componentInfo))
+						case testutils.ElementMissing:
+							styleDiffs = append(styleDiffs, fmt.Sprintf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
+								element.Index, element.Tag, element.Classes, element.Expected))
+						case testutils.ElementDifferent:
+							componentInfo := ""
+							if element.Component != "" {
+								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+							}
+							styleDiffs = append(styleDiffs, fmt.Sprintf("  Style diff element[%d]: <%s class=\"%s\">%s",
+								element.Index, element.Tag, element.Classes, componentInfo))
+							styleDiffs = append(styleDiffs, fmt.Sprintf("    Expected: style=\"%s\"", element.Expected))
+							styleDiffs = append(styleDiffs, fmt.Sprintf("    Actual:   style=\"%s\"", element.Actual))
+							if !element.StyleDiff.IsEmpty() {
+								styleDiffs = append(styleDiffs, fmt.Sprintf("    %s", element.StyleDiff.String()))
+							}
+						}
+					}
+					if len(styleDiffs) > 0 {
+						allDifferences = append(allDifferences, strings.Join(styleDiffs, "\n"))
+					}
 				}
+			}
+
+			// Check for self-closing tag serialization differences regardless of DOM tree match
+			selfClosingDiff := checkSelfClosingTagDifferences(expected, actual)
+			if selfClosingDiff != "" {
+				allDifferences = append(allDifferences, "Self-closing tag serialization differences found:\n"+selfClosingDiff)
+			}
+
+			// Report ALL collected differences
+			if len(allDifferences) > 0 {
+				writeDebugFiles(testName, expected, actual)
+				t.Errorf("\n=== COMPREHENSIVE DIFFERENCE ANALYSIS ===\n%s\n===========================================",
+					strings.Join(allDifferences, "\n\n"))
 			}
 		})
 	}
@@ -321,122 +502,6 @@ func TestCSSNormalization(t *testing.T) {
 	}
 }
 
-// compareStylesPrecise provides exact element identification for style differences
-func compareStylesPrecise(t *testing.T, expected, actual string) {
-	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
-	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
-
-	if err1 != nil || err2 != nil {
-		t.Logf("DOM parsing failed: expected=%v, actual=%v", err1, err2)
-		return
-	}
-
-	// Build ordered lists of styled elements
-	var expectedElements []ElementInfo
-	var actualElements []ElementInfo
-
-	expectedDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
-		style, _ := el.Attr("style")
-		classes, _ := el.Attr("class")
-		tagName := goquery.NodeName(el)
-
-		expectedElements = append(expectedElements, ElementInfo{
-			Tag:     tagName,
-			Classes: classes,
-			Style:   style,
-			Index:   i,
-		})
-	})
-
-	actualDoc.Find("[style]").Each(func(i int, el *goquery.Selection) {
-		style, _ := el.Attr("style")
-		classes, _ := el.Attr("class")
-		tagName := goquery.NodeName(el)
-
-		// Extract debug info to identify which MJML component created this element
-		debugComponent := ""
-		if debugAttr, exists := el.Attr("data-mj-debug-group"); exists && debugAttr == "true" {
-			debugComponent = "mj-group"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-column"); exists && debugAttr == "true" {
-			debugComponent = "mj-column"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-section"); exists && debugAttr == "true" {
-			debugComponent = "mj-section"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-text"); exists && debugAttr == "true" {
-			debugComponent = "mj-text"
-		} else if debugAttr, exists := el.Attr("data-mj-debug-wrapper"); exists && debugAttr == "true" {
-			debugComponent = "mj-wrapper"
-		}
-
-		actualElements = append(actualElements, ElementInfo{
-			Tag:       tagName,
-			Classes:   classes,
-			Style:     style,
-			Index:     i,
-			Component: debugComponent,
-		})
-	})
-
-	// Compare element by element
-	maxLen := max(len(expectedElements), len(actualElements))
-	for i := 0; i < maxLen; i++ {
-		var expected, actual *ElementInfo
-		if i < len(expectedElements) {
-			expected = &expectedElements[i]
-		}
-		if i < len(actualElements) {
-			actual = &actualElements[i]
-		}
-
-		if expected == nil {
-			componentInfo := ""
-			if actual.Component != "" {
-				componentInfo = fmt.Sprintf(" [created by %s]", actual.Component)
-			}
-			t.Logf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
-				i, actual.Tag, actual.Classes, actual.Style, componentInfo)
-		} else if actual == nil {
-			t.Logf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
-				i, expected.Tag, expected.Classes, expected.Style)
-		} else if expected.Style != actual.Style {
-			componentInfo := ""
-			if actual.Component != "" {
-				componentInfo = fmt.Sprintf(" [created by %s]", actual.Component)
-			}
-			t.Logf("  Style diff element[%d]: <%s class=\"%s\">%s",
-				i, actual.Tag, actual.Classes, componentInfo)
-			t.Logf("    Expected: style=\"%s\"", expected.Style)
-			t.Logf("    Actual:   style=\"%s\"", actual.Style)
-
-			// Show specific property differences
-			expectedProps := parseStyleProperties(expected.Style)
-			actualProps := parseStyleProperties(actual.Style)
-
-			for prop, expectedVal := range expectedProps {
-				if actualVal, exists := actualProps[prop]; !exists {
-					t.Logf("    Missing property: %s=%s", prop, expectedVal)
-				} else if actualVal != expectedVal {
-					t.Logf("    Wrong value: %s=%s (expected %s)", prop, actualVal, expectedVal)
-				}
-			}
-
-			for prop, actualVal := range actualProps {
-				if _, exists := expectedProps[prop]; !exists {
-					t.Logf("    Extra property: %s=%s", prop, actualVal)
-				}
-			}
-		}
-	}
-}
-
-// ElementInfo represents a styled HTML element
-type ElementInfo struct {
-	Tag       string
-	Classes   string
-	Style     string
-	Index     int
-	Component string // Which MJML component created this element (from debug attrs)
-}
-
 // parseStyleProperties parses CSS style string into property map
 func parseStyleProperties(style string) map[string]string {
 	props := make(map[string]string)
@@ -461,14 +526,6 @@ func parseStyleProperties(style string) map[string]string {
 	}
 
 	return props
-}
-
-// max returns the maximum of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // StyleDiff represents differences between expected and actual CSS properties
@@ -713,7 +770,11 @@ func normalizeStyleAttribute(style string) string {
 	return result
 }
 
-// createDOMDiff creates a detailed diff report using DOM analysis
+// createDOMDiff compares two HTML DOM strings and returns a formatted string describing their differences.
+// It parses both expected and actual HTML strings, compares their structures, counts of common HTML tags,
+// style attributes, and debug attributes. Differences are highlighted using ANSI color codes for readability.
+// If no structural differences are found, it suggests checking text content and attribute values.
+// Returns a human-readable summary of DOM differences or parsing errors.
 func createDOMDiff(expected, actual string) string {
 	// ANSI color codes
 	red := "\033[31m"
@@ -774,7 +835,21 @@ func createDOMDiff(expected, actual string) string {
 		diffs = append(diffs, debugComparison)
 	}
 
+	// If no structural or style differences were found, but the test still failed,
+	// it means the DOM trees match in structure and attributes, but there may be
+	// differences in text content, attribute values, or other subtle issues.
+	// (This function is only called when compareDOMTrees returned false, so we know the test failed.)
 	if len(diffs) == 0 {
+		// First, check if the difference is just whitespace/formatting
+		if testutils.NormalizeForComparison(expected) == testutils.NormalizeForComparison(actual) {
+			return "" // No meaningful differences - whitespace/formatting only
+		}
+
+		// Last resort: compare character-sorted strings to detect reordering
+		// With massive HTML strings, collision chance is astronomically low
+		if sortStringChars(expected) == sortStringChars(actual) {
+			return "DOM structures match and content is identical when sorted. Likely ordering-only differences."
+		}
 		return "DOM structures match but content differs. Check text content and attribute values."
 	}
 
@@ -1022,4 +1097,285 @@ func checkSelfClosingTagDifferences(expected, actual string) string {
 // countTagPattern counts occurrences of a specific tag pattern in HTML
 func countTagPattern(html, pattern string) int {
 	return strings.Count(strings.ToLower(html), strings.ToLower(pattern))
+}
+
+// sortStringChars sorts all characters in a string alphabetically
+// Used to detect if two strings have identical content but different ordering
+func sortStringChars(s string) string {
+	chars := strings.Split(s, "")
+	sort.Strings(chars)
+	return strings.Join(chars, "")
+}
+
+// checkHTMLEntityDifferences detects differences in HTML entity encoding
+// that would be normalized away by DOM parsing but are still meaningful
+func checkHTMLEntityDifferences(expected, actual string) string {
+	// Common HTML entity patterns that might differ
+	entityPairs := []struct {
+		encoded string
+		decoded string
+		name    string
+	}{
+		{"&amp;", "&", "ampersand"},
+		{"&lt;", "<", "less-than"},
+		{"&gt;", ">", "greater-than"},
+		{"&quot;", "\"", "quote"},
+		{"&#x27;", "'", "apostrophe"},
+		{"&#39;", "'", "apostrophe-numeric"},
+	}
+
+	var differences []string
+
+	for _, pair := range entityPairs {
+		expectedCount := strings.Count(expected, pair.encoded)
+		actualCount := strings.Count(actual, pair.encoded)
+
+		expectedDecodedCount := strings.Count(expected, pair.decoded)
+		actualDecodedCount := strings.Count(actual, pair.decoded)
+
+		// If one uses encoded form and other uses decoded form
+		if expectedCount != actualCount {
+			if expectedCount > 0 && actualCount == 0 && actualDecodedCount > 0 {
+				differences = append(differences,
+					fmt.Sprintf("Expected uses encoded %s (%s) %d times, actual uses decoded (%s) %d times",
+						pair.name, pair.encoded, expectedCount, pair.decoded, actualDecodedCount))
+			} else if actualCount > 0 && expectedCount == 0 && expectedDecodedCount > 0 {
+				differences = append(differences,
+					fmt.Sprintf("Actual uses encoded %s (%s) %d times, expected uses decoded (%s) %d times",
+						pair.name, pair.encoded, actualCount, pair.decoded, expectedDecodedCount))
+			} else {
+				differences = append(differences,
+					fmt.Sprintf("%s encoding mismatch: expected %d encoded, actual %d encoded",
+						pair.name, expectedCount, actualCount))
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// checkMSOConditionalDifferences detects differences in MSO conditional comments
+// that would be normalized away by DOM parsing but are still meaningful for email rendering
+func checkMSOConditionalDifferences(expected, actual string) string {
+	// Common MSO conditional patterns that might differ
+	msoPatterns := []struct {
+		pattern string
+		name    string
+	}{
+		{"<!--[if mso]>", "mso-opening"},
+		{"<!--[if !mso]><!-->", "not-mso-opening"},
+		{"<!--<![endif]-->", "endif"},
+		{"<!--[if mso | IE]>", "mso-or-ie-opening"},
+		{"<!--[if !mso | IE]><!-->", "not-mso-or-ie-opening"},
+		{"<!--[if IE] mso |>", "ie-mso-opening"}, // Added missing pattern
+		{"<!--[if lte mso 11]>", "mso-lte-11-opening"},
+		{"<![endif]-->", "simple-endif"},
+	}
+
+	var differences []string
+
+	// Check for count differences first
+	for _, pattern := range msoPatterns {
+		expectedCount := strings.Count(expected, pattern.pattern)
+		actualCount := strings.Count(actual, pattern.pattern)
+
+		if expectedCount != actualCount {
+			differences = append(differences,
+				fmt.Sprintf("MSO conditional %s mismatch: expected %d, actual %d",
+					pattern.name, expectedCount, actualCount))
+		}
+	}
+
+	// Check for sequence/ordering differences by comparing MSO blocks
+	if len(differences) == 0 {
+		// Extract sequences of MSO conditionals + HTML elements for comparison
+		expectedSequence := extractMSOSequences(expected)
+		actualSequence := extractMSOSequences(actual)
+
+		if len(expectedSequence) != len(actualSequence) {
+			differences = append(differences,
+				fmt.Sprintf("MSO sequence count mismatch: expected %d blocks, actual %d blocks",
+					len(expectedSequence), len(actualSequence)))
+		} else {
+			// Compare each sequence block
+			for i, expectedBlock := range expectedSequence {
+				if i < len(actualSequence) && expectedBlock != actualSequence[i] {
+					differences = append(differences,
+						fmt.Sprintf("MSO sequence differs at block %d:\n  Expected: %s\n  Actual: %s",
+							i, expectedBlock, actualSequence[i]))
+				}
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// checkVMLAttributeDifferences detects differences in VML attributes that are critical for email rendering
+func checkVMLAttributeDifferences(expected, actual string) string {
+	vmlPatterns := []struct {
+		pattern string
+		name    string
+	}{
+		{`position="([^"]*)"`, "position"},
+		{`origin="([^"]*)"`, "origin"},
+		{`color="([^"]*)"`, "color"},
+		{`size="([^"]*)"`, "size"},
+		{`type="([^"]*)"`, "type"},
+		{`aspect="([^"]*)"`, "aspect"},
+	}
+
+	var differences []string
+
+	for _, pattern := range vmlPatterns {
+		// Count different values for this VML attribute
+		expectedMatches := findRegexMatches(expected, pattern.pattern)
+		actualMatches := findRegexMatches(actual, pattern.pattern)
+
+		if len(expectedMatches) != len(actualMatches) {
+			differences = append(differences,
+				fmt.Sprintf("VML %s attribute count mismatch: expected %d, actual %d",
+					pattern.name, len(expectedMatches), len(actualMatches)))
+		} else {
+			// Check for value differences
+			for i, expectedVal := range expectedMatches {
+				if i < len(actualMatches) && expectedVal != actualMatches[i] {
+					differences = append(differences,
+						fmt.Sprintf("VML %s attribute value mismatch: expected '%s', actual '%s'",
+							pattern.name, expectedVal, actualMatches[i]))
+				}
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// checkMSOTableAttributeDifferences detects differences in MSO table attributes
+func checkMSOTableAttributeDifferences(expected, actual string) string {
+	msoTableAttrs := []string{"bgcolor", "width", "align", "cellpadding", "cellspacing"}
+
+	var differences []string
+
+	for _, attr := range msoTableAttrs {
+		// Look for MSO conditional table attributes - simplified pattern
+		// Only match <table ... bgcolor="..."> inside MSO conditional blocks
+		expectedPattern := fmt.Sprintf(`<!--\[if mso.*?<table[^>]*%s="([^"]*)"`, attr)
+		actualPattern := expectedPattern
+
+		expectedMatches := findRegexMatches(expected, expectedPattern)
+		actualMatches := findRegexMatches(actual, actualPattern)
+
+		if len(expectedMatches) != len(actualMatches) {
+			differences = append(differences,
+				fmt.Sprintf("MSO table %s attribute count mismatch: expected %d, actual %d",
+					attr, len(expectedMatches), len(actualMatches)))
+		} else {
+			// Check for value differences when counts match
+			for i, expectedVal := range expectedMatches {
+				if i < len(actualMatches) && expectedVal != actualMatches[i] {
+					differences = append(differences,
+						fmt.Sprintf("MSO table %s attribute value mismatch: expected '%s', actual '%s'",
+							attr, expectedVal, actualMatches[i]))
+				}
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// checkBackgroundPropertyDifferences detects differences in CSS background properties
+func checkBackgroundPropertyDifferences(expected, actual string) string {
+	bgProps := []string{"background", "background-color", "background-image", "background-position", "background-size", "background-repeat"}
+
+	var differences []string
+
+	for _, prop := range bgProps {
+		// Look for style attributes containing this background property
+		pattern := fmt.Sprintf(`style="[^"]*%s:\s*([^;"]*)`, prop)
+
+		expectedMatches := findRegexMatches(expected, pattern)
+		actualMatches := findRegexMatches(actual, pattern)
+
+		// Count unique values for each property
+		expectedValues := make(map[string]int)
+		actualValues := make(map[string]int)
+
+		for _, match := range expectedMatches {
+			expectedValues[match]++
+		}
+		for _, match := range actualMatches {
+			actualValues[match]++
+		}
+
+		// Compare value distributions
+		for value, expectedCount := range expectedValues {
+			if actualCount := actualValues[value]; actualCount != expectedCount {
+				differences = append(differences,
+					fmt.Sprintf("CSS %s value '%s' count mismatch: expected %d, actual %d",
+						prop, value, expectedCount, actualCount))
+			}
+		}
+
+		// Check for extra values in actual
+		for value, actualCount := range actualValues {
+			if _, exists := expectedValues[value]; !exists {
+				differences = append(differences,
+					fmt.Sprintf("CSS %s has unexpected value '%s' (count: %d)",
+						prop, value, actualCount))
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		return strings.Join(differences, "\n")
+	}
+	return ""
+}
+
+// findRegexMatches finds all matches for a regex pattern and returns the first capture group
+func findRegexMatches(text, pattern string) []string {
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(text, -1)
+
+	var results []string
+	for _, match := range matches {
+		if len(match) > 1 {
+			results = append(results, match[1])
+		}
+	}
+	return results
+}
+
+// extractMSOSequences extracts sequences of MSO conditional comments and adjacent HTML elements
+// for comparison of ordering differences that DOM parsing would normalize away
+func extractMSOSequences(html string) []string {
+	// Pattern to match MSO conditional blocks with their surrounding content
+	// This captures MSO conditionals and the next few HTML elements following them
+	re := regexp.MustCompile(`<!--\[if[^>]*>[\s\S]*?<!\[endif\]-->`)
+	matches := re.FindAllString(html, -1)
+
+	var sequences []string
+	for _, match := range matches {
+		// Normalize whitespace for comparison
+		normalized := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(match), " ")
+		if normalized != "" {
+			sequences = append(sequences, normalized)
+		}
+	}
+
+	return sequences
 }

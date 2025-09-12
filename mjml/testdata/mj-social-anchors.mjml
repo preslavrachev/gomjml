@@ -1,0 +1,14 @@
+<mjml>
+  <mj-body>
+    <mj-wrapper>
+      <mj-section>
+        <mj-column>
+          <mj-social>
+            <mj-social-element name="facebook" href="#" />
+            <mj-social-element name="twitter" href="#" />
+          </mj-social>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

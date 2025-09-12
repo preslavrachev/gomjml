@@ -1,0 +1,18 @@
+<mjml>
+  <!-- Test case: Social elements with explicit Arial font-family should NOT trigger Ubuntu fonts -->
+  <!-- because the override prevents Ubuntu from being detected -->
+  <mj-head>
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-social>
+          <mj-social-element name="facebook">Facebook</mj-social-element>
+        </mj-social>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

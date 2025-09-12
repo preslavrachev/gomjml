@@ -1,0 +1,13 @@
+<!-- AIDEV-NOTE: width-calculation-test; tests wrapper padding reducing section max-width -->
+<!-- Wrapper padding="20px" should reduce child section containerWidth from 600px to 560px -->
+<mjml>
+  <mj-body background-color="#f8f9fa">
+    <mj-wrapper padding="20px">
+      <mj-section full-width="full-width" padding="80px 20px" background-url="https://images.unsplash.com/photo-1495419597644-19934b6b7c40?w=500&amp;auto=format&amp;fit=crop&amp;q=60&amp;ixlib=rb-4.1.0&amp;ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YmVhY2glMjBwYXN0ZWx8ZW58MHx8MHx8fDA%3D" background-size="cover" background-position="center center" background-repeat="no-repeat" text-align="center">
+        <mj-column width="100%" padding="0">
+          <mj-text font-size="32px" font-weight="bold" color="#ffffff" align="center" padding="0px 20px 20px">Background Image Section</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

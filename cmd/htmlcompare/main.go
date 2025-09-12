@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/preslavrachev/gomjml/mjml/testutils"
 )
 
 // Color constants for diff output
@@ -19,9 +21,14 @@ const (
 	ColorYellow = "\033[33m"
 )
 
+// Diff line prefixes
+const (
+	MRMLPrefix   = "- MRML: "
+	GomjmlPrefix = "+ gomjml: "
+)
+
 type Config struct {
 	TestCase     string
-	KeepFiles    bool
 	Verbose      bool
 	DiffLines    int
 	ScriptDir    string
@@ -36,10 +43,8 @@ func main() {
 
 	flag.StringVar(&config.TestCase, "test", "", "Test case name (required)")
 	flag.StringVar(&config.TestDataDir, "testdata-dir", "", "Path to testdata directory (defaults to mjml/testdata)")
-	flag.BoolVar(&config.KeepFiles, "keep-files", false, "Keep temporary files for inspection")
-	flag.BoolVar(&config.KeepFiles, "k", false, "Keep temporary files for inspection (short)")
-	flag.BoolVar(&config.Verbose, "verbose", false, "Show more diff context (50 lines instead of 20)")
-	flag.BoolVar(&config.Verbose, "v", false, "Show more diff context (short)")
+	flag.BoolVar(&config.Verbose, "verbose", false, "Show verbose output (currently shows entire diff by default)")
+	flag.BoolVar(&config.Verbose, "v", false, "Show verbose output (short)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] test-case-name\n", os.Args[0])
@@ -49,11 +54,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  # From mjml/testdata directory:\n")
 		fmt.Fprintf(os.Stderr, "  %s basic                           # Compare basic.mjml vs basic.html\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s basic --keep-files              # Keep files for inspection\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s basic --verbose                 # Show verbose output\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  \n")
 		fmt.Fprintf(os.Stderr, "  # From project root:\n")
 		fmt.Fprintf(os.Stderr, "  %s basic --testdata-dir mjml/testdata    # Specify testdata directory\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s basic -k -v                           # Keep files and verbose output\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s basic -v                              # Verbose output\n", os.Args[0])
 	}
 
 	flag.Parse()
@@ -69,9 +74,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	config.DiffLines = 20
+	config.DiffLines = -1 // Show entire diff by default
 	if config.Verbose {
-		config.DiffLines = 50
+		config.DiffLines = -1 // Verbose also shows entire diff
 	}
 
 	if err := setupPaths(&config); err != nil {
@@ -235,6 +240,47 @@ func beautifyHTML(inputFile, outputFile string) error {
 	return os.WriteFile(outputFile, []byte(beautified), 0o644)
 }
 
+// normalizeHTMLFile normalizes HTML content for semantic comparison by:
+// 1. Stripping leading/trailing whitespace from each line
+// 2. Normalizing HTML attributes and CSS properties order
+// This eliminates false positives from formatting and attribute ordering differences
+func normalizeHTMLFile(inputFile, outputFile string) error {
+	file, err := os.Open(inputFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	outFile, err := os.Create(outputFile)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			normalizedLine := testutils.NormalizeHTMLAttributes(line)
+			if _, err := outFile.WriteString(normalizedLine + "\n"); err != nil {
+				return err
+			}
+		}
+	}
+
+	return scanner.Err()
+}
+
+// normalizeHTML formats HTML content for human-readable display by:
+// 1. Normalizing whitespace and adding consistent line breaks
+// 2. Separating text content from HTML tags
+// 3. Adding proper indentation based on HTML nesting depth
+// This function is used for creating pretty-printed HTML files for manual inspection.
+// For semantic comparison (diff), use normalizeHTMLFile instead.
+//
+// Note: This function cannot be removed as it serves a different purpose than normalizeHTMLFile:
+// - normalizeHTML: Creates indented, human-readable HTML for the *_pretty.html files
+// - normalizeHTMLFile: Creates flat, attribute-normalized HTML for semantic diffing
 func normalizeHTML(content string) string {
 	// Normalize whitespace first
 	whitespaceRe := regexp.MustCompile(`\s+`)
@@ -292,49 +338,60 @@ func normalizeHTML(content string) string {
 func generateDiff(referenceFile, gomjmlFile, outputFile string, config *Config) error {
 	fmt.Println("Generating diff...")
 
-	// Use semantic diff - ignore whitespace differences
-	cmd := exec.Command("diff", "-u", "-w", "-B", referenceFile, gomjmlFile)
+	// Create normalized temp files for semantic comparison
+	normalizedReferenceFile := filepath.Join(config.OutputDir, "normalized_reference.html")
+	normalizedGomjmlFile := filepath.Join(config.OutputDir, "normalized_gomjml.html")
+
+	fmt.Println("Normalizing HTML files for semantic comparison...")
+	if err := normalizeHTMLFile(referenceFile, normalizedReferenceFile); err != nil {
+		return fmt.Errorf("failed to normalize reference file: %v", err)
+	}
+	if err := normalizeHTMLFile(gomjmlFile, normalizedGomjmlFile); err != nil {
+		return fmt.Errorf("failed to normalize gomjml file: %v", err)
+	}
+
+	// Use line-by-line diff format on normalized files
+	cmd := exec.Command("diff", "-B",
+		"--old-line-format="+MRMLPrefix+"%L",
+		"--new-line-format="+GomjmlPrefix+"%L",
+		"--unchanged-line-format=",
+		"--minimal",
+		normalizedReferenceFile, normalizedGomjmlFile)
 
 	output, _ := cmd.CombinedOutput()
 	diffContent := string(output)
 
+	// Clean up normalized temp files
+	os.Remove(normalizedReferenceFile)
+	os.Remove(normalizedGomjmlFile)
+
+	// Count differences
+	diffCount := countDifferences(diffContent)
+
 	// Write diff to file
-	if err := os.WriteFile(outputFile, output, 0o644); err != nil {
+	if err := os.WriteFile(outputFile, []byte(diffContent), 0o644); err != nil {
 		return err
 	}
 
 	if len(diffContent) > 0 && strings.TrimSpace(diffContent) != "" {
-		fmt.Printf("Differences found! Check: %s\n", outputFile)
+		fmt.Printf("Differences found: %d lines differ! Check: %s\n", diffCount, outputFile)
 		fmt.Println("Files generated:")
 		fmt.Printf("  Reference output (pretty): %s\n", referenceFile)
 		fmt.Printf("  gomjml output (pretty): %s\n", gomjmlFile)
 		fmt.Printf("  Diff: %s\n", outputFile)
 
 		// Show preview of diff
-		fmt.Printf("\nDiff preview (first %d lines):\n", config.DiffLines)
+		if config.DiffLines == -1 {
+			fmt.Printf("\nDiff output:\n")
+		} else {
+			fmt.Printf("\nDiff preview (first %d lines):\n", config.DiffLines)
+		}
 		showDiffPreview(diffContent, config.DiffLines)
 
-		if !config.KeepFiles {
-			cleanup(config)
-		} else {
-			fmt.Println("\nFiles preserved for inspection:")
-			fmt.Printf("  Reference output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_reference.html"))
-			fmt.Printf("  gomjml output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_gomjml.html"))
-			fmt.Printf("  Reference output (pretty): %s\n", referenceFile)
-			fmt.Printf("  gomjml output (pretty): %s\n", gomjmlFile)
-			fmt.Printf("  Diff: %s\n", outputFile)
-		}
+		cleanup(config)
 	} else {
 		fmt.Println("No differences found! HTML outputs are identical.")
-		if !config.KeepFiles {
-			cleanup(config)
-		} else {
-			fmt.Println("Files preserved for inspection:")
-			fmt.Printf("  Reference output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_reference.html"))
-			fmt.Printf("  gomjml output: %s\n", filepath.Join(config.OutputDir, config.TestCase+"_gomjml.html"))
-			fmt.Printf("  Reference output (pretty): %s\n", referenceFile)
-			fmt.Printf("  gomjml output (pretty): %s\n", gomjmlFile)
-		}
+		cleanup(config)
 	}
 
 	return nil
@@ -344,7 +401,7 @@ func showDiffPreview(content string, maxLines int) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	lineCount := 0
 
-	for scanner.Scan() && lineCount < maxLines {
+	for scanner.Scan() && (maxLines == -1 || lineCount < maxLines) {
 		line := scanner.Text()
 		coloredLine := colorDiffLine(line)
 		fmt.Println(coloredLine)
@@ -389,6 +446,25 @@ func cleanup(config *Config) {
 
 	// Remove directory if empty
 	os.Remove(config.OutputDir)
+}
 
-	fmt.Println("Temporary files cleaned up.")
+func countDifferences(diffContent string) int {
+	if strings.TrimSpace(diffContent) == "" {
+		return 0
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(diffContent))
+	count := 0
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+			// Don't count context lines that start with +++ or ---
+			if !strings.HasPrefix(line, "+++") && !strings.HasPrefix(line, "---") {
+				count++
+			}
+		}
+	}
+
+	return count
 }

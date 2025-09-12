@@ -59,6 +59,8 @@ type BaseComponent struct {
 	Node           *parser.MJMLNode
 	Children       []Component
 	Attrs          map[string]string
+	classNames     []string            // Split mj-class attribute values
+	classAttrs     map[string]string   // Merged attributes from mj-class definitions
 	ContainerWidth int                 // Container width in pixels (0 means use default)
 	Siblings       int                 // Total siblings count
 	RawSiblings    int                 // Raw siblings count (for width calculations)
@@ -72,6 +74,30 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		attrs[attr.Name.Local] = attr.Value
 	}
 
+	var classNames []string
+	var classAttrs map[string]string
+	if classAttr, ok := attrs["mj-class"]; ok && classAttr != "" {
+		classNames = strings.Fields(classAttr)
+		if len(classNames) > 0 {
+			classAttrs = make(map[string]string)
+			cssClassParts := make([]string, 0, len(classNames)) // pre-allocate with capacity
+			for _, className := range classNames {
+				if ca := globals.GetClassAttributes(className); ca != nil {
+					for k, v := range ca {
+						if k == "css-class" {
+							cssClassParts = append(cssClassParts, v)
+							continue
+						}
+						classAttrs[k] = v // last class wins
+					}
+				}
+			}
+			if len(cssClassParts) > 0 {
+				classAttrs["css-class"] = strings.Join(cssClassParts, " ")
+			}
+		}
+	}
+
 	if opts == nil {
 		opts = &options.RenderOpts{}
 	}
@@ -79,6 +105,8 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 	return &BaseComponent{
 		Node:           node,
 		Attrs:          attrs,
+		classNames:     classNames,
+		classAttrs:     classAttrs,
 		Children:       make([]Component, 0, len(node.Children)),
 		ContainerWidth: 0, // 0 means use default body width
 		Siblings:       1,
@@ -104,7 +132,10 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 		return &value
 	}
 
-	// 2. Check mj-class (TODO: implement)
+	// 2. Check mj-class definitions
+	if classValue := bc.getClassAttribute(name); classValue != "" {
+		return &classValue
+	}
 
 	// 3. Check global defaults - we can't access GetTagName from BaseComponent
 	// Global attributes will be checked in GetAttributeWithDefault or by passing component
@@ -117,26 +148,29 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 	return nil
 }
 
-// GetAttributeWithGlobal gets an attribute value checking global attributes for the given component tag
-func (bc *BaseComponent) GetAttributeWithGlobal(name, tagName string) *string {
-	// 1. Check element attributes
+// GetAttributeFast gets an attribute value without debug logging using full resolution order
+func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
+	// 1. Element attributes
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		return &value
+		return value
 	}
 
-	// 2. Check mj-class (TODO: implement)
-
-	// 3. Check global defaults via globals package
-	if globalValue := globals.GetGlobalAttribute(tagName, name); globalValue != "" {
-		return &globalValue
+	// 2. mj-class definitions
+	if classValue := bc.getClassAttribute(name); classValue != "" {
+		return classValue
 	}
 
-	// 4. Check component defaults
-	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
-		return &defaultVal
+	// 3. Global attributes
+	if globalValue := globals.GetGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
+		return globalValue
 	}
 
-	return nil
+	// 4. Component defaults
+	if defaultVal := comp.GetDefaultAttribute(name); defaultVal != "" {
+		return defaultVal
+	}
+
+	return ""
 }
 
 // GetAttributeWithDefault gets an attribute with component-specific defaults
@@ -144,10 +178,12 @@ func (bc *BaseComponent) GetAttributeWithGlobal(name, tagName string) *string {
 func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) string {
 	// 1. Check element attributes first
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": value,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": value,
+			})
+		}
 		// Track font families
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(value)
@@ -155,12 +191,29 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		return value
 	}
 
-	// 2. Check global attributes if available (we'll get this via external function)
+	// 2. Check mj-class definitions
+	if classValue := bc.getClassAttribute(name); classValue != "" {
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-class", "Using mj-class attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": classValue,
+				"classes":    bc.Attrs["mj-class"],
+			})
+		}
+		if name == constants.MJMLFontFamily {
+			bc.TrackFontFamily(classValue)
+		}
+		return classValue
+	}
+
+	// 3. Check global attributes if available (we'll get this via external function)
 	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": globalValue,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": globalValue,
+			})
+		}
 		// Track font families
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(globalValue)
@@ -168,13 +221,15 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 		return globalValue
 	}
 
-	// 3. Check component defaults via interface method (properly calls overridden method)
+	// 4. Check component defaults via interface method (properly calls overridden method)
 	defaultValue := comp.GetDefaultAttribute(name)
 	if defaultValue != "" {
-		debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]interface{}{
-			"attr_name":  name,
-			"attr_value": defaultValue,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]interface{}{
+				"attr_name":  name,
+				"attr_value": defaultValue,
+			})
+		}
 		// Track font families
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(defaultValue)
@@ -187,6 +242,17 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 func (bc *BaseComponent) getGlobalAttribute(componentName, attrName string) string {
 	// Access global attributes via globals package
 	return globals.GetGlobalAttribute(componentName, attrName)
+}
+
+// getClassAttribute retrieves an attribute value from mj-class definitions if present
+func (bc *BaseComponent) getClassAttribute(attrName string) string {
+	if bc.classAttrs == nil {
+		return ""
+	}
+	if v, ok := bc.classAttrs[attrName]; ok {
+		return v
+	}
+	return ""
 }
 
 // GetAttributeAsPixel parses an attribute value as a CSS pixel value
@@ -226,11 +292,13 @@ func (bc *BaseComponent) GetDefaultAttribute(name string) string {
 }
 
 // SetContainerWidth sets the container width in pixels for this component
+// AIDEV-NOTE: width-flow-interface; container width flows from parent to child components
 func (bc *BaseComponent) SetContainerWidth(widthPx int) {
 	bc.ContainerWidth = widthPx
 }
 
 // GetContainerWidth returns the container width in pixels (0 means use default body width)
+// AIDEV-NOTE: width-flow-interface; used by child components to calculate their effective rendering width
 func (bc *BaseComponent) GetContainerWidth() int {
 	return bc.ContainerWidth
 }
@@ -261,6 +329,7 @@ func (bc *BaseComponent) GetNonRawSiblings() int {
 }
 
 // GetEffectiveWidth returns the container width if set, otherwise default body width
+// AIDEV-NOTE: width-flow-calculation; used to calculate actual pixel width for rendering and child width calculation
 func (bc *BaseComponent) GetEffectiveWidth() int {
 	if bc.ContainerWidth > 0 {
 		return bc.ContainerWidth
@@ -308,26 +377,63 @@ func getPixelWidthString(widthPx int) string {
 // Style Mixin Methods - Common styling patterns that components can use
 
 // ApplyBackgroundStyles applies background-related CSS styles to an HTML tag
-func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag) *html.HTMLTag {
-	bgcolor := bc.GetAttribute("background-color")
-	bgImage := bc.GetAttribute("background-image")
-	bgRepeat := bc.GetAttribute("background-repeat")
-	bgSize := bc.GetAttribute("background-size")
-	bgPosition := bc.GetAttribute("background-position")
+func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
+	toPtr := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
 
-	return styles.ApplyBackgroundStyles(tag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition)
+	bgcolor := bc.GetAttributeFast(comp, "background-color")
+	bgImage := bc.GetAttributeFast(comp, "background-image")
+	if bgImage == "" {
+		// MJML commonly uses the "background-url" attribute. Fall back to it
+		// when "background-image" is not provided to mirror MRML's behaviour.
+		bgImage = bc.GetAttributeFast(comp, constants.MJMLBackgroundUrl)
+	}
+	bgRepeat := bc.GetAttributeFast(comp, "background-repeat")
+	bgSize := bc.GetAttributeFast(comp, "background-size")
+	bgPosition := bc.GetAttributeFast(comp, "background-position")
+
+	// When only a transparent background color is specified, MRML outputs only
+	// background-color without the shorthand background property.
+	if bgImage == "" && bgcolor == "transparent" {
+		tag.AddStyle("background-color", bgcolor)
+		return tag
+	}
+
+	return styles.ApplyBackgroundStyles(tag,
+		toPtr(bgcolor),
+		toPtr(bgImage),
+		toPtr(bgRepeat),
+		toPtr(bgSize),
+		toPtr(bgPosition))
 }
 
 // ApplyBorderStyles applies border-related CSS styles to an HTML tag
-func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag) *html.HTMLTag {
-	border := bc.GetAttribute("border")
-	borderRadius := bc.GetAttribute("border-radius")
-	borderTop := bc.GetAttribute("border-top")
-	borderRight := bc.GetAttribute("border-right")
-	borderBottom := bc.GetAttribute("border-bottom")
-	borderLeft := bc.GetAttribute("border-left")
+func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
+	toPtr := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
 
-	return styles.ApplyBorderStyles(tag, border, borderRadius, borderTop, borderRight, borderBottom, borderLeft)
+	border := bc.GetAttributeFast(comp, constants.MJMLBorder)
+	borderRadius := bc.GetAttributeFast(comp, constants.MJMLBorderRadius)
+	borderTop := bc.GetAttributeFast(comp, "border-top")
+	borderRight := bc.GetAttributeFast(comp, "border-right")
+	borderBottom := bc.GetAttributeFast(comp, "border-bottom")
+	borderLeft := bc.GetAttributeFast(comp, "border-left")
+
+	return styles.ApplyBorderStyles(tag,
+		toPtr(border),
+		toPtr(borderRadius),
+		toPtr(borderTop),
+		toPtr(borderRight),
+		toPtr(borderBottom),
+		toPtr(borderLeft))
 }
 
 // ApplyPaddingStyles applies padding CSS styles to an HTML tag
@@ -415,25 +521,69 @@ func (bc *BaseComponent) GetCSSClass() string {
 // BuildClassAttribute combines existing CSS classes with the css-class attribute
 // Usage: component.BuildClassAttribute("mj-column-per-100", "mj-outlook-group-fix")
 func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
-	var classes []string
+	// Determine css-class from element or mj-class definitions
+	cssClass := bc.GetCSSClass()
+	if cssClass == "" {
+		cssClass = bc.getClassAttribute("css-class")
+	}
 
-	// Add existing classes
+	// Count total classes
+	total := 0
 	for _, class := range existingClasses {
 		if class != "" {
-			classes = append(classes, class)
+			total++
 		}
 	}
-
-	// Add css-class if present
-	if cssClass := bc.GetCSSClass(); cssClass != "" {
-		classes = append(classes, cssClass)
+	if cssClass != "" {
+		total++
 	}
 
-	if len(classes) == 0 {
+	if total == 0 {
 		return ""
 	}
 
-	return strings.Join(classes, " ")
+	if total == 1 {
+		for _, class := range existingClasses {
+			if class != "" {
+				return class
+			}
+		}
+		return cssClass
+	}
+
+	// More than one class: build string efficiently
+	// Pre-calculate buffer size
+	totalLen := total - 1 // spaces between classes
+	for _, class := range existingClasses {
+		if class != "" {
+			totalLen += len(class)
+		}
+	}
+	if cssClass != "" {
+		totalLen += len(cssClass)
+	}
+
+	var b strings.Builder
+	b.Grow(totalLen)
+	first := true
+	for _, class := range existingClasses {
+		if class == "" {
+			continue
+		}
+		if !first {
+			b.WriteByte(' ')
+		} else {
+			first = false
+		}
+		b.WriteString(class)
+	}
+	if cssClass != "" {
+		if !first {
+			b.WriteByte(' ')
+		}
+		b.WriteString(cssClass)
+	}
+	return b.String()
 }
 
 // GetMSOClassAttribute returns the MSO conditional comment class attribute with -outlook suffix

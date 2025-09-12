@@ -1,0 +1,14 @@
+<mjml>
+  <!-- Test case: Social elements WITHOUT text content should still trigger Ubuntu font injection -->
+  <!-- via fallback logic when social components are present but no fonts detected from content -->
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-social>
+          <mj-social-element name="facebook" href="https://facebook.com" />
+          <mj-social-element name="instagram" href="https://instagram.com" />
+        </mj-social>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

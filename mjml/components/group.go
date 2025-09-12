@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -78,25 +79,31 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Determine if group has pixel width or percentage width
+	// Determine group width based on attribute and container width
 	var widthClass string
 	var groupWidthPx int
 	var childWidthPx int
 
+	containerWidth := c.GetEffectiveWidth()
+
 	if strings.HasSuffix(groupWidth, "px") {
-		// Parse pixel width (e.g., "100px" -> 100)
+		// Pixel width provided explicitly
 		fmt.Sscanf(groupWidth, "%dpx", &groupWidthPx)
 		widthClass = fmt.Sprintf("mj-column-px-%d", groupWidthPx)
-		if columnCount > 0 {
-			childWidthPx = groupWidthPx / columnCount
-		}
+	} else if strings.HasSuffix(groupWidth, "%") {
+		// Percentage width – compute relative to container width
+		var percent float64
+		fmt.Sscanf(groupWidth, "%f%%", &percent)
+		groupWidthPx = int(float64(containerWidth) * percent / 100.0)
+		widthClass = generateDecimalCSSClass(percent)
 	} else {
-		// Default percentage behavior
+		// Fallback to 100% of container width
+		groupWidthPx = containerWidth
 		widthClass = "mj-column-per-100"
-		groupWidthPx = 600 // Default container width
-		if columnCount > 0 {
-			childWidthPx = groupWidthPx / columnCount
-		}
+	}
+
+	if columnCount > 0 {
+		childWidthPx = groupWidthPx / columnCount
 	}
 
 	// Root div wrapper (following MRML set_style_root_div)
@@ -125,9 +132,14 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO conditional table structure
-	if err := html.RenderMSOConditional(w,
-		"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr>"); err != nil {
+	// MSO conditional table structure with dynamic bgcolor
+	msoTableTag := "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\""
+	if backgroundColor != "" {
+		msoTableTag += " bgcolor=\"" + backgroundColor + "\""
+	}
+	msoTableTag += "><tr>"
+
+	if err := html.RenderMSOConditional(w, msoTableTag); err != nil {
 		return err
 	}
 
@@ -162,10 +174,14 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			// Set mobile-width signal for MRML compatibility (like group/render.rs:93)
 			columnComp.Attrs["mobile-width"] = "mobile-width"
 
-			// MSO conditional TD for each column with correct width
-			msoWidth := getPixelWidthString(childWidthPx)
+			// Ensure child columns receive the group's full width for internal calculations
+			columnComp.SetContainerWidth(groupWidthPx)
 
-			if err := html.RenderMSOGroupTDOpen(w, c.GetMSOClassAttribute(), verticalAlign, msoWidth); err != nil {
+			// MSO conditional TD for each column with correct width and vertical alignment
+			msoWidth := getPixelWidthString(childWidthPx)
+			colVAlign := columnComp.GetAttributeWithDefault(columnComp, constants.MJMLVerticalAlign)
+
+			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth); err != nil {
 				return err
 			}
 

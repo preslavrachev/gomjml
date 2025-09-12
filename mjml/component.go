@@ -29,11 +29,13 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 	tagName := node.GetTagName()
 
 	// Log component creation
-	debug.DebugLogWithData("component", "create", "Creating component", map[string]interface{}{
-		"tag_name":     tagName,
-		"has_children": len(node.Children) > 0,
-		"attr_count":   len(node.Attrs),
-	})
+	if debug.Enabled() {
+		debug.DebugLogWithData("component", "create", "Creating component", map[string]any{
+			"tag_name":     tagName,
+			"has_children": len(node.Children) > 0,
+			"attr_count":   len(node.Attrs),
+		})
+	}
 
 	switch tagName {
 	case "mjml":
@@ -145,13 +147,18 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 			case *components.MJSectionComponent:
 				processSectionChildren(comp, opts)
 			case *components.MJWrapperComponent:
+				// Create wrapper child opts with InsideWrapper flag
+				// TODO: Evaluate if cloning the opts is the best option here.
+				wrapperChildOpts := *opts // Copy the options
+				wrapperChildOpts.InsideWrapper = true
+
 				for _, childNode := range comp.Node.Children {
-					if childComponent, err := CreateComponent(childNode, opts); err == nil {
+					if childComponent, err := CreateComponent(childNode, &wrapperChildOpts); err == nil {
 						comp.Children = append(comp.Children, childComponent)
 
 						// Process wrapper's section children
 						if section, ok := childComponent.(*components.MJSectionComponent); ok {
-							processSectionChildren(section, opts)
+							processSectionChildren(section, &wrapperChildOpts)
 						}
 					}
 				}

@@ -1,0 +1,19 @@
+<mjml>
+  <mj-body background-color="#f8f9fa" width="600px">
+    <mj-section padding="20px 0" background-color="#ffffff">
+      <mj-column width="100%" padding="0">
+        <mj-divider 
+          padding-left="25px" 
+          width="50%" 
+          align="center" 
+          padding-right="25px" 
+          padding-bottom="30px" 
+          container-background-color="transparent" 
+          border-style="solid" 
+          border-width="2px" 
+          border-color="#dee2e6" 
+          padding-top="30px" />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

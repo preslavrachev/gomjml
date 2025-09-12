@@ -77,25 +77,37 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 		textContent = "Button"
 	}
 
-	// Helper function to get attribute with default
-	getAttr := func(name string) string {
-		if attr := c.GetAttribute(name); attr != nil {
-			return *attr
-		}
-		return c.GetDefaultAttribute(name)
-	}
+	// Get attributes with proper default and global attribute resolution
+	align := c.GetAttributeWithDefault(c, constants.MJMLAlign)
+	backgroundColor := c.GetAttributeWithDefault(c, constants.MJMLBackgroundColor)
+	border := c.GetAttributeWithDefault(c, constants.MJMLBorder)
+	borderRadius := c.GetAttributeWithDefault(c, constants.MJMLBorderRadius)
+	innerPadding := c.GetAttributeWithDefault(c, constants.MJMLInnerPadding)
+	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
+	target := c.GetAttributeWithDefault(c, constants.MJMLTarget)
+	verticalAlign := c.GetAttributeWithDefault(c, constants.MJMLVerticalAlign)
+	href := c.GetAttributeWithDefault(c, constants.MJMLHref)
+	width := c.GetAttributeWithDefault(c, constants.MJMLWidth)
+	containerBackground := c.GetAttributeWithDefault(c, constants.MJMLContainerBackgroundColor)
+	borderTop := c.GetAttributeWithDefault(c, constants.MJMLBorderTop)
+	borderRight := c.GetAttributeWithDefault(c, constants.MJMLBorderRight)
+	borderBottom := c.GetAttributeWithDefault(c, constants.MJMLBorderBottom)
+	borderLeft := c.GetAttributeWithDefault(c, constants.MJMLBorderLeft)
+	paddingTop := c.GetAttributeWithDefault(c, constants.MJMLPaddingTop)
+	paddingRight := c.GetAttributeWithDefault(c, constants.MJMLPaddingRight)
+	paddingBottom := c.GetAttributeWithDefault(c, constants.MJMLPaddingBottom)
+	paddingLeft := c.GetAttributeWithDefault(c, constants.MJMLPaddingLeft)
+	height := c.GetAttributeWithDefault(c, constants.MJMLHeight)
 
-	// Get attributes with defaults matching MRML
-	align := getAttr("align")
-	backgroundColor := getAttr("background-color")
-	border := getAttr("border")
-	borderRadius := getAttr("border-radius")
-	innerPadding := getAttr("inner-padding")
-	padding := getAttr("padding")
-	target := getAttr("target")
-	verticalAlign := getAttr("vertical-align")
-	href := getAttr("href")
-	width := getAttr("width")
+	// Font-related attributes (needed by both td and content elements)
+	fontFamily := c.GetAttributeWithDefault(c, constants.MJMLFontFamily)
+	fontSize := c.GetAttributeWithDefault(c, constants.MJMLFontSize)
+	fontWeight := c.GetAttributeWithDefault(c, constants.MJMLFontWeight)
+	fontStyle := c.GetAttributeWithDefault(c, constants.MJMLFontStyle)
+	color := c.GetAttributeWithDefault(c, constants.MJMLColor)
+	lineHeight := c.GetAttributeWithDefault(c, constants.MJMLLineHeight)
+	textDecoration := c.GetAttributeWithDefault(c, constants.MJMLTextDecoration)
+	textTransform := c.GetAttributeWithDefault(c, "text-transform")
 
 	// Determine if we use <a> or <p> tag
 	tagName := "p"
@@ -110,7 +122,7 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 
 	// Create TD with alignment and base styles
 	tdTag := html.NewHTMLTag("td").
-		AddAttribute("align", align)
+		AddAttribute(constants.AttrAlign, align)
 
 	// Only add vertical-align attribute if not inside an mj-hero
 	// In mj-hero context, MRML doesn't include this attribute
@@ -118,13 +130,31 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 		tdTag.AddAttribute(constants.AttrVerticalAlign, verticalAlign)
 	}
 
-	tdTag.AddStyle("font-size", "0px").
-		AddStyle("padding", padding).
-		AddStyle("word-break", "break-word")
+	if containerBackground != "" {
+		tdTag.AddStyle(constants.CSSBackground, containerBackground)
+	}
+
+	tdTag.AddStyle(constants.CSSFontSize, "0px").
+		AddStyle(constants.CSSPadding, padding)
+
+	if paddingTop != "" {
+		tdTag.AddStyle(constants.CSSPaddingTop, paddingTop)
+	}
+	if paddingRight != "" {
+		tdTag.AddStyle(constants.CSSPaddingRight, paddingRight)
+	}
+	if paddingBottom != "" {
+		tdTag.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft != "" {
+		tdTag.AddStyle(constants.CSSPaddingLeft, paddingLeft)
+	}
+
+	tdTag.AddStyle(constants.CSSWordBreak, "break-word")
 
 	// Add css-class if present
 	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		tdTag.AddAttribute("class", cssClass)
+		tdTag.AddAttribute(constants.AttrClass, cssClass)
 	}
 
 	if err := tdTag.RenderOpen(w); err != nil {
@@ -135,18 +165,18 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	tableTag := html.NewHTMLTag("table")
 	c.AddDebugAttribute(tableTag, "button")
 	tableTag.
-		AddAttribute("border", "0").
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation").
-		AddStyle("border-collapse", "separate")
+		AddAttribute(constants.AttrBorder, "0").
+		AddAttribute(constants.AttrCellPadding, "0").
+		AddAttribute(constants.AttrCellSpacing, "0").
+		AddAttribute(constants.AttrRole, "presentation").
+		AddStyle(constants.CSSBorderCollapse, constants.BorderCollapseSeparate)
 
 	// Add width to table if specified
 	if width != "" {
-		tableTag.AddStyle("width", width)
+		tableTag.AddStyle(constants.CSSWidth, width)
 	}
 
-	tableTag.AddStyle("line-height", "100%")
+	tableTag.AddStyle(constants.CSSLineHeight, "100%")
 
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err
@@ -157,15 +187,37 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 
 	// Button cell with background and border styles
 	buttonTdTag := html.NewHTMLTag("td").
-		AddAttribute("align", "center").
+		AddAttribute(constants.AttrAlign, constants.AlignCenter).
 		AddAttribute(constants.AttrBgcolor, backgroundColor).
-		AddAttribute("role", "presentation").
-		AddAttribute("valign", verticalAlign).
-		AddStyle("border", border).
-		AddStyle("border-radius", borderRadius).
-		AddStyle("cursor", "auto").
-		AddStyle("mso-padding-alt", innerPadding).
-		AddStyle("background", backgroundColor)
+		AddAttribute(constants.AttrRole, "presentation").
+		AddAttribute(constants.AttrValign, verticalAlign).
+		AddStyle(constants.CSSBorder, border)
+
+	if borderBottom != "" {
+		buttonTdTag.AddStyle(constants.CSSBorderBottom, borderBottom)
+	}
+	if borderLeft != "" {
+		buttonTdTag.AddStyle(constants.CSSBorderLeft, borderLeft)
+	}
+
+	buttonTdTag.AddStyle(constants.CSSBorderRadius, borderRadius)
+
+	if borderRight != "" {
+		buttonTdTag.AddStyle(constants.CSSBorderRight, borderRight)
+	}
+	if borderTop != "" {
+		buttonTdTag.AddStyle(constants.CSSBorderTop, borderTop)
+	}
+
+	buttonTdTag.AddStyle("cursor", "auto")
+	if height != "" {
+		buttonTdTag.AddStyle(constants.CSSHeight, height)
+	}
+	if fontStyle != "" {
+		buttonTdTag.AddStyle(constants.CSSFontStyle, fontStyle)
+	}
+	buttonTdTag.AddStyle("mso-padding-alt", innerPadding).
+		AddStyle(constants.CSSBackground, backgroundColor)
 
 	if err := buttonTdTag.RenderOpen(w); err != nil {
 		return err
@@ -174,44 +226,45 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	// Button content (a or p tag)
 	contentTag := html.NewHTMLTag(tagName)
 	if href != "" {
-		contentTag.AddAttribute("href", href)
+		contentTag.AddAttribute(constants.AttrHref, href)
 		if target != "" {
-			contentTag.AddAttribute("target", target)
+			contentTag.AddAttribute(constants.AttrTarget, target)
+		}
+		// Add rel attribute if specified
+		rel := c.GetAttributeWithDefault(c, constants.AttrRel)
+		if rel != "" {
+			contentTag.AddAttribute(constants.AttrRel, rel)
 		}
 	}
-
-	// Get font styles first
-	fontFamily := c.GetAttributeWithDefault(c, "font-family")
-	fontSize := c.GetAttributeWithDefault(c, "font-size")
-	fontWeight := c.GetAttributeWithDefault(c, "font-weight")
-	color := c.GetAttributeWithDefault(c, "color")
-	lineHeight := c.GetAttributeWithDefault(c, "line-height")
-	textDecoration := c.GetAttributeWithDefault(c, "text-decoration")
-	textTransform := c.GetAttributeWithDefault(c, "text-transform")
 
 	// Calculate inner width for anchor tag
 	innerWidth := c.calculateInnerWidth(width, innerPadding)
 
 	// Apply button content styles in MRML order
-	contentTag.AddStyle("display", "inline-block")
+	contentTag.AddStyle(constants.CSSDisplay, constants.DisplayInlineBlock)
 
 	// Add width if calculated
 	if innerWidth != "" {
-		contentTag.AddStyle("width", innerWidth)
+		contentTag.AddStyle(constants.CSSWidth, innerWidth)
 	}
 
-	contentTag.AddStyle("background", backgroundColor).
-		AddStyle("color", color).
-		AddStyle("font-family", fontFamily).
-		AddStyle("font-size", fontSize).
-		AddStyle("font-weight", fontWeight).
-		AddStyle("line-height", lineHeight).
-		AddStyle("margin", "0").
-		AddStyle("text-decoration", textDecoration).
-		AddStyle("text-transform", textTransform).
-		AddStyle("padding", innerPadding).
+	contentTag.AddStyle(constants.CSSBackground, backgroundColor).
+		AddStyle(constants.CSSColor, color).
+		AddStyle(constants.CSSFontFamily, fontFamily).
+		AddStyle(constants.CSSFontSize, fontSize)
+
+	if fontStyle != "" {
+		contentTag.AddStyle(constants.CSSFontStyle, fontStyle)
+	}
+
+	contentTag.AddStyle(constants.CSSFontWeight, fontWeight).
+		AddStyle(constants.CSSLineHeight, lineHeight).
+		AddStyle(constants.CSSMargin, "0").
+		AddStyle(constants.CSSTextDecoration, textDecoration).
+		AddStyle(constants.CSSTextTransform, textTransform).
+		AddStyle(constants.CSSPadding, innerPadding).
 		AddStyle("mso-padding-alt", "0px").
-		AddStyle("border-radius", borderRadius)
+		AddStyle(constants.CSSBorderRadius, borderRadius)
 
 	if err := contentTag.RenderOpen(w); err != nil {
 		return err

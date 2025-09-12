@@ -1,0 +1,18 @@
+<mjml>
+  <mj-body>
+    <mj-section
+      background-color="#123456"
+      background-url="https://example.com/cover.jpg"
+      background-size="cover"
+      background-repeat="no-repeat"
+      background-position="top center"
+      padding="0"
+    >
+      <mj-column>
+        <mj-text color="#ffffff" font-size="16px"
+          >Cover / no-repeat / top center</mj-text
+        >
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

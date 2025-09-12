@@ -253,7 +253,21 @@ func (c *MJNavbarComponent) renderInlineLinks(w io.StringWriter, baseURL string)
 					return err
 				}
 			}
-			if _, err := w.WriteString(" style=\"padding:" + navbarLink.getAttribute(constants.MJMLPadding) + ";\"><![endif]-->"); err != nil {
+			// Build padding styles including individual overrides
+			style := "padding:" + navbarLink.getAttribute(constants.MJMLPadding) + ";"
+			if pb := navbarLink.getAttribute(constants.MJMLPaddingBottom); pb != "" {
+				style += "padding-bottom:" + pb + ";"
+			}
+			if pt := navbarLink.getAttribute(constants.MJMLPaddingTop); pt != "" {
+				style += "padding-top:" + pt + ";"
+			}
+			if pl := navbarLink.getAttribute(constants.MJMLPaddingLeft); pl != "" {
+				style += "padding-left:" + pl + ";"
+			}
+			if pr := navbarLink.getAttribute(constants.MJMLPaddingRight); pr != "" {
+				style += "padding-right:" + pr + ";"
+			}
+			if _, err := w.WriteString(" style=\"" + style + "\"><![endif]-->"); err != nil {
 				return err
 			}
 

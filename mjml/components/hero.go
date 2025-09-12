@@ -23,23 +23,17 @@ func NewMJHeroComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJHero
 }
 
 func (c *MJHeroComponent) Render(w io.StringWriter) error {
-	// Helper function to get attribute with default
-	getAttr := func(name string) string {
-		if attr := c.GetAttribute(name); attr != nil {
-			return *attr
-		}
-		return c.GetDefaultAttribute(name)
-	}
-
-	// Get attributes
-	backgroundColor := getAttr(constants.MJMLBackgroundColor)
-	backgroundPosition := getAttr(constants.MJMLBackgroundPosition)
+	// Get attributes with proper resolution order
+	backgroundColor := c.GetAttributeWithDefault(c, constants.MJMLBackgroundColor)
+	backgroundPosition := c.GetAttributeWithDefault(c, constants.MJMLBackgroundPosition)
 	backgroundRepeat := constants.BackgroundRepeatNoRepeat
-	backgroundUrl := getAttr(constants.MJMLBackgroundUrl)
-	backgroundHeight := getAttr(constants.MJMLBackgroundHeight)
-	height := getAttr(constants.MJMLHeight)
-	padding := getAttr(constants.MJMLPadding)
-	verticalAlign := getAttr(constants.MJMLVerticalAlign)
+	backgroundUrl := c.GetAttributeWithDefault(c, constants.MJMLBackgroundUrl)
+	backgroundHeight := c.GetAttributeWithDefault(c, constants.MJMLBackgroundHeight)
+	backgroundWidth := c.GetAttributeWithDefault(c, constants.MJMLBackgroundWidth)
+	height := c.GetAttributeWithDefault(c, constants.MJMLHeight)
+	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
+	verticalAlign := c.GetAttributeWithDefault(c, constants.MJMLVerticalAlign)
+	width := c.GetAttributeWithDefault(c, constants.MJMLWidth)
 
 	// Calculate effective height by subtracting padding
 	effectiveHeight := height
@@ -65,18 +59,26 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Add VML image for Outlook if background-url is provided
+	// Add VML image for Outlook
+	widthAttr := containerWidthPx
+	if backgroundWidth != "" && backgroundWidth != "0px" {
+		widthAttr = backgroundWidth
+	}
 	if backgroundUrl != "" {
-		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", containerWidthPx)
+		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
 		if backgroundHeight != "" && backgroundHeight != "0px" {
-			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, containerWidthPx)
+			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
 		}
 		vmlImage := fmt.Sprintf(`<v:image src="%s" xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, backgroundUrl, vmlStyle)
 		if _, err := w.WriteString(vmlImage); err != nil {
 			return err
 		}
 	} else {
-		vmlImage := fmt.Sprintf(`<v:image xmlns:v="urn:schemas-microsoft-com:vml" style="border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;" />`, containerWidthPx)
+		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
+		if backgroundHeight != "" && backgroundHeight != "0px" {
+			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
+		}
+		vmlImage := fmt.Sprintf(`<v:image xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, vmlStyle)
 		if _, err := w.WriteString(vmlImage); err != nil {
 			return err
 		}
@@ -143,17 +145,17 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add individual padding overrides (similar to other components)
-	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
-		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
+	if paddingTopAttr := c.GetAttributeWithDefault(c, constants.MJMLPaddingTop); paddingTopAttr != "" {
+		tdTag.AddStyle(constants.CSSPaddingTop, paddingTopAttr)
 	}
-	if paddingRightAttr := c.GetAttribute(constants.MJMLPaddingRight); paddingRightAttr != nil {
-		tdTag.AddStyle(constants.CSSPaddingRight, *paddingRightAttr)
+	if paddingRightAttr := c.GetAttributeWithDefault(c, constants.MJMLPaddingRight); paddingRightAttr != "" {
+		tdTag.AddStyle(constants.CSSPaddingRight, paddingRightAttr)
 	}
-	if paddingBottomAttr := c.GetAttribute(constants.MJMLPaddingBottom); paddingBottomAttr != nil {
-		tdTag.AddStyle(constants.CSSPaddingBottom, *paddingBottomAttr)
+	if paddingBottomAttr := c.GetAttributeWithDefault(c, constants.MJMLPaddingBottom); paddingBottomAttr != "" {
+		tdTag.AddStyle(constants.CSSPaddingBottom, paddingBottomAttr)
 	}
-	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil {
-		tdTag.AddStyle(constants.CSSPaddingLeft, *paddingLeftAttr)
+	if paddingLeftAttr := c.GetAttributeWithDefault(c, constants.MJMLPaddingLeft); paddingLeftAttr != "" {
+		tdTag.AddStyle(constants.CSSPaddingLeft, paddingLeftAttr)
 	}
 
 	if err := tdTag.RenderOpen(w); err != nil {
@@ -174,6 +176,9 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	heroContentTag := html.NewHTMLTag("div").
 		AddAttribute(constants.AttrClass, "mj-hero-content").
 		AddStyle(constants.CSSMargin, "0px auto")
+	if width != "" {
+		heroContentTag.AddStyle(constants.CSSWidth, width)
+	}
 	if err := heroContentTag.RenderOpen(w); err != nil {
 		return err
 	}

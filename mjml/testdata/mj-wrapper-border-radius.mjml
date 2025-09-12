@@ -1,0 +1,18 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-section border-radius="0px" />
+      <mj-column border-radius="0px" />
+      <mj-image border-radius="0px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body>
+    <mj-wrapper border="1px solid red" border-radius="10px">
+      <mj-section>
+        <mj-column>
+          <mj-text>Hello World</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

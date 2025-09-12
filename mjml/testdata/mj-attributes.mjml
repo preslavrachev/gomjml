@@ -4,16 +4,37 @@
       <mj-text padding="0" />
       <mj-class name="blue" color="blue" />
       <mj-class name="big" font-size="20px" />
+      <mj-class name="padded" padding="20px" />
+      <mj-class name="center" align="center" />
+      <mj-class name="rounded" border-radius="10px" />
       <mj-all font-family="Arial" />
     </mj-attributes>
   </mj-head>
-  <mj-body>
-    <mj-section>
-      <mj-column>
-        <mj-text mj-class="blue big">
-          Hello World!
-        </mj-text>
-      </mj-column>
-    </mj-section>
+  <mj-body mj-class="padded">
+    <mj-wrapper mj-class="rounded">
+      <mj-section mj-class="center">
+        <mj-column mj-class="padded">
+          <mj-text mj-class="blue big"> Hello World! </mj-text>
+          <mj-button mj-class="rounded center">Click Me</mj-button>
+          <mj-divider mj-class="blue" />
+          <mj-spacer mj-class="padded" />
+          <mj-image
+            mj-class="rounded center"
+            src="https://via.placeholder.com/150"
+          />
+          <mj-table mj-class="center">
+            <tr>
+              <td>Test</td>
+              <td>Table</td>
+            </tr>
+          </mj-table>
+
+          <mj-social mj-class="center">
+            <mj-social-element mj-class="rounded" name="facebook" href="#" />
+            <mj-social-element mj-class="rounded" name="twitter" href="#" />
+          </mj-social>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
   </mj-body>
 </mjml>

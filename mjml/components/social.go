@@ -23,6 +23,7 @@ var platformDefaults = map[string]string{
 	"youtube":    "#EB3323",
 	"facebook":   "#3b5998",
 	"twitter":    "#55acee",
+	"x":          "#000000",
 	"google":     "#dc4e41",
 	"github":     "#000000",
 	"dribbble":   "#D95988",
@@ -92,6 +93,10 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.StringWriter) error {
+	// AIDEV-NOTE: Always track font-family for font injection detection
+	// This ensures Ubuntu fonts are detected even when social elements have no text content
+	c.getAttribute(constants.MJMLFontFamily)
+
 	padding := c.getAttribute(constants.MJMLPadding)
 	align := c.getAttribute(constants.MJMLAlign)
 	mode := c.getAttribute(constants.MJMLMode)
@@ -122,9 +127,17 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 	td.AddStyle(constants.CSSFontSize, "0px").
 		AddStyle(constants.CSSPadding, padding)
 
-	// Handle padding-left separately if specified
-	paddingLeft := c.Node.GetAttribute(constants.MJMLPaddingLeft)
-	if paddingLeft != "" {
+	// Handle individual padding properties - check all sides for MRML compatibility
+	if paddingTop := c.Node.GetAttribute(constants.MJMLPaddingTop); paddingTop != "" {
+		td.AddStyle(constants.CSSPaddingTop, paddingTop)
+	}
+	if paddingRight := c.Node.GetAttribute(constants.MJMLPaddingRight); paddingRight != "" {
+		td.AddStyle(constants.CSSPaddingRight, paddingRight)
+	}
+	if paddingBottom := c.Node.GetAttribute(constants.MJMLPaddingBottom); paddingBottom != "" {
+		td.AddStyle(constants.CSSPaddingBottom, paddingBottom)
+	}
+	if paddingLeft := c.Node.GetAttribute(constants.MJMLPaddingLeft); paddingLeft != "" {
 		td.AddStyle(constants.CSSPaddingLeft, paddingLeft)
 	}
 
@@ -275,6 +288,8 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/facebook.png"
 		case "twitter":
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter.png"
+		case "x":
+			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter-x.png"
 		case "linkedin":
 			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png"
 		case "google":
@@ -357,23 +372,23 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 					}
 					return parentValue
 				}
-				// Then check parent's default attribute
-				if parentDefault := c.parentSocial.GetDefaultAttribute(name); parentDefault != "" {
+				// Then check parent's resolved attribute (includes global attributes)
+				if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
 					debug.DebugLogWithData(
 						"social-attr",
-						"parent-default",
-						"Using parent default attribute",
+						"parent-resolved",
+						"Using parent resolved attribute",
 						map[string]interface{}{
 							"attr":    name,
-							"value":   parentDefault,
+							"value":   parentResolved,
 							"element": c.Node.GetAttribute("name"),
 						},
 					)
 					// Track font families
 					if name == constants.MJMLFontFamily {
-						c.TrackFontFamily(parentDefault)
+						c.TrackFontFamily(parentResolved)
 					}
-					return parentDefault
+					return parentResolved
 				}
 			}
 		}
@@ -421,13 +436,18 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	alt := c.getAttribute("alt")
 
 	// Handle special sharing URL generation for known platforms
-	if href != "" && !strings.HasPrefix(href, "http") {
-		nameAttr := c.Node.GetAttribute("name")
-		if nameAttr == "facebook" {
-			// Convert simple href to Facebook sharing URL
+	nameAttr := c.Node.GetAttribute("name")
+	if href != "" {
+		if nameAttr == "facebook" && !strings.Contains(href, "facebook.com/sharer") {
+			// Convert href to Facebook sharing URL if not already a sharing URL
 			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
+		} else if (nameAttr == "twitter" || nameAttr == "x") && !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
+			// Convert href to Twitter/X sharing URL if not already a sharing or profile URL
+			href = "https://twitter.com/home?status=" + href
 		}
 	}
+	// Note: Only generate default URLs when href is explicitly provided (even if empty like "#")
+	// Don't add default URLs when no href attribute exists - those are text-only social elements
 	target := c.getAttribute("target")
 	backgroundColor := c.getAttribute("background-color")
 	borderRadius := c.getAttribute("border-radius")
@@ -666,7 +686,8 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	img.AddAttribute("height", heightAttr).
-		AddAttribute("src", src)
+		AddAttribute("src", src).
+		AddAttribute("width", widthAttr)
 
 	// Add title attribute if specified
 	title := c.Node.GetAttribute("title")
@@ -674,8 +695,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		img.AddAttribute("title", title)
 	}
 
-	img.AddAttribute("width", widthAttr).
-		AddStyle("border-radius", borderRadius).
+	img.AddStyle("border-radius", borderRadius).
 		AddStyle("display", "block")
 
 	if href != "" {

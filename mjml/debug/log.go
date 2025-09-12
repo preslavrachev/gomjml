@@ -4,6 +4,11 @@
 // This file contains production build versions (no-op functions) that get optimized away.
 package debug
 
+// Enabled reports whether debug logging is enabled.
+// In production builds, this always returns false and allows
+// the compiler to eliminate any debug logging branches entirely.
+func Enabled() bool { return false }
+
 // DebugLog logs a debug message with component, phase, and formatted message.
 // In production builds, this function is a no-op and gets inlined/optimized away.
 func DebugLog(component, phase, message string, args ...interface{}) {

@@ -93,10 +93,23 @@ type MixedContentPart struct {
 	Node *MJMLNode
 }
 
+// AIDEV-NOTE: mjml-spec-structure; MJML document structure per official spec
+// Minimal valid MJML structure:
+// <mjml>
+//   <mj-body> (required)
+//     <!-- at least one component -->
+//   </mj-body>
+// </mjml>
+// The <mj-head> section is OPTIONAL and can be omitted entirely.
+
 // ParseMJML parses an MJML string into an AST
 func ParseMJML(mjmlContent string) (*MJMLNode, error) {
+	// AIDEV-NOTE: comment-preservation; Preserve all XML comments for MRML compatibility
+	// MRML preserves regular XML comments and wraps them with MSO conditionals
+	processedContent := stripNonMSOComments(mjmlContent)
+
 	// Pre-process HTML entities that XML parser doesn't handle
-	processedContent := preprocessHTMLEntities(mjmlContent)
+	processedContent = preprocessHTMLEntities(processedContent)
 
 	// Wrap mj-text inner content in CDATA to preserve raw HTML
 	processedContent = wrapMJTextContent(processedContent)
@@ -259,6 +272,160 @@ func isHexDigit(b byte) bool {
 func isEntityTerminator(c byte) bool {
 	return c == ';' || c == '&' || c == ' ' || c == '\n' || c == '\t' ||
 		c == '"' || c == '\'' || c == '<' || c == '>'
+}
+
+// stripNonMSOComments removes comments that appear before the <mjml> root node.
+// Comments inside the document are preserved so they can be rendered in the
+// output HTML. This mirrors the behaviour of the MRML reference implementation
+// which keeps user comments intact while ensuring the XML decoder starts at the
+// root element.
+func stripNonMSOComments(content string) string {
+	// Find <mjml case-insensitively without creating a copy of the entire content
+	idx := findMjmlTagIndex(content)
+	if idx == -1 {
+		return content
+	}
+
+	prefix := content[:idx]
+
+	// Fast check: if there are no comments in the prefix, just trim whitespace and return
+	// Use byte-level search to avoid string allocation
+	hasComments := false
+	for i := 0; i <= len(prefix)-4; i++ {
+		if prefix[i] == '<' && prefix[i+1] == '!' && prefix[i+2] == '-' && prefix[i+3] == '-' {
+			hasComments = true
+			break
+		}
+	}
+	if !hasComments {
+		prefix = trimLeftInPlace(prefix)
+		return prefix + content[idx:]
+	}
+
+	// Use strings.Builder for efficient string building instead of concatenation
+	var result strings.Builder
+	result.Grow(len(content)) // Pre-allocate to avoid repeated allocations
+
+	// Strip all HTML comments from the prefix to avoid parse errors when the
+	// XML decoder expects a start element.
+	writePos := 0
+	for {
+		start := strings.Index(prefix[writePos:], "<!--")
+		if start == -1 {
+			// No more comments, write remaining prefix
+			result.WriteString(prefix[writePos:])
+			break
+		}
+		start += writePos // Make relative to prefix start
+
+		// Write content before comment
+		result.WriteString(prefix[writePos:start])
+
+		// Find comment end
+		end := strings.Index(prefix[start+4:], "-->")
+		if end == -1 {
+			// Malformed comment; drop everything from start
+			break
+		}
+		end += start + 4 + 3 // Point after "-->"
+
+		// Skip the comment by updating write position
+		writePos = end
+	}
+
+	// Trim any leftover whitespace before the root element efficiently
+	// Write directly to avoid creating intermediate string
+	resultStr := result.String()
+	trimmed := trimLeftInPlace(resultStr)
+
+	return trimmed + content[idx:]
+}
+
+// trimLeftInPlace efficiently trims leading whitespace without allocating new strings
+func trimLeftInPlace(s string) string {
+	start := 0
+	for start < len(s) {
+		c := s[start]
+		if c != ' ' && c != '\t' && c != '\r' && c != '\n' {
+			break
+		}
+		start++
+	}
+	return s[start:]
+}
+
+// findMjmlTagIndex finds the index of "<mjml" case-insensitively without allocating
+func findMjmlTagIndex(content string) int {
+	needle := "<mjml"
+	for i := 0; i <= len(content)-len(needle); i++ {
+		match := true
+		for j := 0; j < len(needle); j++ {
+			c := content[i+j]
+			n := needle[j]
+			// Convert to lowercase for comparison
+			if c >= 'A' && c <= 'Z' {
+				c = c + 'a' - 'A'
+			}
+			if c != n {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
+}
+
+// writeNonWhitespace writes content to builder, trimming leading and trailing whitespace
+func writeNonWhitespace(builder *strings.Builder, content string) {
+	// Trim leading and trailing whitespace efficiently
+	start := 0
+	for start < len(content) {
+		c := content[start]
+		if c != ' ' && c != '\t' && c != '\r' && c != '\n' {
+			break
+		}
+		start++
+	}
+
+	end := len(content)
+	for end > start {
+		c := content[end-1]
+		if c != ' ' && c != '\t' && c != '\r' && c != '\n' {
+			break
+		}
+		end--
+	}
+
+	if start < end {
+		builder.WriteString(content[start:end])
+	}
+}
+
+// isMSOConditionalComment checks if a comment is an MSO conditional comment
+// that should be preserved for email client compatibility
+func isMSOConditionalComment(comment string) bool {
+	// MSO conditional comments patterns
+	msoPatterns := []string{
+		"<!--[if mso",
+		"<!--[if !mso",
+		"<!--[if lte mso",
+		"<!--[if gte mso",
+		"<!--[if lt mso",
+		"<!--[if gt mso",
+		"<![endif]-->",
+	}
+
+	commentLower := strings.ToLower(comment)
+	for _, pattern := range msoPatterns {
+		if strings.Contains(commentLower, pattern) {
+			return true
+		}
+	}
+
+	return false
 }
 
 const (
@@ -631,18 +798,22 @@ func (n *MJMLNode) GetTextContent() string {
 // GetMixedContent returns the full mixed content including HTML child elements
 // This reconstructs the original content like "Share <b>test</b> hi" from the AST
 func (n *MJMLNode) GetMixedContent() string {
-	debug.DebugLogWithData("parser", "mixed-content", "Processing mixed content", map[string]interface{}{
-		"tag_name":       n.XMLName.Local,
-		"plain_text":     n.Text,
-		"children_count": len(n.Children),
-		"has_children":   len(n.Children) > 0,
-	})
+	if debug.Enabled() {
+		debug.DebugLogWithData("parser", "mixed-content", "Processing mixed content", map[string]any{
+			"tag_name":       n.XMLName.Local,
+			"plain_text":     n.Text,
+			"children_count": len(n.Children),
+			"has_children":   len(n.Children) > 0,
+		})
+	}
 
 	if len(n.MixedContent) == 0 {
 		result := strings.TrimSpace(n.Text)
-		debug.DebugLogWithData("parser", "text-only", "Returning plain text content", map[string]interface{}{
-			"content": result,
-		})
+		if debug.Enabled() {
+			debug.DebugLogWithData("parser", "text-only", "Returning plain text content", map[string]any{
+				"content": result,
+			})
+		}
 		return result
 	}
 
@@ -681,11 +852,13 @@ func (n *MJMLNode) GetMixedContent() string {
 	}
 
 	finalResult := strings.TrimSpace(result.String())
-	debug.DebugLogWithData("parser", "mixed-complete", "Mixed content reconstructed", map[string]interface{}{
-		"original_text":     n.Text,
-		"final_content":     finalResult,
-		"children_rendered": len(n.Children),
-	})
+	if debug.Enabled() {
+		debug.DebugLogWithData("parser", "mixed-complete", "Mixed content reconstructed", map[string]any{
+			"original_text":     n.Text,
+			"final_content":     finalResult,
+			"children_rendered": len(n.Children),
+		})
+	}
 	return finalResult
 }
 
