@@ -1,0 +1,55 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - cyclop
+    - dupl
+    - gocritic
+    - nakedret
+    - nestif
+    - prealloc
+    - varnamelen
+  settings:
+    cyclop:
+      max-complexity: 10
+      package-average: 5
+    dupl:
+      threshold: 100
+    nestif:
+      min-complexity: 5
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+          mapstructure: camel
+        use-field-name: true
+    varnamelen:
+      max-distance: 10
+      min-name-length: 3
+      ignore-decls:
+        - c echo.Context
+        - t testing.T
+        - wg sync.WaitGroup
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - cyclop
+        path: (.+)_test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
