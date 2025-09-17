@@ -1005,9 +1005,11 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		htmlTag += ` lang="` + *langAttr + `"`
 	}
 
-	// Add dir attribute if present on mjml element
+	// Add dir attribute if present on mjml element, or auto if lang is set but dir is not
 	if dirAttr := c.GetAttribute("dir"); dirAttr != nil {
 		htmlTag += ` dir="` + *dirAttr + `"`
+	} else if langAttr := c.GetAttribute("lang"); langAttr != nil {
+		htmlTag += ` dir="auto"`
 	}
 
 	// Add standard xmlns attributes
