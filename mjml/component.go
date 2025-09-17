@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -108,8 +109,13 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 
 func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJMLComponent, error) {
 	// Extract lang attribute from root MJML element and store in opts
+	// Default to LangUndetermined if not specified - this is the proper fallback
+	// per emailmarkup.org accessibility guidelines: "It's not nearly as good as
+	// setting a language but it's much better than setting nothing"
 	if langAttr := node.GetAttribute("lang"); langAttr != "" {
 		opts.Lang = langAttr
+	} else {
+		opts.Lang = constants.LangUndetermined
 	}
 
 	comp := &MJMLComponent{

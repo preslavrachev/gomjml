@@ -25,4 +25,11 @@ const (
 	AttrXmlns  = "xmlns"
 	AttrXmlnsV = "xmlns:v"
 	AttrXmlnsO = "xmlns:o"
+
+	// Language and Direction constants
+	// LangUndetermined represents "undetermined" language code per RFC 3066/BCP 47
+	// Per emailmarkup.org: "It's not nearly as good as setting a language but
+	// it's much better than setting nothing"
+	LangUndetermined = "und"
+	DirAuto          = "auto"
 )
