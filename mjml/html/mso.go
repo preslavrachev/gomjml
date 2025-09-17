@@ -451,7 +451,26 @@ func RenderMSOWrapperTableClose(w io.StringWriter) error {
 // This generates the pattern: <!--[if mso | IE]></td></tr><tr><td width="600px"><![endif]-->
 // widthPx should typically be the body width (600 by default).
 func RenderMSOSectionTransition(w io.StringWriter, widthPx int, align string) error {
-	if _, err := w.WriteString("<!--[if mso | IE]></td></tr><tr><td"); err != nil {
+	return RenderMSOSectionTransitionWithContent(w, widthPx, align, nil)
+}
+
+// RenderMSOSectionTransitionWithContent renders an MSO section transition that can inject
+// additional content (e.g. mj-raw) inside the conditional comment before reopening the table row.
+//
+// It produces the sequence: <!--[if mso | IE]></td></tr>{content}<tr><td width="XXXpx"><![endif]-->
+// where {content} is rendered via the provided callback while the conditional comment is still open.
+func RenderMSOSectionTransitionWithContent(w io.StringWriter, widthPx int, align string, renderContent func(io.StringWriter) error) error {
+	if _, err := w.WriteString("<!--[if mso | IE]></td></tr>"); err != nil {
+		return err
+	}
+
+	if renderContent != nil {
+		if err := renderContent(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.WriteString("<tr><td"); err != nil {
 		return err
 	}
 	if align != "" {

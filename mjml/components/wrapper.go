@@ -299,17 +299,17 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	// Add MSO section transitions between section children (like MRML does)
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), ""); err != nil {
-				return err
-			}
-			if err := child.Render(w); err != nil {
+			// Inject raw content inside the MSO transition block so Outlook maintains table structure
+			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), "", func(sw io.StringWriter) error {
+				return child.Render(sw)
+			}); err != nil {
 				return err
 			}
 			continue
 		}
 
 		// Add MSO section transition between successive sections
-		if i > 0 && child.GetTagName() == "mj-section" {
+		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
 			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
 				return err
 			}
@@ -506,17 +506,16 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Add MSO section transitions between section children (like MRML does)
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), ""); err != nil {
-				return err
-			}
-			if err := child.Render(w); err != nil {
+			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), "", func(sw io.StringWriter) error {
+				return child.Render(sw)
+			}); err != nil {
 				return err
 			}
 			continue
 		}
 
 		// Add MSO section transition between sections (but not before the first section)
-		if i > 0 && child.GetTagName() == "mj-section" {
+		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
 			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
 				return err
 			}
