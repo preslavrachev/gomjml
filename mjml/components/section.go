@@ -90,6 +90,9 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 		// Write VML opening if we have background image (inside full-width outer table TD)
 		if hasBackgroundImage {
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
 			// Parse background position
 			posX, posY := parseBackgroundPosition(backgroundPosition)
 			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
@@ -636,7 +639,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if fullWidth != "" {
 		// Close VML first if present, then outer table
 		if hasBackgroundImage {
-			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect>"); err != nil {
+			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect><![endif]-->"); err != nil {
 				return err
 			}
 		}
