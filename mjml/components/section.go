@@ -540,7 +540,26 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				msoTd.AddAttribute(constants.AttrClass, cssClass+"-outlook")
 			}
 
-			if err := html.RenderMSOTableTrOpenConditional(w, msoTable, msoTr, msoTd); err != nil {
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := msoTable.RenderOpen(w); err != nil {
+				return err
+			}
+			if err := msoTr.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
+				return err
+			}
+
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := msoTd.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
 				return err
 			}
 
@@ -549,7 +568,19 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				return err
 			}
 
-			if err := html.RenderMSOTableCloseConditional(w, msoTd, msoTable); err != nil {
+			if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := msoTr.RenderClose(w); err != nil {
+				return err
+			}
+			if err := msoTable.RenderClose(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
 				return err
 			}
 
