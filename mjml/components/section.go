@@ -451,12 +451,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if err := sharedMsoTr.RenderOpen(w); err != nil {
 			return err
 		}
-		// Don't close MSO conditional here - let first column TD continue the block
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	// Render child columns and groups (section provides shared MSO TR, columns provide MSO TDs)
 	// AIDEV-NOTE: width-flow-start; section initiates width flow by passing effective width to columns
-	columnIndex := 0
 	for _, child := range c.Children {
 		if child.IsRawElement() {
 			if err := child.Render(w); err != nil {
@@ -488,27 +489,25 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
 			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
 
-			if columnIndex == 0 {
-				// First column: continue the MSO conditional from table+tr
-				if err := msoTd.RenderOpen(w); err != nil {
-					return err
-				}
-				if _, err := w.WriteString("<![endif]-->"); err != nil {
-					return err
-				}
-			} else {
-				// Subsequent columns: close previous TD and open new TD in one MSO block (MJML pattern)
-				if _, err := w.WriteString("<!--[if mso | IE]></td>"); err != nil {
-					return err
-				}
-				if err := msoTd.RenderOpen(w); err != nil {
-					return err
-				}
-				if _, err := w.WriteString("<![endif]-->"); err != nil {
-					return err
-				}
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
 			}
-			columnIndex++
+			if err := msoTd.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
+				return err
+			}
+
+			if err := columnComp.Render(w); err != nil {
+				return err
+			}
+
+			if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+				return err
+			}
+
+			continue
 		} else if groupComp, ok := child.(*MJGroupComponent); ok {
 			// Groups need their own MSO table wrappers
 			groupComp.SetContainerWidth(c.GetEffectiveWidth())
@@ -565,7 +564,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Close shared MSO table structure for columns
 	if hasColumns {
-		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+		if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
 			return err
 		}
 	}
