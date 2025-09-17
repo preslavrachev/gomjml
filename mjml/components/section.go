@@ -412,10 +412,35 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		}
 	} else if !hasChildContent && !hasTextContent {
-		// Empty section: always use simple pattern for truly empty sections
-		// MJML uses simple pattern for completely empty sections, even inside wrappers
-		// Only sections with whitespace content use the split pattern
-		if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr></tr></table><![endif]-->"); err != nil {
+		// Empty section: Outlook still expects the split conditional wrapper so
+		// that open/close comments remain balanced with other section variants.
+		// Reuse the same table/tr structure that text-only sections render.
+		innerMsoTable := html.NewTableTag()
+		innerMsoTr := html.NewHTMLTag("tr")
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderOpen(w); err != nil {
+			return err
+		}
+		if err := innerMsoTr.RenderOpen(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := innerMsoTr.RenderClose(w); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderClose(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
 			return err
 		}
 	}
