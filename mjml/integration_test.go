@@ -55,8 +55,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"wrapper-fullwidth",
 		"wrapper-border",
 		"group-footer-test",
-		// "section-bg-vml-color",
-		// "section-fullwidth-background-image",
+		"section-bg-vml-color",
+		"section-fullwidth-background-image",
 		// "section-fullwidth-bg-transparent",
 		// "section-padding-top-zero",
 		// //"austin-layout-from-mjml-io", // Commented out
