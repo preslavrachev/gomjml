@@ -2,12 +2,9 @@ package components
 
 import (
 	"html"
-	"regexp"
 	"strconv"
 	"strings"
 )
-
-var percentRe = regexp.MustCompile(`^([0-9]+(?:\.[0-9]+)?)%$`)
 
 // parseBackgroundPosition converts CSS keywords/percent/length into canonical (xKeyword, yKeyword)
 func parseBackgroundPosition(raw string) (string, string) {

@@ -90,6 +90,9 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 		// Write VML opening if we have background image (inside full-width outer table TD)
 		if hasBackgroundImage {
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
 			// Parse background position
 			posX, posY := parseBackgroundPosition(backgroundPosition)
 			posX, posY = overridePosition(posX, posY, backgroundPositionX, backgroundPositionY)
@@ -409,10 +412,35 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		}
 	} else if !hasChildContent && !hasTextContent {
-		// Empty section: always use simple pattern for truly empty sections
-		// MJML uses simple pattern for completely empty sections, even inside wrappers
-		// Only sections with whitespace content use the split pattern
-		if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr></tr></table><![endif]-->"); err != nil {
+		// Empty section: Outlook still expects the split conditional wrapper so
+		// that open/close comments remain balanced with other section variants.
+		// Reuse the same table/tr structure that text-only sections render.
+		innerMsoTable := html.NewTableTag()
+		innerMsoTr := html.NewHTMLTag("tr")
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderOpen(w); err != nil {
+			return err
+		}
+		if err := innerMsoTr.RenderOpen(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := innerMsoTr.RenderClose(w); err != nil {
+			return err
+		}
+		if err := innerMsoTable.RenderClose(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
 			return err
 		}
 	}
@@ -426,19 +454,20 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Check if we have columns that need shared MSO table structure
-	hasColumns := false
+	// Check if we have column children that require MSO TD wrappers
+	hasColumnChildren := false
 	for _, child := range c.Children {
-		if !child.IsRawElement() {
-			if _, ok := child.(*MJColumnComponent); ok {
-				hasColumns = true
-				break
-			}
+		if _, ok := child.(*MJColumnComponent); ok {
+			hasColumnChildren = true
+			break
 		}
 	}
 
-	// Open shared MSO table structure for all columns
-	if hasColumns {
+	// Outlook expects a shared table wrapper even when a section only contains mj-raw blocks.
+	// Match MRML by opening the wrapper when we have column children or any raw children.
+	needsSharedMSOTable := hasColumnChildren || rawSiblings > 0
+
+	if needsSharedMSOTable {
 		sharedMsoTable := html.NewTableTag()
 		sharedMsoTr := html.NewHTMLTag("tr")
 
@@ -451,12 +480,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if err := sharedMsoTr.RenderOpen(w); err != nil {
 			return err
 		}
-		// Don't close MSO conditional here - let first column TD continue the block
+		if _, err := w.WriteString("<![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	// Render child columns and groups (section provides shared MSO TR, columns provide MSO TDs)
 	// AIDEV-NOTE: width-flow-start; section initiates width flow by passing effective width to columns
-	columnIndex := 0
 	for _, child := range c.Children {
 		if child.IsRawElement() {
 			if err := child.Render(w); err != nil {
@@ -488,27 +518,25 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
 			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
 
-			if columnIndex == 0 {
-				// First column: continue the MSO conditional from table+tr
-				if err := msoTd.RenderOpen(w); err != nil {
-					return err
-				}
-				if _, err := w.WriteString("<![endif]-->"); err != nil {
-					return err
-				}
-			} else {
-				// Subsequent columns: close previous TD and open new TD in one MSO block (MJML pattern)
-				if _, err := w.WriteString("<!--[if mso | IE]></td>"); err != nil {
-					return err
-				}
-				if err := msoTd.RenderOpen(w); err != nil {
-					return err
-				}
-				if _, err := w.WriteString("<![endif]-->"); err != nil {
-					return err
-				}
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
 			}
-			columnIndex++
+			if err := msoTd.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
+				return err
+			}
+
+			if err := columnComp.Render(w); err != nil {
+				return err
+			}
+
+			if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+				return err
+			}
+
+			continue
 		} else if groupComp, ok := child.(*MJGroupComponent); ok {
 			// Groups need their own MSO table wrappers
 			groupComp.SetContainerWidth(c.GetEffectiveWidth())
@@ -541,7 +569,26 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				msoTd.AddAttribute(constants.AttrClass, cssClass+"-outlook")
 			}
 
-			if err := html.RenderMSOTableTrOpenConditional(w, msoTable, msoTr, msoTd); err != nil {
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := msoTable.RenderOpen(w); err != nil {
+				return err
+			}
+			if err := msoTr.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
+				return err
+			}
+
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := msoTd.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
 				return err
 			}
 
@@ -550,7 +597,19 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				return err
 			}
 
-			if err := html.RenderMSOTableCloseConditional(w, msoTd, msoTable); err != nil {
+			if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := msoTr.RenderClose(w); err != nil {
+				return err
+			}
+			if err := msoTable.RenderClose(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
 				return err
 			}
 
@@ -564,8 +623,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close shared MSO table structure for columns
-	if hasColumns {
-		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+	if needsSharedMSOTable {
+		if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
 			return err
 		}
 	}
@@ -606,7 +665,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if fullWidth != "" {
 		// Close VML first if present, then outer table
 		if hasBackgroundImage {
-			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect>"); err != nil {
+			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect><![endif]-->"); err != nil {
 				return err
 			}
 		}

@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -54,10 +55,12 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	borderColor := c.getAttribute("border-color")
 	borderStyle := c.getAttribute("border-style")
 	borderWidth := c.getAttribute("border-width")
-	align := c.getAttribute(constants.MJMLAlign)
+	align := strings.ToLower(strings.TrimSpace(c.getAttribute(constants.MJMLAlign)))
+	if align == "" {
+		align = constants.AlignCenter
+	}
 
-	// Margin is always centered - alignment handled on the TD element
-	margin := "0px auto"
+	margin := c.marginForAlign(align)
 
 	// Create TR element
 	if _, err := w.WriteString("<tr>"); err != nil {
@@ -160,7 +163,13 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	}
 
 	// Build MSO table directly to writer to avoid fmt.Sprintf allocation
-	if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="`); err != nil {
+	if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(align); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`" width="`); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
@@ -184,7 +193,13 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	if _, err := w.WriteString(borderColor); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`;font-size:1px;margin:0px auto;width:`); err != nil {
+	if _, err := w.WriteString(`;font-size:1px;margin:`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(margin); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`;width:`); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
@@ -248,4 +263,15 @@ func (c *MJDividerComponent) parseDividerPaddingLeftRight(padding string) (left,
 	}
 
 	return 0, 0
+}
+
+func (c *MJDividerComponent) marginForAlign(align string) string {
+	switch align {
+	case constants.AlignLeft:
+		return "0px"
+	case constants.AlignRight:
+		return "0px 0px 0px auto"
+	default:
+		return "0px auto"
+	}
 }

@@ -9,6 +9,7 @@ linters:
     - nakedret
     - nestif
     - prealloc
+    - unused
     - varnamelen
   settings:
     cyclop:
@@ -16,6 +17,12 @@ linters:
       package-average: 5
     dupl:
       threshold: 100
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - badRegexp
+        - regexpMust
+        - regexpSimplify
     nestif:
       min-complexity: 5
     tagliatelle:

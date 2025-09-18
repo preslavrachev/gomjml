@@ -2,6 +2,7 @@ package components
 
 import (
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
@@ -16,6 +17,8 @@ import (
 type MJTextComponent struct {
 	*BaseComponent
 }
+
+var unclosedVoidTagPattern = regexp.MustCompile(`(?i)<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b([^>]*)>`)
 
 // NewMJTextComponent creates a new mj-text component
 func NewMJTextComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTextComponent {
@@ -134,8 +137,15 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	if err := divTag.RenderOpen(w); err != nil {
 		return err
 	}
-	if err := c.writeRawInnerHTML(w); err != nil {
+	innerHTML, err := c.buildRawInnerHTML()
+	if err != nil {
 		return err
+	}
+	if innerHTML != "" {
+		normalized := ensureVoidHTMLTagsSelfClosed(innerHTML)
+		if _, err := w.WriteString(normalized); err != nil {
+			return err
+		}
 	}
 	if err := divTag.RenderClose(w); err != nil {
 		return err
@@ -172,12 +182,25 @@ func (c *MJTextComponent) GetDefaultAttribute(name string) string {
 // writeRawInnerHTML writes the original inner HTML content of the mj-text element to the writer
 // This is needed because our parser splits content, but mj-text needs to preserve HTML
 func (c *MJTextComponent) writeRawInnerHTML(w io.StringWriter) error {
-	// If we have mixed content, write parts in their original order
+	innerHTML, err := c.buildRawInnerHTML()
+	if err != nil {
+		return err
+	}
+	if innerHTML == "" {
+		return nil
+	}
+	_, err = w.WriteString(innerHTML)
+	return err
+}
+
+func (c *MJTextComponent) buildRawInnerHTML() (string, error) {
+	// If we have mixed content, reconstruct it preserving original order
 	if len(c.Node.MixedContent) > 0 {
+		var builder strings.Builder
 		for i, part := range c.Node.MixedContent {
 			if part.Node != nil {
-				if err := c.reconstructHTMLElement(part.Node, w); err != nil {
-					return err
+				if err := c.reconstructHTMLElement(part.Node, &builder); err != nil {
+					return "", err
 				}
 				continue
 			}
@@ -190,17 +213,14 @@ func (c *MJTextComponent) writeRawInnerHTML(w io.StringWriter) error {
 				text = strings.TrimRight(text, " \n\r\t")
 			}
 			if text != "" {
-				if _, err := w.WriteString(c.restoreHTMLEntities(text)); err != nil {
-					return err
-				}
+				builder.WriteString(c.restoreHTMLEntities(text))
 			}
 		}
-		return nil
+		return builder.String(), nil
 	}
 
-	// Fallback: no mixed content, write trimmed text
-	_, err := w.WriteString(c.restoreHTMLEntities(strings.TrimSpace(c.Node.Text)))
-	return err
+	// Fallback: no mixed content, use trimmed text content
+	return c.restoreHTMLEntities(strings.TrimSpace(c.Node.Text)), nil
 }
 
 // restoreHTMLEntities converts Unicode characters back to HTML entities for proper output
@@ -208,6 +228,35 @@ func (c *MJTextComponent) restoreHTMLEntities(text string) string {
 	// Convert Unicode non-breaking space back to HTML entity
 	result := strings.ReplaceAll(text, "\u00A0", "&#xA0;")
 	return result
+}
+
+func ensureVoidHTMLTagsSelfClosed(html string) string {
+	if html == "" {
+		return html
+	}
+
+	return unclosedVoidTagPattern.ReplaceAllStringFunc(html, func(tag string) string {
+		if hasTrailingSelfClosingSlash(tag) {
+			return tag
+		}
+
+		base := strings.TrimRight(tag[:len(tag)-1], " \n\r\t")
+		return base + " />"
+	})
+}
+
+func hasTrailingSelfClosingSlash(tag string) bool {
+	for i := len(tag) - 1; i >= 0; i-- {
+		switch tag[i] {
+		case '>':
+			continue
+		case ' ', '\n', '\r', '\t':
+			continue
+		default:
+			return tag[i] == '/'
+		}
+	}
+	return false
 }
 
 // reconstructHTMLElement reconstructs an HTML element from a parsed node

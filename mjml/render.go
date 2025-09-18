@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
+	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
 	"github.com/preslavrachev/gomjml/mjml/globals"
@@ -1000,14 +1001,22 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// DOCTYPE and HTML opening - include attributes from MJML root element
 	htmlTag := `<!doctype html><html`
 
-	// Add lang attribute if present on mjml element
+	// Add lang attribute - use explicit lang or default to LangUndetermined
+	// Per emailmarkup.org accessibility guidelines: "It's not nearly as good as
+	// setting a language but it's much better than setting nothing"
+	var langValue string
 	if langAttr := c.GetAttribute("lang"); langAttr != nil {
-		htmlTag += ` lang="` + *langAttr + `"`
+		langValue = *langAttr
+	} else {
+		langValue = constants.LangUndetermined
 	}
+	htmlTag += ` lang="` + langValue + `"`
 
-	// Add dir attribute if present on mjml element
+	// Add dir attribute - use explicit dir or default to DirAuto
 	if dirAttr := c.GetAttribute("dir"); dirAttr != nil {
 		htmlTag += ` dir="` + *dirAttr + `"`
+	} else {
+		htmlTag += ` dir="` + constants.DirAuto + `"`
 	}
 
 	// Add standard xmlns attributes

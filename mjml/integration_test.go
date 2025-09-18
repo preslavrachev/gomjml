@@ -267,6 +267,18 @@ func TestMJMLAgainstExpected(t *testing.T) {
 			}
 			expected := string(expectedContent)
 
+			// FAIL LOUD AND CLEAR: Check for empty expected HTML file
+			if len(strings.TrimSpace(expected)) == 0 {
+				t.Fatalf("❌ EMPTY EXPECTED HTML FILE: %s\n"+
+					"🚨 The expected HTML file is completely empty! This indicates:\n"+
+					"   - Missing reference implementation output\n"+
+					"   - Failed HTML generation during test setup\n"+
+					"   - Incomplete test case preparation\n"+
+					"📝 Action required: Generate valid expected HTML content for this test case\n"+
+					"💡 Hint: Use the reference MJML implementation to generate expected output",
+					expectedFile)
+			}
+
 			// Get actual output from Go implementation (direct library usage)
 			actual, err := Render(string(mjmlContent))
 			if err != nil {

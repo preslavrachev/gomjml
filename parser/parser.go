@@ -378,32 +378,6 @@ func findMjmlTagIndex(content string) int {
 	return -1
 }
 
-// writeNonWhitespace writes content to builder, trimming leading and trailing whitespace
-func writeNonWhitespace(builder *strings.Builder, content string) {
-	// Trim leading and trailing whitespace efficiently
-	start := 0
-	for start < len(content) {
-		c := content[start]
-		if c != ' ' && c != '\t' && c != '\r' && c != '\n' {
-			break
-		}
-		start++
-	}
-
-	end := len(content)
-	for end > start {
-		c := content[end-1]
-		if c != ' ' && c != '\t' && c != '\r' && c != '\n' {
-			break
-		}
-		end--
-	}
-
-	if start < end {
-		builder.WriteString(content[start:end])
-	}
-}
-
 // isMSOConditionalComment checks if a comment is an MSO conditional comment
 // that should be preserved for email client compatibility
 func isMSOConditionalComment(comment string) bool {

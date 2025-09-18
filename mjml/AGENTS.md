@@ -1,0 +1,11 @@
+# Integration Testing Against Reference Implementation
+
+The `TestMJMLAgainstExpected` function is an integration test designed to validate the output of the Go MJML compiler against a set of reference HTML files. It systematically checks that the HTML generated from MJML templates matches the expected output, ensuring the implementation adheres to the MJML specification and maintains compatibility with email clients.
+
+At the start of the test, counters for components like the navbar and carousel are reset to ensure deterministic output—this is important because some components generate unique IDs, and resetting ensures test reproducibility. The test cases are defined as a list of strings, each corresponding to a specific MJML template and its expected HTML output. Many test cases are included, covering a wide range of MJML features and edge cases, while some are commented out, likely due to incomplete support or known issues.
+
+For each test case, the function reads the MJML input file and its corresponding expected HTML file. If the expected HTML file is empty, the test fails immediately with a clear error message, prompting the developer to generate the correct reference output. The MJML template is then rendered using the Go implementation, and the resulting HTML is compared to the expected output.
+
+The comparison is comprehensive: it checks for differences in MSO (Microsoft Outlook) table attributes and conditional comments, which are critical for email compatibility but not always reflected in the DOM. If the DOM trees do not match, the test further analyzes differences in HTML entity encoding, VML (Vector Markup Language) attributes, background CSS properties, and overall DOM structure. It also performs a detailed style comparison, reporting any discrepancies in inline styles with precise element identification.
+
+Finally, the test checks for differences in self-closing tag serialization, which can affect how some email clients interpret the HTML. If any differences are found, debug files are written for further analysis, and a detailed error report is generated. This thorough approach ensures that the Go MJML compiler produces output that is not only structurally correct but also visually and functionally consistent across email clients.
