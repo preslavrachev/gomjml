@@ -1,7 +1,16 @@
 # gomjml - Native Go MJML Compiler
 
 ## Project Overview
-A native Go implementation of the MJML email framework for compiling MJML markup to responsive HTML. 100% feature-complete with all 26 MJML components implemented and tested against MRML (Rust MJML implementation).
+A native Go implementation of the MJML email framework for compiling MJML markup to responsive HTML. 100% feature-complete with all 26 MJML components implemented and thoroughly tested against reference implementation.
+
+## Current Development Status
+**Branch**: `dev/switch-from-mrml-to-mjml` - Transitioning from MRML-based testing to native reference implementation
+
+The project is currently transitioning away from using MRML (Rust MJML implementation) as the reference for testing and validation. This shift enables:
+- **Independence**: No external dependencies for testing and validation
+- **Native Control**: Full control over reference implementation and test generation
+- **Performance**: Improved development workflow without external tool dependencies
+- **Consistency**: Direct alignment with MJML specification rather than third-party interpretation
 
 ## Key Architecture
 - **CLI Application**: `cmd/gomjml/` with compile and test commands
@@ -15,9 +24,9 @@ A native Go implementation of the MJML email framework for compiling MJML markup
 go build -tags debug -o bin/gomjml ./cmd/gomjml
 
 # Build production version (no debug output)
-go build -o bin/gomjml-prod ./cmd/gomjml
+go build -o bin/gomjml ./cmd/gomjml
 
-# Run integration tests (against MRML reference)
+# Run integration tests (against reference implementation)
 ./bin/gomjml test
 
 # Run tests with verbose output
@@ -27,7 +36,7 @@ go build -o bin/gomjml-prod ./cmd/gomjml
 ./bin/gomjml test -pattern "basic"
 
 # Run integration tests with debug build for detailed output
-go test -tags debug -v ./mjml -run TestMJMLAgainstMRML
+go test -tags debug -v ./mjml -run TestMJMLAgainstExpected
 
 # Run benchmarks
 ./bench.sh
@@ -39,12 +48,12 @@ go build -o bin/htmlcompare ./cmd/htmlcompare
 # Option 1: Run from mjml/testdata/ (auto-detects location):
 cd mjml/testdata
 ../../bin/htmlcompare basic                    # Compare basic.mjml vs basic.html
-../../bin/htmlcompare basic --keep-files       # Keep temporary files for inspection
+../../bin/htmlcompare basic --verbose          # Show more diff context
 
 # Option 2: Run from project root (specify testdata directory):
 ./bin/htmlcompare basic --testdata-dir mjml/testdata         # Compare from root
 ./bin/htmlcompare mj-button-align --testdata-dir mjml/testdata
-./bin/htmlcompare basic -k -v --testdata-dir mjml/testdata   # Keep files + verbose
+./bin/htmlcompare basic -v --testdata-dir mjml/testdata      # Verbose output
 
 # The utility auto-detects project root, builds debug gomjml, and performs semantic HTML comparison
 
@@ -63,7 +72,7 @@ cd mjml/testdata
 ### Component Interface & Architecture
 - **Component Interface**: All components implement `Render(w io.StringWriter) error` and `GetTagName() string`
 - **Base Component**: Extend `*BaseComponent` which provides common functionality and attribute handling
-- **Testing**: Integration tests validate against MRML (Rust) reference implementation
+- **Testing**: Integration tests validate against reference implementation
 - **Performance Focus**: Recent commits show memory optimizations and performance improvements
 - **Email Compatibility**: Generates MSO-compatible HTML for Outlook/Gmail/Apple Mail
 
@@ -77,6 +86,8 @@ cd mjml/testdata
   - HTML attributes: `constants.AttrClass`, `constants.AttrCellSpacing`, etc.
   - MJML attributes: `constants.MJMLFontFamily`, `constants.MJMLPadding`, etc.
   - Common values: `constants.VAlignMiddle`, `constants.AlignCenter`, etc.
+  - Language/Direction: `constants.LangUndetermined`, `constants.DirAuto`, etc.
+  - **🚨 Code Review Check**: Always look for magic strings that should be constants!
 
 #### Code Structure
 - **Font Tracking**: Always call `c.TrackFontFamily(value)` when processing font-family attributes
@@ -180,11 +191,23 @@ defer mjml.StopASTCacheCleanup()
 - **Expiration**: Fixed TTL with background cleanup (no LRU complexity)
 
 ## Recent Development Focus
-- **AST Caching System**: Opt-in performance feature with 100-1000x speedup potential
-- **Component Additions**: mj-hero, mj-navbar, mj-spacer, and mj-table components now implemented
-- **Full Accordion Support**: Complete implementation of mj-accordion, mj-accordion-element, mj-accordion-text, mj-accordion-title
-- **mj-table Implementation**: Email-safe table component with proper border handling and styling support
-- Memory optimizations and performance improvements
-- Component-based font detection (replaced regex)
-- mj-social component compliance 
-- CLI cleanup and README updates
+- **MSO Compatibility Improvements**: Enhanced Outlook rendering with better conditional comments and section transitions
+- **Test Stabilization**: Systematic testing and validation of components against reference implementation
+- **Transition from MRML**: Moving away from MRML dependencies towards native reference implementation
+- **Component Refinements**: Fine-tuning existing components for better email client compatibility
+- **Testing Infrastructure**: Improved htmlcompare utility and test validation processes
+
+## Additional Documentation Sources
+
+### AGENTS.md Files
+When working on this project, always search for `AGENTS.md` files that may contain valuable context:
+- Check project root: `./AGENTS.md`
+- Search nested folders: `find . -name "AGENTS*.md" -type f`
+- Use glob patterns: `**/*AGENTS*.md`
+
+These files often contain:
+- Project documentation and reference information
+- Test case documentation and validation procedures
+- Implementation decisions and rationale
+- Development guidelines and conventions
+- Component-specific implementation notes
