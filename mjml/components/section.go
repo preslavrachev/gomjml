@@ -454,19 +454,20 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Check if we have columns that need shared MSO table structure
-	hasColumns := false
+	// Check if we have column children that require MSO TD wrappers
+	hasColumnChildren := false
 	for _, child := range c.Children {
-		if !child.IsRawElement() {
-			if _, ok := child.(*MJColumnComponent); ok {
-				hasColumns = true
-				break
-			}
+		if _, ok := child.(*MJColumnComponent); ok {
+			hasColumnChildren = true
+			break
 		}
 	}
 
-	// Open shared MSO table structure for all columns
-	if hasColumns {
+	// Outlook expects a shared table wrapper even when a section only contains mj-raw blocks.
+	// Match MRML by opening the wrapper when we have column children or any raw children.
+	needsSharedMSOTable := hasColumnChildren || rawSiblings > 0
+
+	if needsSharedMSOTable {
 		sharedMsoTable := html.NewTableTag()
 		sharedMsoTr := html.NewHTMLTag("tr")
 
@@ -622,7 +623,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close shared MSO table structure for columns
-	if hasColumns {
+	if needsSharedMSOTable {
 		if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
 			return err
 		}

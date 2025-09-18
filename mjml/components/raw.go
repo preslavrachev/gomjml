@@ -2,6 +2,7 @@ package components
 
 import (
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
@@ -15,6 +16,11 @@ type MJRawComponent struct {
 	// Content stores the original inner HTML captured during parsing
 	Content string
 }
+
+var (
+	conditionalCommentGapAfter  = regexp.MustCompile(`(-->)\s+(<)`)
+	conditionalCommentGapBefore = regexp.MustCompile(`(>)\s+(<!--)`)
+)
 
 // NewMJRawComponent creates a new mj-raw component
 func NewMJRawComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJRawComponent {
@@ -35,7 +41,13 @@ func (c *MJRawComponent) GetDefaultAttribute(name string) string { return "" }
 
 // Render writes the original content trimmed of leading/trailing whitespace
 func (c *MJRawComponent) Render(w io.StringWriter) error {
-	if _, err := w.WriteString(strings.TrimSpace(c.Content)); err != nil {
+	content := strings.TrimSpace(c.Content)
+	if strings.Contains(content, "<!--") {
+		content = conditionalCommentGapAfter.ReplaceAllString(content, "${1}${2}")
+		content = conditionalCommentGapBefore.ReplaceAllString(content, "${1}${2}")
+	}
+
+	if _, err := w.WriteString(content); err != nil {
 		return err
 	}
 	return nil
