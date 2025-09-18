@@ -326,22 +326,6 @@ func (c *MJCarouselComponent) getCarouselImages() []*MJCarouselImageComponent {
 	return images
 }
 
-// renderCarouselCSS renders the CSS required for carousel functionality directly to the writer
-func (c *MJCarouselComponent) renderCarouselCSS(w io.StringWriter, carouselID string, imageCount int) error {
-	// Write the CSS directly to the output as a style tag
-	if _, err := w.WriteString("<style type=\"text/css\">\n"); err != nil {
-		return err
-	}
-	if _, err := w.WriteString(c.buildCarouselCSS(carouselID, imageCount)); err != nil {
-		return err
-	}
-	if _, err := w.WriteString("</style>\n"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // renderCarouselContent renders the main carousel HTML content
 func (c *MJCarouselComponent) renderCarouselContent(w io.StringWriter, carouselID string, carouselImages []*MJCarouselImageComponent) error {
 	leftIcon := c.GetAttributeWithDefault(c, "left-icon")
