@@ -20,6 +20,7 @@ type MJRawComponent struct {
 var (
 	conditionalCommentGapAfter  = regexp.MustCompile(`(-->)\s+(<)`)
 	conditionalCommentGapBefore = regexp.MustCompile(`(>)\s+(<!--)`)
+	interTagWhitespace          = regexp.MustCompile(`>(\s+)<`)
 )
 
 // NewMJRawComponent creates a new mj-raw component
@@ -46,6 +47,8 @@ func (c *MJRawComponent) Render(w io.StringWriter) error {
 		content = conditionalCommentGapAfter.ReplaceAllString(content, "${1}${2}")
 		content = conditionalCommentGapBefore.ReplaceAllString(content, "${1}${2}")
 	}
+
+	content = interTagWhitespace.ReplaceAllString(content, "><")
 
 	if _, err := w.WriteString(content); err != nil {
 		return err
