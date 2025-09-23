@@ -43,10 +43,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 	testCases := []string{
 		// "mjml", -- MJML Badly fromatted, must return an error instead
 		"mj-body",
-		// "mj-body-background-color",
-		// "mj-body-class",
-		// "mj-body-width",
-		// "basic",
+		"mj-body-background-color",
+		"mj-body-class",
+		"mj-body-width",
+		//"basic",
 		// "comment",
 		// "with-head",
 		// "complex-layout",
