@@ -741,8 +741,11 @@ func (c *MJMLComponent) generateCustomStyles() string {
 		}
 	}
 
-	// Always generate the style tag (MRML always includes this, even if empty)
-	return fmt.Sprintf(`<style type="text/css">%s</style>`, content.String())
+	// Only generate the style tag if there's content (MJML JS behavior)
+	if content.Len() > 0 {
+		return fmt.Sprintf(`<style type="text/css">%s</style>`, content.String())
+	}
+	return ""
 }
 
 // generateAccordionCSS generates the CSS styles needed for accordion functionality
@@ -1010,17 +1013,17 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	} else {
 		langValue = constants.LangUndetermined
 	}
-	htmlTag += ` lang="` + langValue + `"`
+	htmlTag += ` lang=` + langValue
 
 	// Add dir attribute - use explicit dir or default to DirAuto
 	if dirAttr := c.GetAttribute("dir"); dirAttr != nil {
-		htmlTag += ` dir="` + *dirAttr + `"`
+		htmlTag += ` dir=` + *dirAttr
 	} else {
-		htmlTag += ` dir="` + constants.DirAuto + `"`
+		htmlTag += ` dir=` + constants.DirAuto
 	}
 
 	// Add standard xmlns attributes
-	htmlTag += ` xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`
+	htmlTag += ` xmlns=http://www.w3.org/1999/xhtml xmlns:v=urn:schemas-microsoft-com:vml xmlns:o=urn:schemas-microsoft-com:office:office>`
 
 	if _, err := w.WriteString(htmlTag); err != nil {
 		return err
@@ -1053,27 +1056,23 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	if _, err := w.WriteString(`<head><title>` + title + `</title>`); err != nil {
+	if _, err := w.WriteString(`<title>` + title + `</title>`); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`); err != nil {
+	if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv=X-UA-Compatible content="IE=edge"><!--<![endif]-->`); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`); err != nil {
+	if _, err := w.WriteString(`<meta http-equiv=Content-Type content="text/html; charset=UTF-8">`); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`); err != nil {
+	if _, err := w.WriteString(`<meta name=viewport content="width=device-width,initial-scale=1">`); err != nil {
 		return err
 	}
 
 	// Base CSS
-	baseCSSText := "\n<style type=\"text/css\">\n" +
-		"#outlook a { padding: 0; }\n" +
-		"body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }\n" +
-		"table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }\n" +
-		"img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }\n" +
-		"p { display: block; margin: 13px 0; }\n" +
-		"</style>\n"
+	baseCSSText := "<style>" +
+		"#outlook a{padding:0}body{margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt}img{border:0;height:auto;line-height:100%;outline:0;text-decoration:none;-ms-interpolation-mode:bicubic}p{display:block;margin:13px 0}" +
+		"</style>"
 	if _, err := w.WriteString(baseCSSText); err != nil {
 		return err
 	}
@@ -1237,10 +1236,6 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	if _, err := w.WriteString(`</head>`); err != nil {
-		return err
-	}
-
 	// Body with background-color support (matching MRML's get_body_tag)
 	var bodyStyles []string
 
@@ -1257,7 +1252,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	bodyTag := `<body>`
 	if len(bodyStyles) > 0 {
-		bodyTag = `<body style="` + strings.Join(bodyStyles, ";") + `;">`
+		bodyTag = `<body style=` + strings.Join(bodyStyles, ";") + `>`
 	}
 	if _, err := w.WriteString(bodyTag); err != nil {
 		return err

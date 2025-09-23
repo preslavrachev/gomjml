@@ -75,13 +75,13 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	if langAttr != "" {
-		if _, err := w.WriteString(` lang="`); err != nil {
+		if _, err := w.WriteString(` lang=`); err != nil {
 			return err
 		}
 		if _, err := w.WriteString(langAttr); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(`" dir="auto"`); err != nil {
+		if _, err := w.WriteString(` dir=auto`); err != nil {
 			return err
 		}
 	}
