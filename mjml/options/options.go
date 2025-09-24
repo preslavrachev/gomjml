@@ -48,4 +48,5 @@ type RenderOpts struct {
 	FontTracker   *FontTracker // Tracks fonts used during rendering
 	UseCache      bool         // Whether to enable AST caching
 	Lang          string       // Language attribute from root MJML element
+	UseMJMLSyntax bool         // Whether to emit MJML-style head/body markup (vs MRML-compatible output)
 }

@@ -140,21 +140,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		alignAttr = "center" // default align for MSO table
 	}
 
-	msoTable := html.NewTableTag()
-
-	// Add bgcolor before align/width to match MRML attribute order
-	if backgroundColor != "" {
-		msoTable.AddAttribute("bgcolor", backgroundColor)
-	}
-
-	msoTable.AddAttribute("align", alignAttr).
-		AddAttribute("width", strconv.Itoa(msoTableWidth)).
-		AddStyle("width", getPixelWidthString(msoTableWidth))
-
-	// Add css-class-outlook if present
-	if cssClass := c.GetCSSClass(); cssClass != "" {
-		msoTable.AddAttribute("class", cssClass+"-outlook")
-	}
+	useMJMLSyntax := c.RenderOpts != nil && c.RenderOpts.UseMJMLSyntax
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
@@ -162,17 +148,75 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddStyle("mso-line-height-rule", "exactly")
 
 	// Custom MSO conditional
-	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-		return err
-	}
-	if err := msoTable.RenderOpen(w); err != nil {
-		return err
-	}
-	if _, err := w.WriteString("<tr>"); err != nil {
-		return err
-	}
-	if err := msoTd.RenderOpen(w); err != nil {
-		return err
+	if useMJMLSyntax {
+		cssClassOutlook := ""
+		if cssClass := c.GetCSSClass(); cssClass != "" {
+			cssClassOutlook = cssClass + "-outlook"
+		}
+
+		if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
+			return err
+		}
+		if alignAttr != "" {
+			if _, err := w.WriteString(` align="` + alignAttr + `"`); err != nil {
+				return err
+			}
+		}
+		if backgroundColor != "" {
+			if _, err := w.WriteString(` bgcolor="` + backgroundColor + `"`); err != nil {
+				return err
+			}
+		}
+		if _, err := w.WriteString(` border="0" cellpadding="0" cellspacing="0"`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(` class="` + cssClassOutlook + `"`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(` role="presentation"`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(` style="width:` + getPixelWidthString(msoTableWidth) + `;"`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(` width="` + strconv.Itoa(msoTableWidth) + `" >`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`<tr>`); err != nil {
+			return err
+		}
+		if err := msoTd.RenderOpen(w); err != nil {
+			return err
+		}
+	} else {
+		msoTable := html.NewTableTag()
+
+		// Add bgcolor before align/width to match MRML attribute order
+		if backgroundColor != "" {
+			msoTable.AddAttribute("bgcolor", backgroundColor)
+		}
+
+		msoTable.AddAttribute("align", alignAttr).
+			AddAttribute("width", strconv.Itoa(msoTableWidth)).
+			AddStyle("width", getPixelWidthString(msoTableWidth))
+
+		// Add css-class-outlook if present
+		if cssClass := c.GetCSSClass(); cssClass != "" {
+			msoTable.AddAttribute("class", cssClass+"-outlook")
+		}
+
+		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+			return err
+		}
+		if err := msoTable.RenderOpen(w); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("<tr>"); err != nil {
+			return err
+		}
+		if err := msoTd.RenderOpen(w); err != nil {
+			return err
+		}
 	}
 
 	if hasBackgroundImage && fullWidth == "" {
@@ -366,8 +410,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		// Section has only text/comments - needs MSO table wrapper
 		if c.RenderOpts.InsideWrapper {
 			// Inside wrapper: use split conditional pattern for text content
-			if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><![endif]-->"); err != nil {
-				return err
+			if useMJMLSyntax {
+				if _, err := w.WriteString(`<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><![endif]-->`); err != nil {
+					return err
+				}
+			} else {
+				if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><![endif]-->"); err != nil {
+					return err
+				}
 			}
 			// Render text content
 			if _, err := w.WriteString(c.Node.Text); err != nil {
@@ -381,34 +431,46 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			innerMsoTable := html.NewTableTag()
 			innerMsoTr := html.NewHTMLTag("tr")
 
-			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-				return err
-			}
-			if err := innerMsoTable.RenderOpen(w); err != nil {
-				return err
-			}
-			if err := innerMsoTr.RenderOpen(w); err != nil {
-				return err
-			}
-			if _, err := w.WriteString("<![endif]-->"); err != nil {
-				return err
+			if useMJMLSyntax {
+				if _, err := w.WriteString(`<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><![endif]-->`); err != nil {
+					return err
+				}
+			} else {
+				if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+					return err
+				}
+				if err := innerMsoTable.RenderOpen(w); err != nil {
+					return err
+				}
+				if err := innerMsoTr.RenderOpen(w); err != nil {
+					return err
+				}
+				if _, err := w.WriteString("<![endif]-->"); err != nil {
+					return err
+				}
 			}
 
 			// Render text content (including comments) - goes directly in TR, no TD
 			if _, err := w.WriteString(c.Node.Text); err != nil {
 				return err
 			}
-			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-				return err
-			}
-			if err := innerMsoTr.RenderClose(w); err != nil {
-				return err
-			}
-			if err := innerMsoTable.RenderClose(w); err != nil {
-				return err
-			}
-			if _, err := w.WriteString("<![endif]-->"); err != nil {
-				return err
+			if useMJMLSyntax {
+				if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
+					return err
+				}
+			} else {
+				if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+					return err
+				}
+				if err := innerMsoTr.RenderClose(w); err != nil {
+					return err
+				}
+				if err := innerMsoTable.RenderClose(w); err != nil {
+					return err
+				}
+				if _, err := w.WriteString("<![endif]-->"); err != nil {
+					return err
+				}
 			}
 		}
 	} else if !hasChildContent && !hasTextContent {

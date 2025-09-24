@@ -3,6 +3,8 @@ package components
 import (
 	"io"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
+	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
@@ -71,44 +73,69 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 	// Build class attribute: just use the user's css-class if present
 	classAttr := c.BuildClassAttribute("")
 
-	if _, err := w.WriteString("<div"); err != nil {
-		return err
-	}
-	if langAttr != "" {
-		if _, err := w.WriteString(` lang=`); err != nil {
+	useMJMLSyntax := c.RenderOpts != nil && c.RenderOpts.UseMJMLSyntax && len(c.Children) > 0
+
+	if useMJMLSyntax {
+		bodyDiv := html.NewHTMLTag("div")
+		bodyDiv.AddAttribute("aria-roledescription", "email").
+			AddAttribute("role", "article")
+
+		if langAttr != "" {
+			bodyDiv.AddAttribute("lang", langAttr).
+				AddAttribute("dir", constants.DirAuto)
+		}
+
+		if classAttr != "" {
+			bodyDiv.AddAttribute("class", classAttr)
+		}
+
+		if backgroundColor != nil && *backgroundColor != "" {
+			bodyDiv.AddStyle("background-color", *backgroundColor)
+		}
+
+		if err := bodyDiv.RenderOpen(w); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(langAttr); err != nil {
+	} else {
+		if _, err := w.WriteString("<div"); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(` dir=auto`); err != nil {
+		if langAttr != "" {
+			if _, err := w.WriteString(` lang=`); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(langAttr); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(` dir=auto`); err != nil {
+				return err
+			}
+		}
+		if classAttr != "" {
+			if _, err := w.WriteString(` class="`); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(classAttr); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(`"`); err != nil {
+				return err
+			}
+		}
+		if backgroundColor != nil && *backgroundColor != "" {
+			if _, err := w.WriteString(` style="background-color:`); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(*backgroundColor); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(`;"`); err != nil {
+				return err
+			}
+		}
+		if _, err := w.WriteString(">"); err != nil {
 			return err
 		}
-	}
-	if classAttr != "" {
-		if _, err := w.WriteString(` class="`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(classAttr); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`"`); err != nil {
-			return err
-		}
-	}
-	if backgroundColor != nil && *backgroundColor != "" {
-		if _, err := w.WriteString(` style="background-color:`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(*backgroundColor); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`;"`); err != nil {
-			return err
-		}
-	}
-	if _, err := w.WriteString(">"); err != nil {
-		return err
 	}
 
 	for _, child := range c.Children {

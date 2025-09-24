@@ -147,6 +147,13 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 			}
 		}
 
+		// Toggle MJML-style rendering when the body contains renderable children.
+		// This switches the HTML serialization to match the official MJML output
+		// instead of the more compact MRML-compatible format used for empty bodies.
+		if opts != nil {
+			opts.UseMJMLSyntax = len(body.Children) > 0
+		}
+
 		// Process nested children (sections/wrappers -> columns -> content)
 		for _, child := range body.Children {
 			switch comp := child.(type) {
