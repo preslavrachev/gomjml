@@ -120,6 +120,9 @@ func (c *MJColumnComponent) Render(w io.StringWriter) error {
 
 	classOrder := []string{className, "mj-outlook-group-fix"}
 	if c.RenderOpts != nil && c.RenderOpts.InsideGroup {
+		// Outlook fix class must lead when rendering inside mj-group to keep the
+		// generated markup identical to historical fixtures and helper tests that
+		// rely on this ordering.
 		if c.RenderOpts.GroupColumnCount <= 1 && c.RenderOpts.InsideWrapper {
 			classOrder = []string{className, "mj-outlook-group-fix"}
 		} else {

@@ -56,11 +56,11 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 	paddingBottom := c.GetAttributeWithDefault(c, constants.MJMLPaddingBottom)
 	paddingLeft := c.GetAttributeWithDefault(c, constants.MJMLPaddingLeft)
 
-	// Handle alt attribute specially - only include if explicitly set in MJML
-	var alt *string
-	if value, exists := c.Attrs["alt"]; exists {
-		alt = &value
-	}
+	// MJML always emits an alt attribute (falling back to the empty string when
+	// not provided) to preserve accessibility defaults. Use the attribute
+	// resolution pipeline so global attributes and mj-attributes blocks are
+	// honoured.
+	alt := c.GetAttributeWithDefault(c, constants.MJMLAlt)
 
 	if src == "" {
 		return fmt.Errorf("mj-image requires src attribute")
@@ -169,10 +169,8 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 	imgTag := html.NewHTMLTag("img")
 	c.AddDebugAttribute(imgTag, "image")
 
-	// Set image attributes - only include alt if explicitly set
-	if alt != nil {
-		imgTag.AddAttribute("alt", *alt)
-	}
+	// Set image attributes following MJML ordering.
+	imgTag.AddAttribute("alt", alt)
 	if imgHeight != "" {
 		imgTag.AddAttribute(constants.AttrHeight, imgHeight)
 	}
@@ -197,7 +195,7 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 		imgTag.AddStyle("border-radius", borderRadius)
 	}
 
-	if err := imgTag.RenderSelfClosing(w); err != nil {
+	if err := imgTag.RenderOpen(w); err != nil {
 		return err
 	}
 

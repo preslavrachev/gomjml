@@ -150,6 +150,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 	}
 
 	// Render each column in the group
+	renderedColumns := 0
 	for _, child := range c.Children {
 		if child.IsRawElement() {
 			if err := child.Render(w); err != nil {
@@ -158,6 +159,9 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			continue
 		}
 		if columnComp, ok := child.(*MJColumnComponent); ok {
+			isFirstColumn := renderedColumns == 0
+			isLastColumn := renderedColumns == columnCount-1
+
 			// Set the column width based on group's width distribution
 			if columnComp.GetAttribute("width") == nil {
 				if strings.HasSuffix(groupWidth, "px") {
@@ -187,7 +191,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			msoWidth := getPixelWidthString(childWidthPx)
 			colVAlign := columnComp.GetAttributeWithDefault(columnComp, constants.MJMLVerticalAlign)
 
-			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth); err != nil {
+			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth, isFirstColumn); err != nil {
 				return err
 			}
 
@@ -203,9 +207,10 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			}
 
 			// Close MSO conditional TD
-			if err := html.RenderMSOGroupTDClose(w); err != nil {
+			if err := html.RenderMSOGroupTDClose(w, isLastColumn); err != nil {
 				return err
 			}
+			renderedColumns++
 		}
 	}
 

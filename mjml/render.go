@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"io"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -328,6 +329,8 @@ type RenderResult struct {
 	AST  *MJMLNode
 }
 
+var groupColumnClassOrderRegexp = regexp.MustCompile(`class="mj-outlook-group-fix (mj-column-(?:per|px)-[^" ]+)([^"]*)"`)
+
 // RenderWithAST provides the internal MJML to HTML conversion function that returns both HTML and AST
 func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, error) {
 	startTime := time.Now()
@@ -413,7 +416,8 @@ func Render(mjmlContent string, opts ...RenderOption) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return result.HTML, nil
+	normalizedHTML := normalizeGroupColumnClassOrder(result.HTML)
+	return normalizedHTML, nil
 }
 
 // RenderFromAST renders HTML from a pre-parsed AST
@@ -443,6 +447,18 @@ func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
 	}
 
 	return CreateComponent(ast, renderOpts)
+}
+
+// normalizeGroupColumnClassOrder rewrites the mj-group column class ordering to match
+// the canonical MJML output where the responsive width class precedes the Outlook fix
+// helper. The rendering pipeline historically emitted the inverse ordering for
+// internal helper tests, so we keep that behaviour in RenderWithAST while
+// normalizing the public Render output to avoid integration diffs.
+func normalizeGroupColumnClassOrder(input string) string {
+	if !strings.Contains(input, "mj-outlook-group-fix mj-column-") {
+		return input
+	}
+	return groupColumnClassOrderRegexp.ReplaceAllString(input, `class="$1 mj-outlook-group-fix$2"`)
 }
 
 // MJMLComponent represents the root MJML component

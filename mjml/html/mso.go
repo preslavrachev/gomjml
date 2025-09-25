@@ -595,9 +595,18 @@ func RenderMSOGroupTableClose(w io.StringWriter) error {
 //
 // The classAttr parameter allows optional attributes (for now it is typically empty, but keeping the
 // parameter provides flexibility for future parity work). The width should include the unit (e.g. "600px").
-func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx string) error {
-	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><td"); err != nil {
+func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx string, isFirst bool) error {
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
 		return err
+	}
+	if isFirst {
+		if _, err := w.WriteString("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><td"); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("</td><td"); err != nil {
+			return err
+		}
 	}
 	if classAttr != "" {
 		if _, err := w.WriteString(" "); err != nil {
@@ -626,6 +635,9 @@ func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx s
 }
 
 // RenderMSOGroupTDClose renders the Outlook-specific closing tags for an mj-column inside an mj-group.
-func RenderMSOGroupTDClose(w io.StringWriter) error {
+func RenderMSOGroupTDClose(w io.StringWriter, isLast bool) error {
+	if !isLast {
+		return nil
+	}
 	return RenderMSOConditional(w, "</td></tr></table>")
 }
