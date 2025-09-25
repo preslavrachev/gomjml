@@ -132,14 +132,20 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO conditional table structure with dynamic bgcolor
-	msoTableTag := "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\""
-	if backgroundColor != "" {
-		msoTableTag += " bgcolor=\"" + backgroundColor + "\""
+	// Determine Outlook-specific class name (css-class + "-outlook")
+	outlookClass := ""
+	if cssClass := c.GetCSSClass(); cssClass != "" {
+		outlookClass = cssClass + "-outlook"
 	}
-	msoTableTag += "><tr>"
 
-	if err := html.RenderMSOConditional(w, msoTableTag); err != nil {
+	// Only include vertical-align style in MSO wrapper when explicitly set
+	msoVerticalAlign := ""
+	if verticalAlign != defaultVerticalAlign {
+		msoVerticalAlign = verticalAlign
+	}
+
+	// MSO conditional table structure with dynamic bgcolor and wrapper metadata
+	if err := html.RenderMSOGroupTableOpen(w, groupWidthPx, backgroundColor, outlookClass, msoVerticalAlign); err != nil {
 		return err
 	}
 
@@ -188,6 +194,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			// Set group context for child rendering
 			childOpts := *c.RenderOpts // Copy the options
 			childOpts.InsideGroup = true
+			childOpts.GroupColumnCount = columnCount
 			columnComp.RenderOpts = &childOpts
 
 			// Render column content with padding support table wrapper

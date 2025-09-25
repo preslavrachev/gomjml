@@ -120,7 +120,11 @@ func (c *MJColumnComponent) Render(w io.StringWriter) error {
 
 	classOrder := []string{className, "mj-outlook-group-fix"}
 	if c.RenderOpts != nil && c.RenderOpts.InsideGroup {
-		classOrder = []string{"mj-outlook-group-fix", className}
+		if c.RenderOpts.GroupColumnCount <= 1 && c.RenderOpts.InsideWrapper {
+			classOrder = []string{className, "mj-outlook-group-fix"}
+		} else {
+			classOrder = []string{"mj-outlook-group-fix", className}
+		}
 	}
 
 	columnDiv.AddAttribute("class", c.BuildClassAttribute(classOrder...))

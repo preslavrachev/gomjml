@@ -630,83 +630,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 
 			continue
-		} else if groupComp, ok := child.(*MJGroupComponent); ok {
-			// Groups need their own MSO table wrappers
+		}
+
+		if groupComp, ok := child.(*MJGroupComponent); ok {
+			// Ensure the group receives the effective section width for its internal calculations
 			groupComp.SetContainerWidth(c.GetEffectiveWidth())
-
-			msoTable := html.NewTableTag()
-			msoTr := html.NewHTMLTag("tr")
-			msoTd := html.NewHTMLTag("td")
-
-			// Use group's specific width if it has one, otherwise use section's effective width
-			groupWidth := "100%" // default
-			if groupComp.GetAttribute("width") != nil {
-				groupWidth = *groupComp.GetAttribute("width")
-			}
-
-			// Apply group vertical-align and css-class to the MSO wrapper TD
-			vAlign := groupComp.GetAttributeWithDefault(groupComp, constants.MJMLVerticalAlign)
-			if vAlign != constants.VAlignTop {
-				msoTd.AddStyle(constants.CSSVerticalAlign, vAlign)
-			}
-
-			if strings.HasSuffix(groupWidth, "px") {
-				// Use the group's pixel width directly
-				msoTd.AddStyle(constants.CSSWidth, groupWidth)
-			} else {
-				// Use section's effective width for percentage-based groups
-				msoTd.AddStyle(constants.CSSWidth, c.GetEffectiveWidthString())
-			}
-
-			if cssClass := groupComp.GetCSSClass(); cssClass != "" {
-				msoTd.AddAttribute(constants.AttrClass, cssClass+"-outlook")
-			}
-
-			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-				return err
-			}
-			if err := msoTable.RenderOpen(w); err != nil {
-				return err
-			}
-			if err := msoTr.RenderOpen(w); err != nil {
-				return err
-			}
-			if _, err := w.WriteString("<![endif]-->"); err != nil {
-				return err
-			}
-
-			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-				return err
-			}
-			if err := msoTd.RenderOpen(w); err != nil {
-				return err
-			}
-			if _, err := w.WriteString("<![endif]-->"); err != nil {
-				return err
-			}
-
-			// Render group content inside its MSO wrapper
-			if err := child.Render(w); err != nil {
-				return err
-			}
-
-			if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
-				return err
-			}
-			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-				return err
-			}
-			if err := msoTr.RenderClose(w); err != nil {
-				return err
-			}
-			if err := msoTable.RenderClose(w); err != nil {
-				return err
-			}
-			if _, err := w.WriteString("<![endif]-->"); err != nil {
-				return err
-			}
-
-			continue
 		}
 
 		// Use optimized rendering with fallback to string-based

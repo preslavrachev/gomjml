@@ -524,12 +524,88 @@ func RenderMSOSectionTransitionWithContent(w io.StringWriter, widthPx int, align
 }
 
 // RenderMSOGroupTDOpen renders MSO group TD opening directly to Writer without string allocation
-func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx string) error {
-	if _, err := w.WriteString("<!--[if mso | IE]><td"); err != nil {
+// RenderMSOGroupTableOpen renders the opening Outlook table wrapper for mj-group components.
+//
+// It produces the following structure in a single conditional comment to match the MJML reference output:
+//
+//	<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="width:600px;" ><![endif]-->
+//
+// The width is passed in pixels (without the unit) to ensure deterministic formatting and to avoid
+// floating point rounding differences. The optional background color, when provided, is applied via
+// the Outlook-specific `bgcolor` attribute on the table element.
+func RenderMSOGroupTableOpen(w io.StringWriter, widthPx int, backgroundColor, outlookClass, verticalAlign string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\""); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(classAttr); err != nil {
+	if backgroundColor != "" {
+		if _, err := w.WriteString(" bgcolor=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(backgroundColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString("><tr><td class=\""); err != nil {
 		return err
+	}
+	if _, err := w.WriteString(outlookClass); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("\" style=\""); err != nil {
+		return err
+	}
+	if verticalAlign != "" {
+		if _, err := w.WriteString("vertical-align:"); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(verticalAlign); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(";"); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString("width:"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px;\" ><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderMSOGroupTableClose renders the closing Outlook wrapper for mj-group components, matching the
+// single conditional comment produced by the MJML reference implementation.
+func RenderMSOGroupTableClose(w io.StringWriter) error {
+	return RenderMSOConditional(w, "</td></tr></table>")
+}
+
+// RenderMSOGroupTDOpen renders the Outlook-specific table structure for each mj-column inside an mj-group.
+//
+// It generates the following markup to ensure both the table and td are wrapped inside the same MSO
+// conditional comment, exactly like MJML's Node implementation:
+//
+//	<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="vertical-align:top;width:600px;" ><![endif]-->
+//
+// The classAttr parameter allows optional attributes (for now it is typically empty, but keeping the
+// parameter provides flexibility for future parity work). The width should include the unit (e.g. "600px").
+func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><td"); err != nil {
+		return err
+	}
+	if classAttr != "" {
+		if _, err := w.WriteString(" "); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(classAttr); err != nil {
+			return err
+		}
 	}
 	if _, err := w.WriteString(" style=\"vertical-align:"); err != nil {
 		return err
@@ -543,18 +619,13 @@ func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx s
 	if _, err := w.WriteString(widthPx); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(";\"><![endif]-->"); err != nil {
+	if _, err := w.WriteString(";\" ><![endif]-->"); err != nil {
 		return err
 	}
 	return nil
 }
 
-// RenderMSOGroupTDClose renders MSO group TD closing directly to Writer
+// RenderMSOGroupTDClose renders the Outlook-specific closing tags for an mj-column inside an mj-group.
 func RenderMSOGroupTDClose(w io.StringWriter) error {
-	return RenderMSOConditional(w, "</td>")
-}
-
-// RenderMSOGroupTableClose renders MSO group table closing directly to Writer
-func RenderMSOGroupTableClose(w io.StringWriter) error {
-	return RenderMSOConditional(w, "</tr></table>")
+	return RenderMSOConditional(w, "</td></tr></table>")
 }
