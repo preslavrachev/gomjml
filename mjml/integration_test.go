@@ -91,7 +91,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "body-wrapper-section",
 		// "mj-attributes",
 		// // MJ-Group tests from MRML
-		// "mj-group",
+		"mj-group",
 		// "mj-group-background-color",
 		// "mj-group-class",
 		// "mj-group-mso-wrapper-raw",
