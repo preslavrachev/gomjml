@@ -531,22 +531,11 @@ func RenderMSOSectionTransitionWithContent(w io.StringWriter, widthPx int, align
 //	<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="width:600px;" ><![endif]-->
 //
 // The width is passed in pixels (without the unit) to ensure deterministic formatting and to avoid
-// floating point rounding differences. The optional background color, when provided, is applied via
-// the Outlook-specific `bgcolor` attribute on the table element.
+// floating point rounding differences. The background color, when present, is applied on the inner
+// Outlook table that wraps mj-column children (see RenderMSOGroupTDOpen) to mirror MJML's output.
 func RenderMSOGroupTableOpen(w io.StringWriter, widthPx int, backgroundColor, outlookClass, verticalAlign string) error {
 	if _, err := w.WriteString("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\""); err != nil {
 		return err
-	}
-	if backgroundColor != "" {
-		if _, err := w.WriteString(" bgcolor=\""); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(backgroundColor); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("\""); err != nil {
-			return err
-		}
 	}
 	if _, err := w.WriteString("><tr><td class=\""); err != nil {
 		return err
@@ -595,12 +584,32 @@ func RenderMSOGroupTableClose(w io.StringWriter) error {
 //
 // The classAttr parameter allows optional attributes (for now it is typically empty, but keeping the
 // parameter provides flexibility for future parity work). The width should include the unit (e.g. "600px").
-func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx string, isFirst bool) error {
+//
+// The backgroundColor argument mirrors MJML by applying the color to the Outlook table once for the
+// first column, ensuring subsequent columns reuse the same table without duplicating attributes.
+func RenderMSOGroupTDOpen(w io.StringWriter, classAttr, verticalAlign, widthPx, backgroundColor string, isFirst bool) error {
 	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
 		return err
 	}
 	if isFirst {
-		if _, err := w.WriteString("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><td"); err != nil {
+		if _, err := w.WriteString("<table"); err != nil {
+			return err
+		}
+		if backgroundColor != "" {
+			if _, err := w.WriteString(" bgcolor=\""); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(backgroundColor); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("\""); err != nil {
+				return err
+			}
+		}
+		if _, err := w.WriteString(" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(" ><tr><td"); err != nil {
 			return err
 		}
 	} else {

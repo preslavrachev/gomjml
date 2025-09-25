@@ -191,7 +191,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			msoWidth := getPixelWidthString(childWidthPx)
 			colVAlign := columnComp.GetAttributeWithDefault(columnComp, constants.MJMLVerticalAlign)
 
-			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth, isFirstColumn); err != nil {
+			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth, backgroundColor, isFirstColumn); err != nil {
 				return err
 			}
 
