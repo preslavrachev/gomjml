@@ -99,8 +99,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-group-vertical-align",
 		// "mj-group-width",
 		// // Simple MJML components from MRML test suite
-		// "mj-button",
-		// "mj-button-align",
+		"mj-button",
+		"mj-button-align",
 		// "mj-button-background",
 		// "mj-button-border",
 		// "mj-button-border-radius",
