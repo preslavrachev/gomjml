@@ -429,6 +429,14 @@ func RenderMSOTableTrOpenConditional(w io.StringWriter, table, tr, td *HTMLTag) 
 //
 //	<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
 func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int, align string) error {
+	return RenderMSOWrapperTableOpenWithWidths(w, widthPx, widthPx, align)
+}
+
+// RenderMSOWrapperTableOpenWithWidths renders the opening Outlook wrapper table
+// while allowing different outer (MSO td) and inner table widths. This matches
+// MJML's behavior for wrappers with borders where Outlook table width remains at
+// the body width but the inner table shrinks by the border size.
+func RenderMSOWrapperTableOpenWithWidths(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string) error {
 	if _, err := w.WriteString("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td class=\"\""); err != nil {
 		return err
 	}
@@ -443,19 +451,19 @@ func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int, align string) err
 	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+	if _, err := w.WriteString(strconv.Itoa(outerWidthPx)); err != nil {
 		return err
 	}
 	if _, err := w.WriteString("px\" ><table align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" role=\"presentation\" style=\"width:"); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
 		return err
 	}
 	if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
 		return err
 	}
 	if _, err := w.WriteString("\" ><tr><td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\"><![endif]-->"); err != nil {

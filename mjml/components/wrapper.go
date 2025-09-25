@@ -295,7 +295,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		}
 	}
 
-	if err := html.RenderMSOWrapperTableOpen(w, effectiveWidth, firstAlign); err != nil {
+	if err := html.RenderMSOWrapperTableOpenWithWidths(w, c.GetEffectiveWidth(), effectiveWidth, firstAlign); err != nil {
 		return err
 	}
 
@@ -366,7 +366,14 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
 	cssClass := c.getAttribute("css-class")
+	borderRadius := c.getAttribute("border-radius")
 	effectiveWidth := c.getEffectiveWidth()
+
+	hasBorder := false
+	if c.getAttribute("border") != "" || c.getAttribute("border-left") != "" || c.getAttribute("border-right") != "" ||
+		c.getAttribute("border-top") != "" || c.getAttribute("border-bottom") != "" {
+		hasBorder = true
+	}
 
 	// MSO conditional table wrapper (should use full default body width, not effective width)
 	msoTable := html.NewHTMLTag("table")
@@ -415,18 +422,19 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		wrapperDiv.AddAttribute("class", cssClass)
 	}
 
-	// Add border-radius before max-width to match MRML order
-	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
-		wrapperDiv.AddStyle("border-radius", borderRadius)
-	}
-
+	// Order styles to match MJML output: margin -> max-width -> border-radius -> overflow
 	wrapperDiv.AddStyle("max-width", GetDefaultBodyWidth())
+
+	if borderRadius != "" {
+		wrapperDiv.AddStyle("border-radius", borderRadius)
+		wrapperDiv.AddStyle("overflow", "hidden")
+	}
 
 	if err := wrapperDiv.RenderOpen(w); err != nil {
 		return err
 	}
 
-	// Inner table (match MRML order: background first, then width, border-radius)
+	// Inner table (match MJML order: background first, then width and border handling)
 	innerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
@@ -438,10 +446,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	c.ApplyBackgroundStyles(innerTable, c)
 
 	innerTable.AddStyle("width", "100%")
-
-	// Add border-radius after width to match MRML order
-	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
-		innerTable.AddStyle("border-radius", borderRadius)
+	if hasBorder {
+		innerTable.AddStyle("border-collapse", "separate")
 	}
 
 	if err := innerTable.RenderOpen(w); err != nil {
@@ -470,6 +476,10 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	}
 	if borderTop := c.getAttribute("border-top"); borderTop != "" {
 		mainTd.AddStyle("border-top", borderTop)
+	}
+
+	if borderRadius != "" {
+		mainTd.AddStyle("border-radius", borderRadius)
 	}
 
 	mainTd.AddStyle("direction", direction).
@@ -505,16 +515,18 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	}
 
 	// For basic wrapper, we need a specific MSO conditional pattern
-	// that matches MRML's output more closely - use original body width for wrapper MSO
-	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels(), firstAlign); err != nil {
+	// that matches MRML's output more closely - use the outer container width
+	outerWidth := c.GetEffectiveWidth()
+	if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign); err != nil {
 		return err
 	}
 
 	// Render children - pass the effective width (600px - border width)
-	// Add MSO section transitions between section children (like MRML does)
+	// Add MSO section transitions between section children (like MJML does)
+
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), "", func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, "", func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -524,7 +536,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 		// Add MSO section transition between sections (but not before the first section)
 		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
+			if err := html.RenderMSOSectionTransition(w, outerWidth, getChildAlign(child)); err != nil {
 				return err
 			}
 		}
