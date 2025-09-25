@@ -187,16 +187,11 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	// MSO conditional for inner container
 	msoTable := html.NewHTMLTag("table")
 
-	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width.
+	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width, bgcolor.
 	msoTable.AddAttribute("align", "center")
 	msoTable.AddAttribute("border", "0")
 	msoTable.AddAttribute("cellpadding", "0")
 	msoTable.AddAttribute("cellspacing", "0")
-
-	// Add bgcolor to MSO table if background-color is set
-	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
-	}
 
 	if cssClass != "" {
 		msoTable.AddAttribute("class", cssClass+"-outlook")
@@ -207,6 +202,11 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	msoTable.AddAttribute("role", "presentation")
 	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
 	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
+
+	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
+	if bgColor := c.getAttribute("background-color"); bgColor != "" {
+		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
+	}
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
@@ -371,16 +371,11 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// MSO conditional table wrapper (should use full default body width, not effective width)
 	msoTable := html.NewHTMLTag("table")
 
-	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width.
+	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width, bgcolor.
 	msoTable.AddAttribute("align", "center")
 	msoTable.AddAttribute("border", "0")
 	msoTable.AddAttribute("cellpadding", "0")
 	msoTable.AddAttribute("cellspacing", "0")
-
-	// Add bgcolor to MSO table if background-color is set
-	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
-	}
 
 	if cssClass != "" {
 		msoTable.AddAttribute("class", cssClass+"-outlook")
@@ -391,6 +386,11 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	msoTable.AddAttribute("role", "presentation")
 	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
 	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
+
+	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
+	if bgColor := c.getAttribute("background-color"); bgColor != "" {
+		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
+	}
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
