@@ -48,7 +48,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		"mj-body-width",
 		// "basic",
 		"comment",
-		// "with-head",
+		"with-head",
 		// "complex-layout",
 		// "wrapper-basic",
 		// "wrapper-background",
