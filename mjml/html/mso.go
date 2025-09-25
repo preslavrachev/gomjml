@@ -164,7 +164,7 @@ func WrapWithMSOTable(w io.StringWriter, content, width, bgcolor string) error {
 	if err := msoTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("<tr>"); err != nil {
+	if _, err := w.WriteString(" <tr>"); err != nil {
 		return err
 	}
 	if err := msoCell.RenderOpen(w); err != nil {
@@ -231,7 +231,7 @@ func CreateMSOCompatibleWrapper(w io.StringWriter, divTag *HTMLTag, width, bgcol
 	if err := msoTable.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("<tr>"); err != nil {
+	if _, err := w.WriteString(" <tr>"); err != nil {
 		return err
 	}
 	if err := msoCell.RenderOpen(w); err != nil {
@@ -322,7 +322,7 @@ func RenderMSOTableOpen(w io.StringWriter, table, td *HTMLTag) error {
 	if err := table.RenderOpen(w); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("<tr>"); err != nil {
+	if _, err := w.WriteString(" <tr>"); err != nil {
 		return err
 	}
 	return td.RenderOpen(w)
@@ -355,7 +355,17 @@ func RenderMSOTableOpenConditional(w io.StringWriter, table, td *HTMLTag) error 
 	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
 		return err
 	}
-	if err := table.RenderOpen(w); err != nil {
+	var tableOpen strings.Builder
+	if err := table.RenderOpen(&tableOpen); err != nil {
+		return err
+	}
+	openStr := tableOpen.String()
+	if strings.HasSuffix(openStr, ">") {
+		if len(openStr) == 1 || openStr[len(openStr)-2] != ' ' {
+			openStr = openStr[:len(openStr)-1] + " >"
+		}
+	}
+	if _, err := w.WriteString(openStr); err != nil {
 		return err
 	}
 	if _, err := w.WriteString("<tr>"); err != nil {
@@ -417,9 +427,9 @@ func RenderMSOTableTrOpenConditional(w io.StringWriter, table, tr, td *HTMLTag) 
 //
 // Example output for width=600:
 //
-//	<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="600" style="width:600px;"><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+//	<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
 func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int, align string) error {
-	if _, err := w.WriteString("<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tr><td"); err != nil {
+	if _, err := w.WriteString("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td class=\"\""); err != nil {
 		return err
 	}
 	if align != "" {
@@ -436,7 +446,19 @@ func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int, align string) err
 	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("px\"><![endif]-->"); err != nil {
+	if _, err := w.WriteString("px\" ><table align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" role=\"presentation\" style=\"width:"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(widthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("\" ><tr><td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\"><![endif]-->"); err != nil {
 		return err
 	}
 	return nil
@@ -444,7 +466,7 @@ func RenderMSOWrapperTableOpen(w io.StringWriter, widthPx int, align string) err
 
 // RenderMSOWrapperTableClose renders MSO wrapper table closing directly to Writer
 func RenderMSOWrapperTableClose(w io.StringWriter) error {
-	return RenderMSOConditional(w, "</td></tr></table>")
+	return RenderMSOConditional(w, "</td></tr></table></td></tr></table>")
 }
 
 // RenderMSOSectionTransition renders MSO conditional comment that bridges between sections in a wrapper.

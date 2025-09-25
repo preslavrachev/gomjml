@@ -146,6 +146,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
+	cssClass := c.getAttribute("css-class")
 
 	// Calculate effective content width by subtracting horizontal padding and border widths
 	effectiveWidth := GetDefaultBodyWidthPixels() - c.getBorderWidth()
@@ -168,7 +169,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center")
 
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+	if cssClass != "" {
 		outerTable.AddAttribute("class", cssClass)
 	}
 
@@ -184,25 +185,28 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	// MSO conditional for inner container
-	msoTable := html.NewHTMLTag("table").
-		AddAttribute("border", "0").
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation")
+	msoTable := html.NewHTMLTag("table")
+
+	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width.
+	msoTable.AddAttribute("align", "center")
+	msoTable.AddAttribute("border", "0")
+	msoTable.AddAttribute("cellpadding", "0")
+	msoTable.AddAttribute("cellspacing", "0")
 
 	// Add bgcolor to MSO table if background-color is set
 	if bgColor := c.getAttribute("background-color"); bgColor != "" {
 		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
 	}
 
-	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
-		AddStyle("width", GetDefaultBodyWidth())
-
-	// Add css-class support for MSO table (MRML adds -outlook suffix)
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+	if cssClass != "" {
 		msoTable.AddAttribute("class", cssClass+"-outlook")
+	} else {
+		msoTable.AddAttribute("class", "")
 	}
+
+	msoTable.AddAttribute("role", "presentation")
+	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
+	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
@@ -361,28 +365,32 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
+	cssClass := c.getAttribute("css-class")
 	effectiveWidth := c.getEffectiveWidth()
 
 	// MSO conditional table wrapper (should use full default body width, not effective width)
-	msoTable := html.NewHTMLTag("table").
-		AddAttribute("border", "0").
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation")
+	msoTable := html.NewHTMLTag("table")
+
+	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width.
+	msoTable.AddAttribute("align", "center")
+	msoTable.AddAttribute("border", "0")
+	msoTable.AddAttribute("cellpadding", "0")
+	msoTable.AddAttribute("cellspacing", "0")
 
 	// Add bgcolor to MSO table if background-color is set
 	if bgColor := c.getAttribute("background-color"); bgColor != "" {
 		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
 	}
 
-	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
-		AddStyle("width", GetDefaultBodyWidth())
-
-	// Add css-class support for MSO table (MRML adds -outlook suffix)
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+	if cssClass != "" {
 		msoTable.AddAttribute("class", cssClass+"-outlook")
+	} else {
+		msoTable.AddAttribute("class", "")
 	}
+
+	msoTable.AddAttribute("role", "presentation")
+	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
+	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
@@ -403,7 +411,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	wrapperDiv.AddStyle("margin", "0px auto")
 
 	// Add css-class support for wrapper div
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+	if cssClass != "" {
 		wrapperDiv.AddAttribute("class", cssClass)
 	}
 

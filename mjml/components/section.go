@@ -141,14 +141,16 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	useMJMLSyntax := c.RenderOpts != nil && c.RenderOpts.UseMJMLSyntax
+	insideWrapper := c.RenderOpts != nil && c.RenderOpts.InsideWrapper
+	skipSectionMSOTable := useMJMLSyntax && insideWrapper
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	// Custom MSO conditional
-	if useMJMLSyntax {
+		// Custom MSO conditional
+	if useMJMLSyntax && !skipSectionMSOTable {
 		cssClassOutlook := ""
 		if cssClass := c.GetCSSClass(); cssClass != "" {
 			cssClassOutlook = cssClass + "-outlook"
@@ -188,7 +190,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if err := msoTd.RenderOpen(w); err != nil {
 			return err
 		}
-	} else {
+	} else if !useMJMLSyntax {
 		msoTable := html.NewTableTag()
 
 		// Add bgcolor before align/width to match MRML attribute order
@@ -243,10 +245,12 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if _, err := w.WriteString(vmlOpen); err != nil {
 			return err
 		}
-		if _, err := w.WriteString("<![endif]-->"); err != nil {
-			return err
+		if !skipSectionMSOTable {
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
+				return err
+			}
 		}
-	} else {
+	} else if !skipSectionMSOTable {
 		if _, err := w.WriteString("<![endif]-->"); err != nil {
 			return err
 		}
@@ -741,10 +745,16 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Close MSO table structure
 	if hasBackgroundImage && fullWidth == "" {
-		if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect></td></tr></table><![endif]-->"); err != nil {
-			return err
+		if skipSectionMSOTable {
+			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect><![endif]-->"); err != nil {
+				return err
+			}
+		} else {
+			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect></td></tr></table><![endif]-->"); err != nil {
+				return err
+			}
 		}
-	} else {
+	} else if !skipSectionMSOTable {
 		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
 			return err
 		}
