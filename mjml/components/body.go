@@ -2,6 +2,7 @@ package components
 
 import (
 	"io"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -83,6 +84,10 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 		if langAttr != "" {
 			bodyDiv.AddAttribute("lang", langAttr).
 				AddAttribute("dir", constants.DirAuto)
+		}
+
+		if title := strings.TrimSpace(c.RenderOpts.Title); title != "" {
+			bodyDiv.AddAttribute(constants.AttrAriaLabel, title)
 		}
 
 		if classAttr != "" {

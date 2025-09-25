@@ -510,24 +510,19 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Calculate sibling counts for width calculations (following MRML logic)
 	siblings := len(c.Children)
 	rawSiblings := 0
+	columnCount := 0
 	for _, child := range c.Children {
 		if child.IsRawElement() {
 			rawSiblings++
 		}
-	}
-
-	// Check if we have column children that require MSO TD wrappers
-	hasColumnChildren := false
-	for _, child := range c.Children {
 		if _, ok := child.(*MJColumnComponent); ok {
-			hasColumnChildren = true
-			break
+			columnCount++
 		}
 	}
 
 	// Outlook expects a shared table wrapper even when a section only contains mj-raw blocks.
-	// Match MRML by opening the wrapper when we have column children or any raw children.
-	needsSharedMSOTable := hasColumnChildren || rawSiblings > 0
+	// Match MRML by opening the wrapper when we have multiple column children or any raw children.
+	needsSharedMSOTable := columnCount > 1 || rawSiblings > 0
 
 	if needsSharedMSOTable {
 		sharedMsoTable := html.NewTableTag()
@@ -564,6 +559,44 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 		// Generate MSO TD for each column (within shared MSO table)
 		if columnComp, ok := child.(*MJColumnComponent); ok {
+			getAttr := func(name string) string {
+				if attr := columnComp.GetAttribute(name); attr != nil {
+					return *attr
+				}
+				return columnComp.GetDefaultAttribute(name)
+			}
+
+			if useMJMLSyntax && columnCount == 1 {
+				cssClass := ""
+				if css := columnComp.GetAttribute(constants.MJMLCSSClass); css != nil {
+					cssClass = *css
+				}
+				outlookClass := cssClass + "-outlook"
+				if cssClass == "" {
+					outlookClass = ""
+				}
+
+				if _, err := w.WriteString(`<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="`); err != nil {
+					return err
+				}
+				if _, err := w.WriteString(outlookClass); err != nil {
+					return err
+				}
+				if _, err := w.WriteString(`" style="vertical-align:` + getAttr("vertical-align") + `;width:` + columnComp.GetWidthAsPixel() + `;" ><![endif]-->`); err != nil {
+					return err
+				}
+
+				if err := columnComp.Render(w); err != nil {
+					return err
+				}
+
+				if _, err := w.WriteString(`<!--[if mso | IE]></td></tr></table><![endif]-->`); err != nil {
+					return err
+				}
+
+				continue
+			}
+
 			msoTd := html.NewHTMLTag("td")
 			// Add class attribute if css-class is set (with -outlook suffix)
 			if css := columnComp.GetAttribute(constants.MJMLCSSClass); css != nil && *css != "" {
@@ -571,12 +604,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 
 			// Add styles in MRML insertion order: vertical-align first, then width
-			getAttr := func(name string) string {
-				if attr := columnComp.GetAttribute(name); attr != nil {
-					return *attr
-				}
-				return columnComp.GetDefaultAttribute(name)
-			}
 			msoTd.AddStyle("vertical-align", getAttr("vertical-align"))
 			msoTd.AddStyle("width", columnComp.GetWidthAsPixel())
 

@@ -701,7 +701,7 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 		css.WriteString(className)
 		css.WriteString(` { width:`)
 		css.WriteString(size.String())
-		css.WriteString(` !important; max-width:`)
+		css.WriteString(` !important; max-width: `)
 		css.WriteString(size.String())
 		css.WriteString(`; } `)
 	}
@@ -716,13 +716,54 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 		css.WriteString(className)
 		css.WriteString(` { width:`)
 		css.WriteString(size.String())
-		css.WriteString(` !important; max-width:`)
+		css.WriteString(` !important; max-width: `)
 		css.WriteString(size.String())
 		css.WriteString(`; } `)
 	}
 	css.WriteString(`</style>`)
 
 	return css.String()
+}
+
+// extractHeadMetadata collects document-level metadata from mj-head children such as title
+// and custom font declarations. The extracted title is stored on the render options so that
+// body-level rendering can access it for accessibility attributes (aria-label).
+func (c *MJMLComponent) extractHeadMetadata() (string, []string) {
+	title := ""
+	customFonts := make([]string, 0)
+
+	if c.Head == nil {
+		if c.RenderOpts != nil {
+			c.RenderOpts.Title = ""
+		}
+		return title, customFonts
+	}
+
+	for _, child := range c.Head.Children {
+		switch comp := child.(type) {
+		case *components.MJTitleComponent:
+			title = strings.TrimSpace(comp.Node.Text)
+		case *components.MJFontComponent:
+			getAttr := func(name string) string {
+				if attr := comp.GetAttribute(name); attr != nil {
+					return *attr
+				}
+				return comp.GetDefaultAttribute(name)
+			}
+
+			fontName := getAttr("name")
+			fontHref := getAttr("href")
+			if fontName != "" && fontHref != "" {
+				customFonts = append(customFonts, fontHref)
+			}
+		}
+	}
+
+	if c.RenderOpts != nil {
+		c.RenderOpts.Title = title
+	}
+
+	return title, customFonts
 }
 
 // generateCustomStyles generates the final mj-style content tag (MRML lines 240-244)
@@ -987,6 +1028,10 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mjml-root", "collect-carousel-css", "Collecting carousel CSS")
 	c.collectCarouselCSS()
 
+	// Extract head metadata (title, custom fonts) before rendering body so accessibility
+	// attributes can access the document title during body rendering.
+	title, customFonts := c.extractHeadMetadata()
+
 	// Generate body content once for both font detection and final output
 	debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
 	var bodyBuffer strings.Builder
@@ -1032,33 +1077,6 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		htmlTag += ` xmlns=http://www.w3.org/1999/xhtml xmlns:v=urn:schemas-microsoft-com:vml xmlns:o=urn:schemas-microsoft-com:office:office>`
 		if _, err := w.WriteString(htmlTag); err != nil {
 			return err
-		}
-	}
-
-	// Head section - extract title from head components
-	title := ""
-	customFonts := make([]string, 0)
-
-	if c.Head != nil {
-		for _, child := range c.Head.Children {
-			if titleComp, ok := child.(*components.MJTitleComponent); ok {
-				title = titleComp.Node.Text
-			}
-			if fontComp, ok := child.(*components.MJFontComponent); ok {
-				// Helper function to get attribute with default
-				getAttr := func(name string) string {
-					if attr := fontComp.GetAttribute(name); attr != nil {
-						return *attr
-					}
-					return fontComp.GetDefaultAttribute(name)
-				}
-
-				fontName := getAttr("name")
-				fontHref := getAttr("href")
-				if fontName != "" && fontHref != "" {
-					customFonts = append(customFonts, fontHref)
-				}
-			}
 		}
 	}
 
