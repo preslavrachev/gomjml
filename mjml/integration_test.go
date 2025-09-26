@@ -219,9 +219,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-navbar-align-class",
 		// "mj-navbar-multiple",
 		// // MJ-HERO tests
-		// "mj-hero",
-		// "mj-hero-background-color",
-		// "mj-hero-background-height",
+		"mj-hero",
+		"mj-hero-background-color",
+		"mj-hero-background-height",
 		// "mj-hero-background-position",
 		// "mj-hero-background-url",
 		// "mj-hero-background-width",
