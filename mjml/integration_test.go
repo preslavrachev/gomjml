@@ -205,7 +205,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-social-structure-basic",
 		// "mj-social-text",
 		// "mj-social-text-wrapper",
-		// "mj-social-no-ubuntu-fonts-overridden",
+		"mj-social-no-ubuntu-fonts-overridden",
 		// "mj-social-ubuntu-fonts-with-text-content",
 		// "mj-social-ubuntu-fonts-icons-only-fallback",
 		// // MJ-ACCORDION tests
@@ -245,7 +245,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-carousel-thumbnails",
 		// // Custom test cases
 		// "notifuse-open-br-tags",
-		"notifuse-full",
+		// "notifuse-full", -- NOTE: HTML has been compiled with the MJML compiler already.
 	}
 
 	for _, testName := range testCases {
