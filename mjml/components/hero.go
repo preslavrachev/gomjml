@@ -53,8 +53,8 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO table structure
-	msoTable := fmt.Sprintf(`<table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="%d" style="width:%s;"><tr><td style="line-height:0;font-size:0;mso-line-height-rule:exactly;">`, containerWidth, containerWidthPx)
+	// MSO table structure - match attribute ordering of MJML reference output
+	msoTable := fmt.Sprintf(`<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:%s;" width="%d" ><tr><td style="line-height:0;font-size:0;mso-line-height-rule:exactly;">`, containerWidthPx, containerWidth)
 	if _, err := w.WriteString(msoTable); err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		if backgroundHeight != "" && backgroundHeight != "0px" {
 			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
 		}
-		vmlImage := fmt.Sprintf(`<v:image xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, vmlStyle)
+		vmlImage := fmt.Sprintf(`<v:image style="%s" xmlns:v="urn:schemas-microsoft-com:vml" />`, vmlStyle)
 		if _, err := w.WriteString(vmlImage); err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	msoInnerTable := fmt.Sprintf(`<table border="0" cellpadding="0" cellspacing="0" width="%d" style="width:%s;"><tr><td><![endif]-->`, containerWidth, containerWidthPx)
+	msoInnerTable := fmt.Sprintf(`<table border="0" cellpadding="0" cellspacing="0" style="width:%s;" width="%d" ><tr><td style=""><![endif]-->`, containerWidthPx, containerWidth)
 	if _, err := w.WriteString(msoInnerTable); err != nil {
 		return err
 	}
