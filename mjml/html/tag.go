@@ -205,6 +205,25 @@ func (t *HTMLTag) RenderSelfClosing(w io.StringWriter) error {
 	return nil
 }
 
+// RenderVoid renders an HTML void element without a self-closing slash.
+// This matches the output of the official MJML compiler which emits
+// `<img ...>` for img tags rather than `<img ... />` when minified.
+func (t *HTMLTag) RenderVoid(w io.StringWriter) error {
+	if _, err := w.WriteString("<"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(t.name); err != nil {
+		return err
+	}
+	if err := t.renderAttributes(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(">"); err != nil {
+		return err
+	}
+	return nil
+}
+
 // renderAttributes renders the common HTML attributes, CSS classes, and inline styles to the provided Writer
 func (t *HTMLTag) renderAttributes(w io.StringWriter) error {
 	// Add HTML attributes in order

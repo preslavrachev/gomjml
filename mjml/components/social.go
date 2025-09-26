@@ -187,28 +187,60 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 		if msoAlign == "" {
 			msoAlign = "center"
 		}
-		msoTable := fmt.Sprintf(
-			"<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"%s\"><tr><![endif]-->",
-			msoAlign,
-		)
-		if _, err := w.WriteString(msoTable); err != nil {
-			return err
-		}
 
-		// Render social elements
+		// Collect social elements first to coordinate MSO conditionals
+		socialElements := make([]*MJSocialElementComponent, 0, len(c.Children))
 		for _, child := range c.Children {
 			if socialElement, ok := child.(*MJSocialElementComponent); ok {
 				socialElement.SetContainerWidth(c.GetContainerWidth())
 				socialElement.InheritFromParent(c)
-				if err := socialElement.Render(w); err != nil {
+				socialElements = append(socialElements, socialElement)
+			}
+		}
+
+		if len(socialElements) > 0 {
+			msoTable := fmt.Sprintf(
+				"<!--[if mso | IE]><table align=\"%s\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><td><![endif]-->",
+				msoAlign,
+			)
+			if _, err := w.WriteString(msoTable); err != nil {
+				return err
+			}
+		} else {
+			msoTable := fmt.Sprintf(
+				"<!--[if mso | IE]><table align=\"%s\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><![endif]-->",
+				msoAlign,
+			)
+			if _, err := w.WriteString(msoTable); err != nil {
+				return err
+			}
+		}
+
+		// Render social elements with coordinated MSO wrappers
+		for i, socialElement := range socialElements {
+			previousWrap := socialElement.SetMSOConditionalWrap(false)
+			if err := socialElement.Render(w); err != nil {
+				socialElement.SetMSOConditionalWrap(previousWrap)
+				return err
+			}
+			socialElement.SetMSOConditionalWrap(previousWrap)
+
+			if i < len(socialElements)-1 {
+				if _, err := w.WriteString("<!--[if mso | IE]></td><td><![endif]-->"); err != nil {
 					return err
 				}
 			}
 		}
 
 		// MSO conditional closing
-		if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
-			return err
+		if len(socialElements) > 0 {
+			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+				return err
+			}
+		} else {
+			if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -233,12 +265,14 @@ type MJSocialElementComponent struct {
 	*BaseComponent
 	parentSocial *MJSocialComponent // Reference to parent for attribute inheritance
 	verticalMode bool               // Whether this element should render in vertical mode
+	wrapMSO      bool               // Whether to wrap output with MSO conditionals
 }
 
 // NewMJSocialElementComponent creates a new mj-social-element component
 func NewMJSocialElementComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSocialElementComponent {
 	return &MJSocialElementComponent{
 		BaseComponent: NewBaseComponent(node, opts),
+		wrapMSO:       true,
 	}
 }
 
@@ -423,6 +457,13 @@ func (c *MJSocialElementComponent) SetVerticalMode(vertical bool) {
 	c.verticalMode = vertical
 }
 
+// SetMSOConditionalWrap enables or disables MSO wrapper output, returning the previous state.
+func (c *MJSocialElementComponent) SetMSOConditionalWrap(enabled bool) bool {
+	previous := c.wrapMSO
+	c.wrapMSO = enabled
+	return previous
+}
+
 // Render implements optimized Writer-based rendering for MJSocialElementComponent
 func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
@@ -505,16 +546,14 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		widthAttr := stripPxSuffix(iconSize)
 
 		img := html.NewHTMLTag("img")
-		if alt != "" {
-			img.AddAttribute("alt", alt)
-		}
+		img.AddAttribute("alt", alt)
 		img.AddAttribute("height", heightAttr).
 			AddAttribute("src", src).
 			AddAttribute("width", widthAttr).
 			AddStyle("border-radius", borderRadius).
 			AddStyle("display", "block")
 
-		if err := img.RenderSelfClosing(w); err != nil {
+		if err := img.RenderVoid(w); err != nil {
 			return err
 		}
 
@@ -572,8 +611,10 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	// Horizontal mode: MSO conditional for individual social element
-	if _, err := w.WriteString("<!--[if mso | IE]><td><![endif]-->"); err != nil {
-		return err
+	if c.wrapMSO {
+		if _, err := w.WriteString("<!--[if mso | IE]><td><![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	// Outer table (inline-table display) - inherit align from parent
@@ -679,11 +720,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	widthAttr := stripPxSuffix(iconSize)
 
 	img := html.NewHTMLTag("img")
-
-	// Add alt first to match MRML attribute order
-	if alt != "" {
-		img.AddAttribute("alt", alt)
-	}
+	img.AddAttribute("alt", alt)
 
 	img.AddAttribute("height", heightAttr).
 		AddAttribute("src", src).
@@ -705,14 +742,14 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		if err := link.RenderOpen(w); err != nil {
 			return err
 		}
-		if err := img.RenderSelfClosing(w); err != nil {
+		if err := img.RenderVoid(w); err != nil {
 			return err
 		}
 		if err := link.RenderClose(w); err != nil {
 			return err
 		}
 	} else {
-		if err := img.RenderSelfClosing(w); err != nil {
+		if err := img.RenderVoid(w); err != nil {
 			return err
 		}
 	}
@@ -809,8 +846,10 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close MSO conditional
-	if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
-		return err
+	if c.wrapMSO {
+		if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	return nil
