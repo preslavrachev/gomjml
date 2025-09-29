@@ -63,7 +63,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// // Austin layout component tests
 		// "austin-header-section",
 		// "austin-hero-images",
-		// "austin-wrapper-basic",
+		"austin-wrapper-basic",
 		// "austin-text-with-links",
 		// "austin-buttons",
 		// "austin-two-column-images",
@@ -147,7 +147,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-section-full-width",
 		// "mj-section-padding",
 		// "mj-section-text-align",
-		// "mj-section-bg-cover-no-repeat",
+		"mj-section-bg-cover-no-repeat",
 		// "mj-section-global-attributes",
 		// "mj-section-width",
 		// "mj-section-with-columns",
