@@ -118,7 +118,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-button-line-height",
 		// "mj-button-padding",
 		// "mj-button-text-decoration",
-		// "mj-button-text-transform",
+		"mj-button-text-transform",
 		// "mj-button-vertical-align",
 		// "mj-button-width",
 		// "mj-button-global-attributes",
@@ -133,7 +133,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-image-padding",
 		// "mj-image-rel",
 		// "mj-image-title",
-		// "mj-image-class",
+		"mj-image-class",
 		// "mj-image-src-with-url-params",
 		// "mj-section",
 		// "mj-section-background-vml",
@@ -162,7 +162,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-column-padding",
 		// "mj-column-class",
 		// "mj-column-global-attributes",
-		// "mj-wrapper",
+		"mj-wrapper",
 		// "mj-wrapper-border",
 		// "mj-wrapper-border-radius",
 		// "mj-wrapper-multiple-sections",
@@ -200,7 +200,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-social-icon",
 		// "mj-social-link",
 		// "mj-social-mode",
-		// "mj-social-notifuse",
+		"mj-social-notifuse",
 		// "mj-social-padding",
 		// "mj-social-structure-basic",
 		// "mj-social-text",
@@ -245,7 +245,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-carousel-thumbnails",
 		// // Custom test cases
 		// "notifuse-open-br-tags",
-		// "notifuse-full", -- NOTE: HTML has been compiled with the MJML compiler already.
+		//"notifuse-full", //-- NOTE: HTML has been compiled with the MJML compiler already.
 	}
 
 	for _, testName := range testCases {
