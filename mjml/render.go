@@ -932,12 +932,21 @@ func (c *MJMLComponent) hasCarouselComponents() bool {
 
 // shouldImportDefaultFonts determines if default fonts should be auto-imported
 // based on detected fonts, social components presence, and custom global fonts
-func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, hasSocial, hasOnlyDefaultFonts bool) bool {
-	noFontsDetected := len(detectedFonts) == 0
-	socialWithDefaults := hasSocial && hasOnlyDefaultFonts
-	hasCustomGlobals := c.hasCustomGlobalFonts()
+func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, hasText, hasSocial, hasButtons bool, hasOnlyDefaultFonts bool) bool {
+	if c.hasCustomGlobalFonts() {
+		return false
+	}
 
-	return (noFontsDetected || socialWithDefaults) && hasSocial && !hasCustomGlobals
+	// Social-only layouts don't trigger default font imports in MJML's reference output.
+	if hasSocial && !hasText && !hasButtons {
+		return false
+	}
+
+	if hasText || hasButtons {
+		return len(detectedFonts) == 0 || hasOnlyDefaultFonts
+	}
+
+	return false
 }
 
 // hasTextComponentsRecursive recursively checks for text components
@@ -1202,13 +1211,12 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	hasSocial := c.hasSocialComponents()
 	hasButtons := c.hasButtonComponents()
 	hasText := c.hasTextComponents()
-
 	// Only auto-import default fonts if no fonts were already detected from content
 	// This matches MRML's behavior: explicit fonts override default font imports
 	// Also respect custom global fonts from mj-all attributes
 	// Special case: social components with only default fonts should trigger Ubuntu fallback
 	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
-	if c.shouldImportDefaultFonts(detectedFonts, hasSocial, hasOnlyDefaultFonts) {
+	if c.shouldImportDefaultFonts(detectedFonts, hasText, hasSocial, hasButtons, hasOnlyDefaultFonts) {
 		debug.DebugLogWithData(
 			"font-detection",
 			"check-defaults",

@@ -432,7 +432,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		} else {
 			// Standalone: use simple pattern for text content
-			innerMsoTable := html.NewTableTag()
+			innerMsoTable := html.NewHTMLTag("table").
+				AddAttribute(constants.AttrRole, "presentation").
+				AddAttribute("border", "0").
+				AddAttribute("cellpadding", "0").
+				AddAttribute("cellspacing", "0")
 			innerMsoTr := html.NewHTMLTag("tr")
 
 			if useMJMLSyntax {
@@ -478,35 +482,26 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		}
 	} else if !hasChildContent && !hasTextContent {
-		// Empty section: Outlook still expects the split conditional wrapper so
-		// that open/close comments remain balanced with other section variants.
-		// Reuse the same table/tr structure that text-only sections render.
-		innerMsoTable := html.NewTableTag()
-		innerMsoTr := html.NewHTMLTag("tr")
+		// Empty section: MJML emits a single MSO conditional wrapper containing an empty table.
+		// Match that exact output to avoid duplicated conditional comment pairs.
+		innerMsoTable := html.NewHTMLTag("table").
+			AddAttribute(constants.AttrRole, "presentation").
+			AddAttribute("border", "0").
+			AddAttribute("cellpadding", "0").
+			AddAttribute("cellspacing", "0")
 
-		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		var innerContent strings.Builder
+		if err := innerMsoTable.RenderOpen(&innerContent); err != nil {
 			return err
 		}
-		if err := innerMsoTable.RenderOpen(w); err != nil {
+		if _, err := innerContent.WriteString("<tr></tr>"); err != nil {
 			return err
 		}
-		if err := innerMsoTr.RenderOpen(w); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("<![endif]-->"); err != nil {
+		if err := innerMsoTable.RenderClose(&innerContent); err != nil {
 			return err
 		}
 
-		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-			return err
-		}
-		if err := innerMsoTr.RenderClose(w); err != nil {
-			return err
-		}
-		if err := innerMsoTable.RenderClose(w); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("<![endif]-->"); err != nil {
+		if err := html.RenderMSOConditional(w, innerContent.String()); err != nil {
 			return err
 		}
 	}

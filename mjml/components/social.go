@@ -93,9 +93,19 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.StringWriter) error {
-	// AIDEV-NOTE: Always track font-family for font injection detection
-	// This ensures Ubuntu fonts are detected even when social elements have no text content
-	c.getAttribute(constants.MJMLFontFamily)
+	hasTextContent := false
+	for _, child := range c.Children {
+		if elem, ok := child.(*MJSocialElementComponent); ok {
+			if strings.TrimSpace(elem.Node.Text) != "" || len(elem.Node.Children) > 0 {
+				hasTextContent = true
+				break
+			}
+		}
+	}
+
+	if hasTextContent {
+		c.getAttribute(constants.MJMLFontFamily)
+	}
 
 	padding := c.getAttribute(constants.MJMLPadding)
 	align := c.getAttribute(constants.MJMLAlign)
@@ -482,9 +492,13 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		if nameAttr == "facebook" && !strings.Contains(href, "facebook.com/sharer") {
 			// Convert href to Facebook sharing URL if not already a sharing URL
 			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
-		} else if (nameAttr == "twitter" || nameAttr == "x") && !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
-			// Convert href to Twitter/X sharing URL if not already a sharing or profile URL
-			href = "https://twitter.com/home?status=" + href
+		} else if nameAttr == "twitter" || nameAttr == "x" {
+			if href == "#" {
+				href = "https://twitter.com/home?status=" + href
+			} else if !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
+				// Convert href to Twitter/X sharing URL if not already a sharing or profile URL
+				href = "https://twitter.com/intent/tweet?url=" + href
+			}
 		}
 	}
 	// Note: Only generate default URLs when href is explicitly provided (even if empty like "#")

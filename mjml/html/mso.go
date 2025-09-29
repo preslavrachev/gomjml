@@ -474,7 +474,7 @@ func RenderMSOWrapperTableOpenWithWidths(w io.StringWriter, outerWidthPx int, in
 
 // RenderMSOWrapperTableClose renders MSO wrapper table closing directly to Writer
 func RenderMSOWrapperTableClose(w io.StringWriter) error {
-	return RenderMSOConditional(w, "</td></tr></table></td></tr></table>")
+        return RenderMSOConditional(w, "</td></tr></table></td></tr></table>")
 }
 
 // RenderMSOSectionTransition renders MSO conditional comment that bridges between sections in a wrapper.
