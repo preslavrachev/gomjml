@@ -74,9 +74,7 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		td.AddAttribute(constants.AttrClass, cssClass)
-	}
+	c.SetClassAttribute(td)
 
 	td.AddStyle(constants.CSSFontSize, "0px").
 		AddStyle(constants.CSSPadding, padding).

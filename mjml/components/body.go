@@ -73,6 +73,7 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 
 	// Build class attribute: just use the user's css-class if present
 	classAttr := c.BuildClassAttribute("")
+	inlineStyle := c.BuildInlineStyleString(classAttr)
 
 	useMJMLSyntax := c.RenderOpts != nil && c.RenderOpts.UseMJMLSyntax && len(c.Children) > 0
 
@@ -92,6 +93,7 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 
 		if classAttr != "" {
 			bodyDiv.AddAttribute("class", classAttr)
+			c.ApplyInlineStyles(bodyDiv, classAttr)
 		}
 
 		if backgroundColor != nil && *backgroundColor != "" {
@@ -127,14 +129,18 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 				return err
 			}
 		}
+
 		if backgroundColor != nil && *backgroundColor != "" {
-			if _, err := w.WriteString(` style="background-color:`); err != nil {
+			inlineStyle += "background-color:" + *backgroundColor + ";"
+		}
+		if inlineStyle != "" {
+			if _, err := w.WriteString(` style="`); err != nil {
 				return err
 			}
-			if _, err := w.WriteString(*backgroundColor); err != nil {
+			if _, err := w.WriteString(inlineStyle); err != nil {
 				return err
 			}
-			if _, err := w.WriteString(`;"`); err != nil {
+			if _, err := w.WriteString(`"`); err != nil {
 				return err
 			}
 		}

@@ -107,9 +107,7 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		tdTag.AddAttribute("class", cssClass)
-	}
+	c.SetClassAttribute(tdTag)
 
 	if err := tdTag.RenderOpen(w); err != nil {
 		return err

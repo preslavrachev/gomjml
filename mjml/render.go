@@ -790,6 +790,14 @@ func (c *MJMLComponent) generateCustomStyles() string {
 	if c.Head != nil {
 		for _, child := range c.Head.Children {
 			if styleComp, ok := child.(*components.MJStyleComponent); ok {
+				inlineAttr := ""
+				if attr := styleComp.GetAttribute("inline"); attr != nil {
+					inlineAttr = strings.ToLower(strings.TrimSpace(*attr))
+				}
+				if inlineAttr == "inline" && c.RenderOpts != nil && c.RenderOpts.SkipInlineStylesInHead {
+					continue
+				}
+
 				text := strings.TrimSpace(styleComp.Node.Text)
 				if text != "" {
 					content.WriteString(text)

@@ -130,7 +130,7 @@ func (c *MJColumnComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	columnDiv.AddAttribute("class", c.BuildClassAttribute(classOrder...))
+	c.SetClassAttribute(columnDiv, classOrder...)
 
 	// Always apply full column styles (same for all contexts)
 	columnDiv.

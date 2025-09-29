@@ -147,9 +147,7 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	tdTag.AddStyle(constants.CSSWordBreak, "break-word")
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		tdTag.AddAttribute(constants.AttrClass, cssClass)
-	}
+	c.SetClassAttribute(tdTag)
 
 	if err := tdTag.RenderOpen(w); err != nil {
 		return err

@@ -45,9 +45,7 @@ func (c *MJTableComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		tdTag.AddAttribute(constants.AttrClass, cssClass)
-	}
+	c.SetClassAttribute(tdTag)
 
 	// Add specific padding overrides if they exist
 	if paddingTop := c.GetAttribute(constants.MJMLPaddingTop); paddingTop != nil {

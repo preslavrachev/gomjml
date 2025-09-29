@@ -288,14 +288,19 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 	// MSO conditional for wrapper content
 	firstAlign := ""
+	firstBgColor := ""
 	for _, ch := range c.Children {
-		if !ch.IsRawElement() {
-			firstAlign = getChildAlign(ch)
-			break
+		if ch.IsRawElement() {
+			continue
 		}
+		firstAlign = getChildAlign(ch)
+		if section, ok := ch.(*MJSectionComponent); ok {
+			firstBgColor = section.GetAttributeWithDefault(section, "background-color")
+		}
+		break
 	}
 
-	if err := html.RenderMSOWrapperTableOpenWithWidths(w, c.GetEffectiveWidth(), effectiveWidth, firstAlign); err != nil {
+	if err := html.RenderMSOWrapperTableOpenWithWidths(w, c.GetEffectiveWidth(), effectiveWidth, firstAlign, firstBgColor); err != nil {
 		return err
 	}
 
@@ -415,12 +420,13 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Apply background styles first to match MRML order
 	c.ApplyBackgroundStyles(wrapperDiv, c)
 
-	wrapperDiv.AddStyle("margin", "0px auto")
-
 	// Add css-class support for wrapper div
 	if cssClass != "" {
 		wrapperDiv.AddAttribute("class", cssClass)
+		c.ApplyInlineStyles(wrapperDiv, cssClass)
 	}
+
+	wrapperDiv.AddStyle("margin", "0px auto")
 
 	// Order styles to match MJML output: margin -> max-width -> border-radius -> overflow
 	wrapperDiv.AddStyle("max-width", GetDefaultBodyWidth())
@@ -507,17 +513,22 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	}
 
 	firstAlign := ""
+	firstBgColor := ""
 	for _, ch := range c.Children {
-		if !ch.IsRawElement() {
-			firstAlign = getChildAlign(ch)
-			break
+		if ch.IsRawElement() {
+			continue
 		}
+		firstAlign = getChildAlign(ch)
+		if section, ok := ch.(*MJSectionComponent); ok {
+			firstBgColor = section.GetAttributeWithDefault(section, "background-color")
+		}
+		break
 	}
 
 	// For basic wrapper, we need a specific MSO conditional pattern
 	// that matches MRML's output more closely - use the outer container width
 	outerWidth := c.GetEffectiveWidth()
-	if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign); err != nil {
+	if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
 		return err
 	}
 

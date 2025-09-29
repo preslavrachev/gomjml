@@ -586,6 +586,54 @@ func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
 	return b.String()
 }
 
+// SetClassAttribute applies the computed class attribute to the provided tag and
+// inlines any CSS declarations collected from mj-style inline rules.
+func (bc *BaseComponent) SetClassAttribute(tag *html.HTMLTag, existingClasses ...string) string {
+	classAttr := bc.BuildClassAttribute(existingClasses...)
+	if classAttr != "" {
+		tag.AddAttribute(constants.AttrClass, classAttr)
+		bc.ApplyInlineStyles(tag, classAttr)
+	}
+	return classAttr
+}
+
+// ApplyInlineStyles appends inline CSS declarations matching the provided class
+// attribute to the tag. Declarations retain their original ordering.
+func (bc *BaseComponent) ApplyInlineStyles(tag *html.HTMLTag, classAttr string) {
+	if bc.RenderOpts == nil || len(bc.RenderOpts.InlineClassStyles) == 0 {
+		return
+	}
+
+	for _, className := range strings.Fields(classAttr) {
+		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
+			for _, decl := range declarations {
+				tag.AddStyle(decl.Property, decl.Value)
+			}
+		}
+	}
+}
+
+// BuildInlineStyleString returns the serialized inline style string for the
+// provided class attribute, preserving declaration order.
+func (bc *BaseComponent) BuildInlineStyleString(classAttr string) string {
+	if bc.RenderOpts == nil || len(bc.RenderOpts.InlineClassStyles) == 0 || classAttr == "" {
+		return ""
+	}
+
+	var builder strings.Builder
+	for _, className := range strings.Fields(classAttr) {
+		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
+			for _, decl := range declarations {
+				builder.WriteString(decl.Property)
+				builder.WriteString(":")
+				builder.WriteString(decl.Value)
+				builder.WriteString(";")
+			}
+		}
+	}
+	return builder.String()
+}
+
 // GetMSOClassAttribute returns the MSO conditional comment class attribute with -outlook suffix
 // Returns empty string if no css-class is set, or " class=\"css-class-outlook\"" if set
 func (bc *BaseComponent) GetMSOClassAttribute() string {

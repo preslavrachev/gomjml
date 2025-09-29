@@ -61,10 +61,8 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	tdTag.AddStyle(constants.CSSFontSize, "0px").
 		AddStyle(constants.CSSPadding, padding)
 
-	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		tdTag.AddAttribute("class", cssClass)
-	}
+		// Add css-class if present
+	c.SetClassAttribute(tdTag)
 
 	// Add specific padding overrides if they exist (following MRML/section pattern)
 	if paddingTop := c.GetAttributeFast(c, constants.MJMLPaddingTop); paddingTop != "" {

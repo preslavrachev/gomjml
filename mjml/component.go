@@ -133,6 +133,15 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 			}
 		}
 
+		if inlineStyles := collectInlineClassStyles(head, opts); len(inlineStyles) > 0 {
+			if opts.InlineClassStyles == nil {
+				opts.InlineClassStyles = make(map[string][]options.InlineStyle, len(inlineStyles))
+			}
+			for className, declarations := range inlineStyles {
+				opts.InlineClassStyles[className] = append(opts.InlineClassStyles[className], declarations...)
+			}
+		}
+
 		comp.Head = head
 	}
 

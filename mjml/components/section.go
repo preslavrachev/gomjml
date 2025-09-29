@@ -119,10 +119,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 			// Note: VML color attribute is only included when backgroundColor is explicitly set
 
-			vmlOpen := `<v:rect mso-width-percent="1000" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY +
-				`" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment +
-				sizeFragment + ` type="` + vmlType + `"` +
-				aspectFragment + ` /><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;"><![endif]-->`
+			vmlOpen := `<v:rect mso-width-percent="1000" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill origin="` + vOriginX + `, ` + vOriginY +
+				`" position="` + vPosX + `, ` + vPosY + `" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment +
+				` type="` + vmlType + `"` + sizeFragment + aspectFragment +
+				` /><v:textbox style="mso-fit-shape-to-text:true" inset="0,0,0,0"><![endif]-->`
 
 			if _, err := w.WriteString(vmlOpen); err != nil {
 				return err
@@ -164,11 +164,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				return err
 			}
 		}
-		if backgroundColor != "" {
-			if _, err := w.WriteString(` bgcolor="` + backgroundColor + `"`); err != nil {
-				return err
-			}
-		}
 		if _, err := w.WriteString(` border="0" cellpadding="0" cellspacing="0"`); err != nil {
 			return err
 		}
@@ -181,7 +176,15 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		if _, err := w.WriteString(` style="width:` + getPixelWidthString(msoTableWidth) + `;"`); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(` width="` + strconv.Itoa(msoTableWidth) + `" >`); err != nil {
+		if _, err := w.WriteString(` width="` + strconv.Itoa(msoTableWidth) + `"`); err != nil {
+			return err
+		}
+		if backgroundColor != "" {
+			if _, err := w.WriteString(` bgcolor="` + backgroundColor + `"`); err != nil {
+				return err
+			}
+		}
+		if _, err := w.WriteString(` >`); err != nil {
 			return err
 		}
 		if _, err := w.WriteString(`<tr>`); err != nil {
@@ -241,7 +244,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			colorFragment = ` color="` + backgroundColor + `"`
 		}
 
-		vmlOpen := `<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:` + strconv.Itoa(msoTableWidth) + `px;"><v:fill position="` + vPosX + `, ` + vPosY + `" origin="` + vOriginX + `, ` + vOriginY + `" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment + sizeFragment + ` type="` + vmlType + `"` + aspectFragment + ` /><v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;">`
+		vmlOpen := `<v:rect style="width:` + strconv.Itoa(msoTableWidth) + `px;" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill origin="` + vOriginX + `, ` + vOriginY + `" position="` + vPosX + `, ` + vPosY + `" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment + ` type="` + vmlType + `"` + sizeFragment + aspectFragment + ` /><v:textbox style="mso-fit-shape-to-text:true" inset="0,0,0,0">`
 		if _, err := w.WriteString(vmlOpen); err != nil {
 			return err
 		}
@@ -261,9 +264,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	c.AddDebugAttribute(sectionDiv, "section")
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		sectionDiv.AddAttribute("class", cssClass)
-	}
+	c.SetClassAttribute(sectionDiv)
 
 	// Background on main section div (MRML behavior):
 	// - When not full-width and we have a background image, use shorthand background
@@ -541,6 +542,9 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 	}
 
+	// Compute the effective content width after accounting for horizontal padding.
+	innerContentWidth := c.getInnerContentWidth()
+
 	// Render child columns and groups (section provides shared MSO TR, columns provide MSO TDs)
 	// AIDEV-NOTE: width-flow-start; section initiates width flow by passing effective width to columns
 	for _, child := range c.Children {
@@ -552,7 +556,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		}
 
 		// Pass the effective width and sibling counts to the child
-		child.SetContainerWidth(c.GetEffectiveWidth())
+		child.SetContainerWidth(innerContentWidth)
 		child.SetSiblings(siblings)
 		child.SetRawSiblings(rawSiblings)
 
@@ -629,7 +633,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 		if groupComp, ok := child.(*MJGroupComponent); ok {
 			// Ensure the group receives the effective section width for its internal calculations
-			groupComp.SetContainerWidth(c.GetEffectiveWidth())
+			groupComp.SetContainerWidth(innerContentWidth)
 		}
 
 		// Use optimized rendering with fallback to string-based
@@ -728,4 +732,43 @@ func (c *MJSectionComponent) GetDefaultAttribute(name string) string {
 	default:
 		return ""
 	}
+}
+
+// getInnerContentWidth calculates the inner content width for the section after accounting for
+// horizontal padding overrides. The value is used for width propagation to child columns/groups
+// so MSO fallback tables match MJML's Outlook output.
+func (c *MJSectionComponent) getInnerContentWidth() int {
+	effectiveWidth := c.GetEffectiveWidth()
+	paddingValue := c.GetAttributeWithDefault(c, "padding")
+
+	var spacing *styles.Spacing
+	if paddingValue != "" {
+		if parsed, err := styles.ParseSpacing(paddingValue); err == nil && parsed != nil {
+			spacing = parsed
+			effectiveWidth -= int(parsed.Left + parsed.Right)
+		}
+	}
+
+	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil && *paddingLeftAttr != "" {
+		if px, err := styles.ParsePixel(*paddingLeftAttr); err == nil && px != nil {
+			if spacing != nil {
+				effectiveWidth += int(spacing.Left)
+			}
+			effectiveWidth -= int(px.Value)
+		}
+	}
+
+	if paddingRightAttr := c.GetAttribute(constants.MJMLPaddingRight); paddingRightAttr != nil && *paddingRightAttr != "" {
+		if px, err := styles.ParsePixel(*paddingRightAttr); err == nil && px != nil {
+			if spacing != nil {
+				effectiveWidth += int(spacing.Right)
+			}
+			effectiveWidth -= int(px.Value)
+		}
+	}
+
+	if effectiveWidth <= 0 {
+		return c.GetEffectiveWidth()
+	}
+	return effectiveWidth
 }

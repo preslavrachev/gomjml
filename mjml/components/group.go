@@ -110,14 +110,14 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 	// Note: Class order should match MRML output
 	rootDiv := html.NewHTMLTag("div")
 	c.AddDebugAttribute(rootDiv, "group")
+	c.SetClassAttribute(rootDiv, widthClass, "mj-outlook-group-fix")
 
-	rootDiv.AddAttribute("class", c.BuildClassAttribute(widthClass, "mj-outlook-group-fix")).
-		AddStyle("font-size", "0"). // Note: "0" not "0px" to match MRML
-		AddStyle("line-height", "0").
-		AddStyle("text-align", "left").
-		AddStyle("display", "inline-block").
-		AddStyle("width", "100%").
-		AddStyle("direction", direction)
+	rootDiv.AddStyle("font-size", "0"). // Note: "0" not "0px" to match MRML
+						AddStyle("line-height", "0").
+						AddStyle("text-align", "left").
+						AddStyle("display", "inline-block").
+						AddStyle("width", "100%").
+						AddStyle("direction", direction)
 
 	// Only add vertical-align if it's not the default value
 	if verticalAlign != defaultVerticalAlign {

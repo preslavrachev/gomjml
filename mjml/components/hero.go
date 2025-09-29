@@ -94,9 +94,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		AddStyle(constants.CSSMaxWidth, containerWidthPx)
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		divTag.AddAttribute(constants.AttrClass, cssClass)
-	}
+	c.SetClassAttribute(divTag)
 
 	if err := divTag.RenderOpen(w); err != nil {
 		return err

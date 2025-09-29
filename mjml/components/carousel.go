@@ -71,7 +71,17 @@ func (c *MJCarouselComponent) Render(w io.StringWriter) error {
 			return err
 		}
 	}
-	if _, err := w.WriteString(` style="font-size:0px;word-break:break-word;">`); err != nil {
+	inlineStyle := ""
+	if classAttr != "" {
+		inlineStyle = c.BuildInlineStyleString(classAttr)
+	}
+	if _, err := w.WriteString(` style="`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(inlineStyle); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("font-size:0px;word-break:break-word;\">"); err != nil {
 		return err
 	}
 
