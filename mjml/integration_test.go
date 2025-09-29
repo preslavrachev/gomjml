@@ -65,8 +65,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "austin-hero-images",
 		"austin-wrapper-basic",
 		// "austin-text-with-links",
-		// "austin-buttons",
-		// "austin-two-column-images",
+		"austin-buttons",
+		"austin-two-column-images",
 		// "austin-divider",
 		// "mj-divider",
 		// "mj-divider-alignment",
@@ -140,7 +140,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-section-background-color",
 		// "mj-section-background-url",
 		// "mj-section-background-url-full",
-		// "mj-section-body-width",
+		"mj-section-body-width",
 		// "mj-section-border",
 		// "mj-section-border-radius",
 		// "mj-section-direction",
@@ -175,7 +175,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-text-container-background-color",
 		// "mj-text-decoration",
 		// "mj-text-example",
-		// "mj-text-font-family",
+		"mj-text-font-family",
 		// "mj-text-font-size",
 		// "mj-text-font-style",
 		// "mj-text-font-weight",
@@ -244,8 +244,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-carousel-tb",
 		// "mj-carousel-thumbnails",
 		// // Custom test cases
-		// "notifuse-open-br-tags",
-		//"notifuse-full", //-- NOTE: HTML has been compiled with the MJML compiler already.
+		"notifuse-open-br-tags",
+		// "notifuse-full", //-- NOTE: HTML has been compiled with the MJML compiler already.
 	}
 
 	for _, testName := range testCases {
