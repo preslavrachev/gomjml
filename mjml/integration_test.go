@@ -78,7 +78,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-divider-width",
 		// "mj-divider-container-background-transparent",
 		// "austin-two-column-text",
-		// "austin-full-width-wrapper",
+		"austin-full-width-wrapper",
 		// //"austin-social-media", // Commented out
 		// "austin-footer-text",
 		// "austin-group-component",
@@ -126,7 +126,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// "mj-image-align",
 		// "mj-image-border",
 		// "mj-image-border-radius",
-		// "mj-image-container-background-color",
+		"mj-image-container-background-color",
 		// "mj-image-fluid-on-mobile",
 		// "mj-image-height",
 		// "mj-image-href",
@@ -171,7 +171,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// // MJ-Text tests
 		// "mj-text",
 		// "mj-text-align",
-		// "mj-text-color",
+		"mj-text-color",
 		// "mj-text-container-background-color",
 		// "mj-text-decoration",
 		// "mj-text-example",
@@ -211,7 +211,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// // MJ-ACCORDION tests
 		// "mj-accordion",
 		// "mj-accordion-font-padding",
-		// "mj-accordion-icon",
+		"mj-accordion-icon",
 		// "mj-accordion-other",
 		// // MJ-NAVBAR tests
 		// "mj-navbar",
