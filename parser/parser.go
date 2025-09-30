@@ -76,10 +76,11 @@ func isVoidHTMLElement(tag string) bool {
 
 // MJMLNode represents a node in the MJML AST
 type MJMLNode struct {
-	XMLName  xml.Name
-	Text     string
-	Attrs    []xml.Attr
-	Children []*MJMLNode
+	XMLName    xml.Name
+	Text       string
+	Attrs      []xml.Attr
+	Children   []*MJMLNode
+	LineNumber int
 	// MixedContent preserves the interleaving order of text nodes and child elements
 	// as they originally appeared in the MJML source. Each entry contains either
 	// a text segment or a pointer to a child node.
@@ -91,6 +92,34 @@ type MJMLNode struct {
 type MixedContentPart struct {
 	Text string
 	Node *MJMLNode
+}
+
+type lineLookup struct {
+	lineOffsets []int
+}
+
+func newLineLookup(content []byte) *lineLookup {
+	offsets := make([]int, 0, 64)
+	offsets = append(offsets, 0)
+	for i, b := range content {
+		if b == '\n' {
+			offsets = append(offsets, i+1)
+		}
+	}
+	return &lineLookup{lineOffsets: offsets}
+}
+
+func (ll *lineLookup) Line(offset int64) int {
+	if ll == nil || len(ll.lineOffsets) == 0 {
+		return 1
+	}
+	idx := sort.Search(len(ll.lineOffsets), func(i int) bool {
+		return ll.lineOffsets[i] > int(offset)
+	}) - 1
+	if idx < 0 {
+		idx = 0
+	}
+	return idx + 1
 }
 
 // AIDEV-NOTE: mjml-spec-structure; MJML document structure per official spec
@@ -114,8 +143,11 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 	// Wrap mj-text inner content in CDATA to preserve raw HTML
 	processedContent = wrapMJTextContent(processedContent)
 
-	decoder := xml.NewDecoder(strings.NewReader(processedContent))
-	root, err := parseNode(decoder, xml.StartElement{})
+	contentBytes := []byte(processedContent)
+	lookup := newLineLookup(contentBytes)
+
+	decoder := xml.NewDecoder(bytes.NewReader(contentBytes))
+	root, err := parseNode(decoder, xml.StartElement{}, lookup, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MJML: %w", err)
 	}
@@ -579,7 +611,7 @@ func normalizeSelfClosingVoidTags(b []byte) []byte {
 }
 
 // parseNode recursively parses XML nodes
-func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) {
+func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup, startOffset int64) (*MJMLNode, error) {
 	node := &MJMLNode{
 		XMLName:      start.Name,
 		Attrs:        start.Attr,
@@ -596,9 +628,14 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 		if se, ok := tok.(xml.StartElement); ok {
 			node.XMLName = se.Name
 			node.Attrs = se.Attr
+			startOffset = decoder.InputOffset()
 		} else {
 			return nil, fmt.Errorf("expected start element")
 		}
+	}
+
+	if lookup != nil {
+		node.LineNumber = lookup.Line(startOffset)
 	}
 
 	// Special handling for mj-raw: capture original inner content including comments
@@ -632,7 +669,8 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement) (*MJMLNode, error) 
 		switch t := tok.(type) {
 		case xml.StartElement:
 			flushSegment()
-			child, err := parseNode(decoder, t)
+			childOffset := decoder.InputOffset()
+			child, err := parseNode(decoder, t, lookup, childOffset)
 			if err != nil {
 				return nil, err
 			}
@@ -762,6 +800,14 @@ func (n *MJMLNode) GetAttribute(name string) string {
 // GetTagName returns the local name of the XML tag
 func (n *MJMLNode) GetTagName() string {
 	return n.XMLName.Local
+}
+
+// GetLineNumber returns the starting line number for this node in the processed MJML source.
+func (n *MJMLNode) GetLineNumber() int {
+	if n == nil || n.LineNumber <= 0 {
+		return 1
+	}
+	return n.LineNumber
 }
 
 // GetTextContent returns the trimmed text content

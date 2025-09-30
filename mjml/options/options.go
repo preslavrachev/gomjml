@@ -41,20 +41,21 @@ func (ft *FontTracker) GetFonts() []string {
 
 // RenderOpts contains options for MJML rendering
 type RenderOpts struct {
-	DebugTags              bool                     // Whether to include debug attributes in output
-	InsideGroup            bool                     // Whether the component is being rendered inside a group
-	InsideHero             bool                     // Whether the component is being rendered inside a hero
-	InsideWrapper          bool                     // Whether the component is being rendered inside a wrapper
-	GroupColumnCount       int                      // Number of columns in the current group context (0 when not inside a group)
-	FontTracker            *FontTracker             // Tracks fonts used during rendering
-	UseCache               bool                     // Whether to enable AST caching
-	Lang                   string                   // Language attribute from root MJML element
-	UseMJMLSyntax          bool                     // Whether to emit MJML-style head/body markup (vs MRML-compatible output)
-	Title                  string                   // Document title extracted from <mj-title>
-	InlineClassStyles      map[string][]InlineStyle // CSS declarations to inline for css-class selectors
-	SkipInlineStylesInHead bool                     // Whether to omit inline mj-style rules from the head output
-	PendingMSOSectionClose bool                     // Tracks whether a section left an MSO comment open for the next section
-	RemainingBodySections  int                      // Number of mj-section siblings remaining after the current one
+	DebugTags                bool                     // Whether to include debug attributes in output
+	InsideGroup              bool                     // Whether the component is being rendered inside a group
+	InsideHero               bool                     // Whether the component is being rendered inside a hero
+	InsideWrapper            bool                     // Whether the component is being rendered inside a wrapper
+	GroupColumnCount         int                      // Number of columns in the current group context (0 when not inside a group)
+	FontTracker              *FontTracker             // Tracks fonts used during rendering
+	UseCache                 bool                     // Whether to enable AST caching
+	Lang                     string                   // Language attribute from root MJML element
+	UseMJMLSyntax            bool                     // Whether to emit MJML-style head/body markup (vs MRML-compatible output)
+	Title                    string                   // Document title extracted from <mj-title>
+	InlineClassStyles        map[string][]InlineStyle // CSS declarations to inline for css-class selectors
+	SkipInlineStylesInHead   bool                     // Whether to omit inline mj-style rules from the head output
+	PendingMSOSectionClose   bool                     // Tracks whether a section left an MSO comment open for the next section
+	RemainingBodySections    int                      // Number of mj-section siblings remaining after the current one
+	InvalidAttributeReporter func(tagName, attrName string, line int)
 }
 
 // InlineStyle represents a CSS declaration parsed from an inline mj-style rule.

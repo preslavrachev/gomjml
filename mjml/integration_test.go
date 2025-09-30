@@ -295,15 +295,19 @@ func TestMJMLAgainstExpected(t *testing.T) {
 			// Get actual output from Go implementation (direct library usage)
 			actual, err := Render(string(mjmlContent))
 			if err != nil {
-				// Check if we have an error handler for this test case
+				handled := false
 				if tc.errHandler != nil {
-					// If we have an error handler, check if it's an MJML error
-					if mjmlErr, ok := err.(Error); ok {
-						// Call the error handler - it returns true if error matches expectation
-						if tc.errHandler(mjmlErr) != nil {
+					var mjmlErr Error
+					if errors.As(err, &mjmlErr) {
+						if tc.errHandler(mjmlErr) == nil {
+							handled = true
+						} else {
 							t.Fatalf("Error did not match expectation: %v", err)
 						}
 					}
+				}
+				if handled {
+					return
 				}
 				// Unexpected error or no error handler - fail the test
 				t.Fatalf("Failed to render MJML: %v", err)

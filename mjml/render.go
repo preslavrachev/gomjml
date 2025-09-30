@@ -347,6 +347,20 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		opt(renderOpts)
 	}
 
+	var validationErr *Error
+	existingReporter := renderOpts.InvalidAttributeReporter
+	renderOpts.InvalidAttributeReporter = func(tagName, attrName string, line int) {
+		errDetail := ErrInvalidAttribute(tagName, attrName, line)
+		if validationErr == nil {
+			validationErr = errDetail
+		} else {
+			validationErr.Append(errDetail)
+		}
+		if existingReporter != nil {
+			existingReporter(tagName, attrName, line)
+		}
+	}
+
 	// Parse MJML using the parser package (with optional cache)
 	ast, err := parseAST(mjmlContent, renderOpts.UseCache)
 	if err != nil {
@@ -399,6 +413,13 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		"expansion_factor": float64(len(htmlOutput)) / float64(len(mjmlContent)),
 	})
 
+	if validationErr != nil {
+		return &RenderResult{
+			HTML: htmlOutput,
+			AST:  ast,
+		}, *validationErr
+	}
+
 	return &RenderResult{
 		HTML: htmlOutput,
 		AST:  ast,
@@ -413,11 +434,11 @@ func Render(mjmlContent string, opts ...RenderOption) (string, error) {
 	components.ResetCarouselIDCounter()
 
 	result, err := RenderWithAST(mjmlContent, opts...)
-	if err != nil {
+	if result == nil {
 		return "", err
 	}
 	normalizedHTML := normalizeGroupColumnClassOrder(result.HTML)
-	return normalizedHTML, nil
+	return normalizedHTML, err
 }
 
 // RenderFromAST renders HTML from a pre-parsed AST
@@ -428,12 +449,33 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 		opt(renderOpts)
 	}
 
+	var validationErr *Error
+	existingReporter := renderOpts.InvalidAttributeReporter
+	renderOpts.InvalidAttributeReporter = func(tagName, attrName string, line int) {
+		errDetail := ErrInvalidAttribute(tagName, attrName, line)
+		if validationErr == nil {
+			validationErr = errDetail
+		} else {
+			validationErr.Append(errDetail)
+		}
+		if existingReporter != nil {
+			existingReporter(tagName, attrName, line)
+		}
+	}
+
 	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
 		return "", err
 	}
 
-	return RenderComponentString(component)
+	html, err := RenderComponentString(component)
+	if err != nil {
+		return "", err
+	}
+	if validationErr != nil {
+		return html, *validationErr
+	}
+	return html, nil
 }
 
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)

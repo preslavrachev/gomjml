@@ -15,6 +15,8 @@ import (
 // defaultAttributesData holds the expected default attributes loaded from JSON
 type defaultAttributesData map[string]map[string]string
 
+type allowedAttributesData map[string]map[string]string
+
 // loadDefaultAttributesFromJSON loads the expected default attributes from the JSON file
 func loadDefaultAttributesFromJSON(t *testing.T) defaultAttributesData {
 	t.Helper()
@@ -27,6 +29,23 @@ func loadDefaultAttributesFromJSON(t *testing.T) defaultAttributesData {
 	var data defaultAttributesData
 	if err := json.Unmarshal(jsonFile, &data); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	return data
+}
+
+// loadAllowedAttributesFromJSON loads the allowed CSS attributes from the JSON file
+func loadAllowedAttributesFromJSON(t *testing.T) allowedAttributesData {
+	t.Helper()
+
+	jsonFile, err := os.ReadFile("allowed-css-attributes.json")
+	if err != nil {
+		t.Fatalf("Failed to read allowed-css-attributes.json: %v", err)
+	}
+
+	var data allowedAttributesData
+	if err := json.Unmarshal(jsonFile, &data); err != nil {
+		t.Fatalf("Failed to parse allowed CSS attributes JSON: %v", err)
 	}
 
 	return data
@@ -157,5 +176,41 @@ func TestNoOrphanedJSONEntries(t *testing.T) {
 }
 
 func TestComponentAllowedCSSAttributes(t *testing.T) {
-	t.Fatal("Not implemented yet")
+	expectedData := loadAllowedAttributesFromJSON(t)
+
+	for componentName, expectedAttrs := range expectedData {
+		t.Run(componentName, func(t *testing.T) {
+			actualAttrs := AllowedCSSAttributes(componentName)
+
+			if len(actualAttrs) == 0 {
+				if len(expectedAttrs) == 0 {
+					return
+				}
+				t.Fatalf("Component %s has no allowed attributes defined", componentName)
+			}
+
+			var failures []string
+
+			for attrName, expectedType := range expectedAttrs {
+				actualType, exists := actualAttrs[attrName]
+				if !exists {
+					failures = append(failures, fmt.Sprintf("  - Missing attribute '%s'", attrName))
+					continue
+				}
+				if actualType != expectedType {
+					failures = append(failures, fmt.Sprintf("  - Attribute '%s' type mismatch: expected '%s', got '%s'", attrName, expectedType, actualType))
+				}
+			}
+
+			for attrName := range actualAttrs {
+				if _, exists := expectedAttrs[attrName]; !exists {
+					failures = append(failures, fmt.Sprintf("  - Unexpected attribute '%s'", attrName))
+				}
+			}
+
+			if len(failures) > 0 {
+				t.Fatalf("Component %s has inconsistent allowed attributes:\n%s", componentName, strings.Join(failures, "\n"))
+			}
+		})
+	}
 }

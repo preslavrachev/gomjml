@@ -102,7 +102,7 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		opts = &options.RenderOpts{}
 	}
 
-	return &BaseComponent{
+	bc := &BaseComponent{
 		Node:           node,
 		Attrs:          attrs,
 		classNames:     classNames,
@@ -113,6 +113,10 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		RawSiblings:    0,
 		RenderOpts:     opts,
 	}
+
+	validateComponentAttributes(node, opts)
+
+	return bc
 }
 
 // IsRawElement returns whether this component should be treated as a raw element.
