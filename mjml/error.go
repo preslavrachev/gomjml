@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// ErrorDetail represents a single error detail with line number, message, and tag name.
+type ErrorDetail struct {
+	Line    int    `json:"line"`
+	Message string `json:"message"`
+	TagName string `json:"tagName"`
+}
+
 // Error addresses errors that occur during the compilation of MJML to HTML.
 // It represents errors returned by the MJML engine, providing a general message
 // and a list of detailed errors, each including the line number, error message,
@@ -12,12 +19,8 @@ import (
 //
 // Error is a direct re-interprtation of the same type present in https://github.com/Boostport/mjml-go
 type Error struct {
-	Message string `json:"message"`
-	Details []struct {
-		Line    int    `json:"line"`
-		Message string `json:"message"`
-		TagName string `json:"tagName"`
-	} `json:"details"`
+	Message string        `json:"message"`
+	Details []ErrorDetail `json:"details"`
 }
 
 func (e Error) Error() string {
@@ -42,14 +45,19 @@ func (e Error) Error() string {
 	return sb.String()
 }
 
+// Append merges another Error into this one, combining all details.
+// The message from the current error is preserved.
+func (e *Error) Append(other *Error) {
+	if other == nil {
+		return
+	}
+	e.Details = append(e.Details, other.Details...)
+}
+
 func ErrInvalidAttribute(tagName, attrName string, line int) *Error {
 	return &Error{
 		Message: "MJML compilation error",
-		Details: []struct {
-			Line    int    `json:"line"`
-			Message string `json:"message"`
-			TagName string `json:"tagName"`
-		}{
+		Details: []ErrorDetail{
 			{
 				Line:    line,
 				Message: fmt.Sprintf("Invalid attribute '%s' for tag <%s>", attrName, tagName),
