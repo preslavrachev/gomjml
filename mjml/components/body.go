@@ -149,10 +149,38 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 		}
 	}
 
+	// Track remaining mj-section siblings so sections can replicate MJML's MSO comment chaining
+	remainingSections := 0
 	for _, child := range c.Children {
+		if _, ok := child.(*MJSectionComponent); ok {
+			remainingSections++
+		}
+	}
+
+	if c.RenderOpts != nil {
+		c.RenderOpts.PendingMSOSectionClose = false
+	}
+
+	for _, child := range c.Children {
+		if section, ok := child.(*MJSectionComponent); ok {
+			remainingSections--
+			if c.RenderOpts != nil {
+				c.RenderOpts.RemainingBodySections = remainingSections
+			}
+			if err := section.Render(w); err != nil {
+				return err
+			}
+			continue
+		}
+
 		if err := child.Render(w); err != nil {
 			return err
 		}
+	}
+
+	if c.RenderOpts != nil {
+		c.RenderOpts.PendingMSOSectionClose = false
+		c.RenderOpts.RemainingBodySections = 0
 	}
 
 	_, err := w.WriteString("</div>")

@@ -18,7 +18,7 @@ type MJTextComponent struct {
 	*BaseComponent
 }
 
-var unclosedVoidTagPattern = regexp.MustCompile(`(?i)<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b([^>]*)>`)
+var selfClosingVoidTagPattern = regexp.MustCompile(`(?i)<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b([^>]*)/>`)
 
 // NewMJTextComponent creates a new mj-text component
 func NewMJTextComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTextComponent {
@@ -233,28 +233,10 @@ func ensureVoidHTMLTagsSelfClosed(html string) string {
 		return html
 	}
 
-	return unclosedVoidTagPattern.ReplaceAllStringFunc(html, func(tag string) string {
-		if hasTrailingSelfClosingSlash(tag) {
-			return tag
-		}
-
-		base := strings.TrimRight(tag[:len(tag)-1], " \n\r\t")
+	return selfClosingVoidTagPattern.ReplaceAllStringFunc(html, func(tag string) string {
+		base := strings.TrimRight(tag[:len(tag)-2], " \n\r\t")
 		return base + " />"
 	})
-}
-
-func hasTrailingSelfClosingSlash(tag string) bool {
-	for i := len(tag) - 1; i >= 0; i-- {
-		switch tag[i] {
-		case '>':
-			continue
-		case ' ', '\n', '\r', '\t':
-			continue
-		default:
-			return tag[i] == '/'
-		}
-	}
-	return false
 }
 
 // reconstructHTMLElement reconstructs an HTML element from a parsed node

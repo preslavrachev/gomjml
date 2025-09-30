@@ -150,14 +150,25 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddStyle("mso-line-height-rule", "exactly")
 
 		// Custom MSO conditional
+	continueMSOComment := c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose
+
 	if useMJMLSyntax && !skipSectionMSOTable {
 		cssClassOutlook := ""
 		if cssClass := c.GetCSSClass(); cssClass != "" {
 			cssClassOutlook = cssClass + "-outlook"
 		}
 
-		if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
-			return err
+		if continueMSOComment {
+			if c.RenderOpts != nil {
+				c.RenderOpts.PendingMSOSectionClose = false
+			}
+			if _, err := w.WriteString(`<table`); err != nil {
+				return err
+			}
+		} else {
+			if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
+				return err
+			}
 		}
 		if alignAttr != "" {
 			if _, err := w.WriteString(` align="` + alignAttr + `"`); err != nil {
@@ -524,21 +535,36 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Match MRML by opening the wrapper when we have multiple column children or any raw children.
 	needsSharedMSOTable := columnCount > 1 || rawSiblings > 0
 
-	if needsSharedMSOTable {
-		sharedMsoTable := html.NewTableTag()
-		sharedMsoTr := html.NewHTMLTag("tr")
+	// Shared MSO table management mirrors MJML's Outlook markup, where the
+	// opening <table><tr> sequence lives in the first conditional block.
+	// Raw-only sections still use the original wrapper pattern.
+	var sharedMsoTable *html.HTMLTag
+	var sharedMsoTr *html.HTMLTag
+	sharedTableOpenedForColumns := false
+	sharedTableOpenedForRaw := false
 
-		if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
-			return err
-		}
-		if err := sharedMsoTable.RenderOpen(w); err != nil {
-			return err
-		}
-		if err := sharedMsoTr.RenderOpen(w); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("<![endif]-->"); err != nil {
-			return err
+	if needsSharedMSOTable {
+		sharedMsoTable = html.NewHTMLTag("table").
+			AddAttribute(constants.AttrRole, "presentation").
+			AddAttribute("border", "0").
+			AddAttribute("cellpadding", "0").
+			AddAttribute("cellspacing", "0")
+		sharedMsoTr = html.NewHTMLTag("tr")
+
+		if columnCount == 0 {
+			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+				return err
+			}
+			if err := sharedMsoTable.RenderOpen(w); err != nil {
+				return err
+			}
+			if err := sharedMsoTr.RenderOpen(w); err != nil {
+				return err
+			}
+			if _, err := w.WriteString("<![endif]-->"); err != nil {
+				return err
+			}
+			sharedTableOpenedForRaw = true
 		}
 	}
 
@@ -567,6 +593,60 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 					return *attr
 				}
 				return columnComp.GetDefaultAttribute(name)
+			}
+
+			if needsSharedMSOTable && columnCount > 0 {
+				cssClass := ""
+				if css := columnComp.GetAttribute(constants.MJMLCSSClass); css != nil {
+					cssClass = *css
+				}
+				outlookClass := cssClass + "-outlook"
+				if cssClass == "" {
+					outlookClass = ""
+				}
+
+				msoTd := html.NewHTMLTag("td").
+					AddAttribute("class", outlookClass).
+					AddStyle("vertical-align", getAttr("vertical-align")).
+					AddStyle("width", columnComp.GetWidthAsPixel())
+
+				if !sharedTableOpenedForColumns {
+					if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+						return err
+					}
+					if err := sharedMsoTable.RenderOpen(w); err != nil {
+						return err
+					}
+					if err := sharedMsoTr.RenderOpen(w); err != nil {
+						return err
+					}
+					sharedTableOpenedForColumns = true
+				} else {
+					if _, err := w.WriteString("<!--[if mso | IE]></td>"); err != nil {
+						return err
+					}
+				}
+
+				var tdOpen strings.Builder
+				if err := msoTd.RenderOpen(&tdOpen); err != nil {
+					return err
+				}
+				tdString := tdOpen.String()
+				if strings.HasSuffix(tdString, ">") {
+					tdString = tdString[:len(tdString)-1] + " >"
+				}
+				if _, err := w.WriteString(tdString); err != nil {
+					return err
+				}
+				if _, err := w.WriteString("<![endif]-->"); err != nil {
+					return err
+				}
+
+				if err := columnComp.Render(w); err != nil {
+					return err
+				}
+
+				continue
 			}
 
 			if useMJMLSyntax && columnCount == 1 {
@@ -613,7 +693,15 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
 				return err
 			}
-			if err := msoTd.RenderOpen(w); err != nil {
+			var tdOpen strings.Builder
+			if err := msoTd.RenderOpen(&tdOpen); err != nil {
+				return err
+			}
+			tdString := tdOpen.String()
+			if strings.HasSuffix(tdString, ">") {
+				tdString = tdString[:len(tdString)-1] + " >"
+			}
+			if _, err := w.WriteString(tdString); err != nil {
 				return err
 			}
 			if _, err := w.WriteString("<![endif]-->"); err != nil {
@@ -644,8 +732,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Close shared MSO table structure for columns
 	if needsSharedMSOTable {
-		if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
-			return err
+		if sharedTableOpenedForColumns {
+			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+				return err
+			}
+		} else if sharedTableOpenedForRaw {
+			if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -682,8 +776,18 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		}
 	} else if !skipSectionMSOTable {
-		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
-			return err
+		if c.RenderOpts != nil && c.RenderOpts.RemainingBodySections > 0 {
+			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table>"); err != nil {
+				return err
+			}
+			c.RenderOpts.PendingMSOSectionClose = true
+		} else {
+			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+				return err
+			}
+			if c.RenderOpts != nil {
+				c.RenderOpts.PendingMSOSectionClose = false
+			}
 		}
 	}
 

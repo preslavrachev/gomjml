@@ -53,6 +53,8 @@ type RenderOpts struct {
 	Title                  string                   // Document title extracted from <mj-title>
 	InlineClassStyles      map[string][]InlineStyle // CSS declarations to inline for css-class selectors
 	SkipInlineStylesInHead bool                     // Whether to omit inline mj-style rules from the head output
+	PendingMSOSectionClose bool                     // Tracks whether a section left an MSO comment open for the next section
+	RemainingBodySections  int                      // Number of mj-section siblings remaining after the current one
 }
 
 // InlineStyle represents a CSS declaration parsed from an inline mj-style rule.

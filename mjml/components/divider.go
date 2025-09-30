@@ -161,19 +161,13 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	}
 
 	// Build MSO table directly to writer to avoid fmt.Sprintf allocation
-	if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" align="`); err != nil {
+	if _, err := w.WriteString(`<!--[if mso | IE]><table align="`); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(align); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`" width="`); err != nil {
-		return err
-	}
-	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
-		return err
-	}
-	if _, err := w.WriteString(`px" style="border-top:`); err != nil {
+	if _, err := w.WriteString(`" border="0" cellpadding="0" cellspacing="0" style="border-top:`); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(borderStyle); err != nil {
@@ -203,7 +197,13 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`px;"><tr><td style="height:0;line-height:0;">&nbsp;</td></tr></table><![endif]-->`); err != nil {
+	if _, err := w.WriteString(`px;" role="presentation" width="`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`px" ><tr><td style="height:0;line-height:0;"> &nbsp; </td></tr></table><![endif]-->`); err != nil {
 		return err
 	}
 
