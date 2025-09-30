@@ -155,3 +155,7 @@ func TestNoOrphanedJSONEntries(t *testing.T) {
 		})
 	}
 }
+
+func TestComponentAllowedCSSAttributes(t *testing.T) {
+	t.Fatal("Not implemented yet")
+}
