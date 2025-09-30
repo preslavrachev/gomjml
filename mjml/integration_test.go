@@ -1,6 +1,7 @@
 package mjml
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -43,7 +44,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		errHandler func(Error) bool
+		errHandler func(error) error
 	}
 
 	testCases := []testCase{
@@ -233,7 +234,13 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-hero-background-width"},
 		// {name: "mj-hero-class"},
 		// {name: "mj-hero-height"},
-		{name: "mj-hero-width"},
+		{name: "mj-hero-width", errHandler: func(err error) error {
+			expectedErr := ErrInvalidAttribute("mj-hero", "width", 3)
+			if err.Error() == expectedErr.Error() {
+				return nil
+			}
+			return expectedErr
+		}},
 		// {name: "mj-hero-mode"},
 		// {name: "mj-hero-vertical-align"},
 		// // MJ-SPACER test
@@ -293,12 +300,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 					// If we have an error handler, check if it's an MJML error
 					if mjmlErr, ok := err.(Error); ok {
 						// Call the error handler - it returns true if error matches expectation
-						if tc.errHandler(mjmlErr) {
-							// Expected error - test passes
-							return
+						if tc.errHandler(mjmlErr) != nil {
+							t.Fatalf("Error did not match expectation: %v", err)
 						}
-						// Error handler returned false - error doesn't match expectation
-						t.Fatalf("Error occurred but didn't match expectation: %v", err)
 					}
 				}
 				// Unexpected error or no error handler - fail the test
@@ -307,7 +311,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 
 			// If we expected an error but got none, fail
 			if tc.errHandler != nil {
-				t.Fatalf("Expected an error but got none")
+				t.Fatalf("Expected the following error: %s, but got none", tc.errHandler(errors.New("no error")))
 			}
 
 			// Collect ALL difference types instead of early returns for comprehensive analysis
