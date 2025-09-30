@@ -96,6 +96,8 @@ type MixedContentPart struct {
 
 type lineLookup struct {
 	lineOffsets []int
+	lastOffset  int64
+	lastIndex   int
 }
 
 func newLineLookup(content []byte) *lineLookup {
@@ -106,19 +108,31 @@ func newLineLookup(content []byte) *lineLookup {
 			offsets = append(offsets, i+1)
 		}
 	}
-	return &lineLookup{lineOffsets: offsets}
+	return &lineLookup{lineOffsets: offsets, lastOffset: -1}
 }
 
 func (ll *lineLookup) Line(offset int64) int {
 	if ll == nil || len(ll.lineOffsets) == 0 {
 		return 1
 	}
+	if offset >= ll.lastOffset {
+		idx := ll.lastIndex
+		for idx+1 < len(ll.lineOffsets) && ll.lineOffsets[idx+1] <= int(offset) {
+			idx++
+		}
+		ll.lastIndex = idx
+		ll.lastOffset = offset
+		return idx + 1
+	}
+
 	idx := sort.Search(len(ll.lineOffsets), func(i int) bool {
 		return ll.lineOffsets[i] > int(offset)
 	}) - 1
 	if idx < 0 {
 		idx = 0
 	}
+	ll.lastIndex = idx
+	ll.lastOffset = offset
 	return idx + 1
 }
 
@@ -634,7 +648,7 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup,
 		}
 	}
 
-	if lookup != nil {
+	if lookup != nil && len(node.Attrs) > 0 {
 		node.LineNumber = lookup.Line(startOffset)
 	}
 
