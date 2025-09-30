@@ -195,30 +195,52 @@ func (c *MJTextComponent) buildRawInnerHTML() (string, error) {
 	// If we have mixed content, reconstruct it preserving original order
 	if len(c.Node.MixedContent) > 0 {
 		var builder strings.Builder
+		prevEndedWithSpace := false
+		lastIndex := len(c.Node.MixedContent) - 1
+
 		for i, part := range c.Node.MixedContent {
 			if part.Node != nil {
 				if err := c.reconstructHTMLElement(part.Node, &builder); err != nil {
 					return "", err
 				}
+				prevEndedWithSpace = false
 				continue
 			}
 
-			text := part.Text
+			normalized := collapseTextWhitespace(part.Text)
 			if i == 0 {
-				text = strings.TrimLeft(text, " \n\r\t")
+				normalized = strings.TrimLeft(normalized, " ")
 			}
-			if i == len(c.Node.MixedContent)-1 {
-				text = strings.TrimRight(text, " \n\r\t")
+			if i == lastIndex {
+				normalized = strings.TrimRight(normalized, " ")
 			}
-			if text != "" {
-				builder.WriteString(c.restoreHTMLEntities(text))
+
+			if normalized == "" {
+				if !prevEndedWithSpace && i > 0 && i < lastIndex && containsCollapsibleWhitespace(part.Text) {
+					builder.WriteByte(' ')
+					prevEndedWithSpace = true
+				}
+				continue
 			}
+
+			if prevEndedWithSpace {
+				normalized = strings.TrimLeft(normalized, " ")
+				if normalized == "" {
+					continue
+				}
+			}
+
+			builder.WriteString(c.restoreHTMLEntities(normalized))
+			prevEndedWithSpace = strings.HasSuffix(normalized, " ")
 		}
+
 		return builder.String(), nil
 	}
 
-	// Fallback: no mixed content, use trimmed text content
-	return c.restoreHTMLEntities(strings.TrimSpace(c.Node.Text)), nil
+	// Fallback: no mixed content, use trimmed and collapsed text content
+	normalized := collapseTextWhitespace(c.Node.Text)
+	normalized = strings.TrimSpace(normalized)
+	return c.restoreHTMLEntities(normalized), nil
 }
 
 // restoreHTMLEntities converts Unicode characters back to HTML entities for proper output
@@ -237,6 +259,40 @@ func ensureVoidHTMLTagsSelfClosed(html string) string {
 		base := strings.TrimRight(tag[:len(tag)-2], " \n\r\t")
 		return base + " />"
 	})
+}
+
+func collapseTextWhitespace(value string) string {
+	if value == "" {
+		return value
+	}
+
+	var builder strings.Builder
+	builder.Grow(len(value))
+
+	lastWasSpace := false
+	for _, r := range value {
+		if r == ' ' || r == '\n' || r == '\r' || r == '\t' {
+			if !lastWasSpace {
+				builder.WriteByte(' ')
+				lastWasSpace = true
+			}
+			continue
+		}
+
+		builder.WriteRune(r)
+		lastWasSpace = false
+	}
+
+	return builder.String()
+}
+
+func containsCollapsibleWhitespace(value string) bool {
+	for _, r := range value {
+		if r == ' ' || r == '\n' || r == '\r' || r == '\t' {
+			return true
+		}
+	}
+	return false
 }
 
 // reconstructHTMLElement reconstructs an HTML element from a parsed node
