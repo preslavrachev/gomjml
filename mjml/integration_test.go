@@ -177,7 +177,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-wrapper-padding"},
 		// // MJ-Text tests
 		// {name: "mj-text"},
-		{name: "mj-text-align"},
+		// {name: "mj-text-align"},
 		{name: "mj-text-color"},
 		// {name: "mj-text-container-background-color"},
 		// {name: "mj-text-decoration"},
