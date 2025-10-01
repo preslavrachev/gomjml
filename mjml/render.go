@@ -1121,8 +1121,6 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		"body_length": len(bodyContent),
 	})
 
-	useMJMLSyntax := c.RenderOpts != nil && c.RenderOpts.UseMJMLSyntax
-
 	// DOCTYPE and HTML opening - include attributes from MJML root element
 	var langValue string
 	if langAttr := c.GetAttribute("lang"); langAttr != nil {
@@ -1138,69 +1136,38 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		dirValue = constants.DirAuto
 	}
 
-	if useMJMLSyntax {
-		if _, err := w.WriteString(`<!doctype html><html lang="` + langValue + `" dir="` + dirValue + `" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`<head>`); err != nil {
-			return err
-		}
-	} else {
-		htmlTag := `<!doctype html><html`
-		htmlTag += ` lang=` + langValue
-		htmlTag += ` dir=` + dirValue
-		htmlTag += ` xmlns=http://www.w3.org/1999/xhtml xmlns:v=urn:schemas-microsoft-com:vml xmlns:o=urn:schemas-microsoft-com:office:office>`
-		if _, err := w.WriteString(htmlTag); err != nil {
-			return err
-		}
+	if _, err := w.WriteString(`<!doctype html><html lang="` + langValue + `" dir="` + dirValue + `" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`<head>`); err != nil {
+		return err
 	}
 
 	if _, err := w.WriteString(`<title>` + title + `</title>`); err != nil {
 		return err
 	}
-	if useMJMLSyntax {
-		if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`<meta name="viewport" content="width=device-width,initial-scale=1">`); err != nil {
-			return err
-		}
-	} else {
-		if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv=X-UA-Compatible content="IE=edge"><!--<![endif]-->`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`<meta http-equiv=Content-Type content="text/html; charset=UTF-8">`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`<meta name=viewport content="width=device-width,initial-scale=1">`); err != nil {
-			return err
-		}
+	if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`<meta name="viewport" content="width=device-width,initial-scale=1">`); err != nil {
+		return err
 	}
 
 	// Base CSS
-	var baseCSSText string
-	if useMJMLSyntax {
-		baseCSSText = `<style type="text/css">#outlook a { padding:0; }
+	baseCSSText := `<style type="text/css">#outlook a { padding:0; }
       body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }
       p { display:block;margin:13px 0; }</style>`
-	} else {
-		baseCSSText = "<style>" +
-			"#outlook a{padding:0}body{margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt}img{border:0;height:auto;line-height:100%;outline:0;text-decoration:none;-ms-interpolation-mode:bicubic}p{display:block;margin:13px 0}" +
-			"</style>"
-	}
 	if _, err := w.WriteString(baseCSSText); err != nil {
 		return err
 	}
 
 	// MSO conditionals
-	var msoText string
-	if useMJMLSyntax {
-		msoText = `<!--[if mso]>
+	msoText := `<!--[if mso]>
     <noscript>
     <xml>
     <o:OfficeDocumentSettings>
@@ -1214,10 +1181,6 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
       .mj-outlook-group-fix { width:100% !important; }
     </style>
     <![endif]-->`
-	} else {
-		msoText = "<!--[if mso]>\n<noscript>\n<xml>\n<o:OfficeDocumentSettings>\n  <o:AllowPNG/>\n  <o:PixelsPerInch>96</o:PixelsPerInch>\n</o:OfficeDocumentSettings>\n</xml>\n</noscript>\n<![endif]-->\n" +
-			"<!--[if lte mso 11]>\n<style type=\"text/css\">\n.mj-outlook-group-fix { width:100% !important; }\n</style>\n<![endif]-->\n"
-	}
 	if _, err := w.WriteString(msoText); err != nil {
 		return err
 	}
@@ -1373,10 +1336,8 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	if useMJMLSyntax {
-		if _, err := w.WriteString(`</head>`); err != nil {
-			return err
-		}
+	if _, err := w.WriteString(`</head>`); err != nil {
+		return err
 	}
 
 	// Body with background-color support (matching MRML's get_body_tag)
@@ -1395,16 +1356,12 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	bodyTag := `<body>`
 	if len(bodyStyles) > 0 {
-		if useMJMLSyntax {
-			var styleBuilder strings.Builder
-			for _, style := range bodyStyles {
-				styleBuilder.WriteString(style)
-				styleBuilder.WriteString(";")
-			}
-			bodyTag = `<body style="` + styleBuilder.String() + `">`
-		} else {
-			bodyTag = `<body style=` + strings.Join(bodyStyles, ";") + `>`
+		var styleBuilder strings.Builder
+		for _, style := range bodyStyles {
+			styleBuilder.WriteString(style)
+			styleBuilder.WriteString(";")
 		}
+		bodyTag = `<body style="` + styleBuilder.String() + `">`
 	}
 	if _, err := w.WriteString(bodyTag); err != nil {
 		return err

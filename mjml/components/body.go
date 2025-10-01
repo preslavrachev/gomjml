@@ -73,80 +73,30 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 
 	// Build class attribute: just use the user's css-class if present
 	classAttr := c.BuildClassAttribute("")
-	inlineStyle := c.BuildInlineStyleString(classAttr)
+	bodyDiv := html.NewHTMLTag("div")
+	bodyDiv.AddAttribute("aria-roledescription", "email").
+		AddAttribute("role", "article")
 
-	useMJMLSyntax := c.RenderOpts != nil && c.RenderOpts.UseMJMLSyntax && len(c.Children) > 0
+	if langAttr != "" {
+		bodyDiv.AddAttribute("lang", langAttr).
+			AddAttribute("dir", constants.DirAuto)
+	}
 
-	if useMJMLSyntax {
-		bodyDiv := html.NewHTMLTag("div")
-		bodyDiv.AddAttribute("aria-roledescription", "email").
-			AddAttribute("role", "article")
+	if title := strings.TrimSpace(c.RenderOpts.Title); title != "" {
+		bodyDiv.AddAttribute(constants.AttrAriaLabel, title)
+	}
 
-		if langAttr != "" {
-			bodyDiv.AddAttribute("lang", langAttr).
-				AddAttribute("dir", constants.DirAuto)
-		}
+	if classAttr != "" {
+		bodyDiv.AddAttribute("class", classAttr)
+		c.ApplyInlineStyles(bodyDiv, classAttr)
+	}
 
-		if title := strings.TrimSpace(c.RenderOpts.Title); title != "" {
-			bodyDiv.AddAttribute(constants.AttrAriaLabel, title)
-		}
+	if backgroundColor != nil && *backgroundColor != "" {
+		bodyDiv.AddStyle("background-color", *backgroundColor)
+	}
 
-		if classAttr != "" {
-			bodyDiv.AddAttribute("class", classAttr)
-			c.ApplyInlineStyles(bodyDiv, classAttr)
-		}
-
-		if backgroundColor != nil && *backgroundColor != "" {
-			bodyDiv.AddStyle("background-color", *backgroundColor)
-		}
-
-		if err := bodyDiv.RenderOpen(w); err != nil {
-			return err
-		}
-	} else {
-		if _, err := w.WriteString("<div"); err != nil {
-			return err
-		}
-		if langAttr != "" {
-			if _, err := w.WriteString(` lang=`); err != nil {
-				return err
-			}
-			if _, err := w.WriteString(langAttr); err != nil {
-				return err
-			}
-			if _, err := w.WriteString(` dir=auto`); err != nil {
-				return err
-			}
-		}
-		if classAttr != "" {
-			if _, err := w.WriteString(` class="`); err != nil {
-				return err
-			}
-			if _, err := w.WriteString(classAttr); err != nil {
-				return err
-			}
-			if _, err := w.WriteString(`"`); err != nil {
-				return err
-			}
-		}
-
-		if backgroundColor != nil && *backgroundColor != "" {
-			inlineStyle += "background-color:" + *backgroundColor + ";"
-		}
-		if inlineStyle != "" {
-			if _, err := w.WriteString(` style="`); err != nil {
-				return err
-			}
-			if _, err := w.WriteString(inlineStyle); err != nil {
-				return err
-			}
-			if _, err := w.WriteString(`"`); err != nil {
-				return err
-			}
-		}
-		if _, err := w.WriteString(">"); err != nil {
-			return err
-		}
+	if err := bodyDiv.RenderOpen(w); err != nil {
+		return err
 	}
 
 	// Track remaining mj-section siblings so sections can replicate MJML's MSO comment chaining
