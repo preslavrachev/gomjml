@@ -177,7 +177,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-wrapper-padding"},
 		// // MJ-Text tests
 		// {name: "mj-text"},
-		// {name: "mj-text-align"},
+		{name: "mj-text-align"},
 		{name: "mj-text-color"},
 		// {name: "mj-text-container-background-color"},
 		// {name: "mj-text-decoration"},
@@ -189,8 +189,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-text-class"},
 		// // MJ-RAW tests
 		// {name: "mj-raw"},
-		// {name: "mj-raw-conditional-comment"},
-		// {name: "mj-raw-head"},
+		{name: "mj-raw-conditional-comment"},
+		// {name: "mj-raw-head"}, // MJML says file badly formatted
 		// {name: "mj-raw-go-template"},
 		// // MJ-SOCIAL tests
 		// {name: "mj-social"},
@@ -202,7 +202,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-social-complex-styling"},
 		// {name: "mj-social-container-background-color"},
 		{name: "mj-social-element-ending"},
-		// {name: "mj-social-font-family"},
+		{name: "mj-social-font-family"},
 		// {name: "mj-social-font"},
 		// {name: "mj-social-icon"},
 		// {name: "mj-social-link"},
