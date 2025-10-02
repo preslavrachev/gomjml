@@ -54,6 +54,7 @@ type RenderOpts struct {
 	SkipInlineStylesInHead   bool                     // Whether to omit inline mj-style rules from the head output
 	PendingMSOSectionClose   bool                     // Tracks whether a section left an MSO comment open for the next section
 	RemainingBodySections    int                      // Number of mj-section siblings remaining after the current one
+	RequireEmptyStyleTag     bool                     // Whether the head output should include an empty style tag for Outlook parity
 	InvalidAttributeReporter func(tagName, attrName string, line int)
 }
 

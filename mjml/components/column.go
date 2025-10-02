@@ -118,15 +118,12 @@ func (c *MJColumnComponent) Render(w io.StringWriter) error {
 	columnDiv := html.NewHTMLTag("div")
 	c.AddDebugAttribute(columnDiv, "column")
 
-	classOrder := []string{className, "mj-outlook-group-fix"}
+	classOrder := []string{"mj-outlook-group-fix", className}
 	if c.RenderOpts != nil && c.RenderOpts.InsideGroup {
-		// Outlook fix class must lead when rendering inside mj-group to keep the
-		// generated markup identical to historical fixtures and helper tests that
-		// rely on this ordering.
+		// Outlook fix class must trail when rendering a single column inside a
+		// wrapper so we preserve the serialization MJML itself produces.
 		if c.RenderOpts.GroupColumnCount <= 1 && c.RenderOpts.InsideWrapper {
 			classOrder = []string{className, "mj-outlook-group-fix"}
-		} else {
-			classOrder = []string{"mj-outlook-group-fix", className}
 		}
 	}
 
@@ -166,6 +163,26 @@ func (c *MJColumnComponent) Render(w io.StringWriter) error {
 // renderColumnToWriter renders the column content directly to Writer
 func (c *MJColumnComponent) renderColumnToWriter(w io.StringWriter) error {
 	return c.renderColumnWithStylesToWriter(w, true)
+}
+
+// requiresSingleColumnSplit determines whether a single-column section should
+// emit the Outlook table and td wrappers as separate conditional comment
+// blocks. This matches the MJML output when components inside the column need
+// their own alignment handling (for example, mj-text align="right").
+func (c *MJColumnComponent) requiresSingleColumnSplit() bool {
+	for _, child := range c.Children {
+		switch comp := child.(type) {
+		case *MJTextComponent:
+			align := comp.GetAttributeFast(comp, constants.MJMLAlign)
+			if align == constants.AlignRight {
+				if c.RenderOpts != nil {
+					c.RenderOpts.RequireEmptyStyleTag = true
+				}
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // renderColumnWithStylesToWriter creates the inner column table with optional styles and writes to Writer
