@@ -982,7 +982,7 @@ func (c *MJMLComponent) hasCarouselComponents() bool {
 
 // shouldImportDefaultFonts determines if default fonts should be auto-imported
 // based on detected fonts, social components presence, and custom global fonts
-func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, hasText, hasSocial, hasButtons bool, hasOnlyDefaultFonts bool) bool {
+func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, trackedFontsCount int, hasText, hasSocial, hasButtons bool, hasOnlyDefaultFonts bool) bool {
 	if c.hasCustomGlobalFonts() {
 		return false
 	}
@@ -993,6 +993,11 @@ func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, hasText
 	}
 
 	if hasText || hasButtons {
+		// If any fonts were tracked (including system fonts like Arial), don't import defaults
+		// System fonts don't generate URLs but still count as explicit font usage
+		if trackedFontsCount > 0 && len(detectedFonts) == 0 {
+			return false
+		}
 		return len(detectedFonts) == 0 || hasOnlyDefaultFonts
 	}
 
@@ -1229,7 +1234,8 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// Also respect custom global fonts from mj-all attributes
 	// Special case: social components with only default fonts should trigger Ubuntu fallback
 	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
-	if c.shouldImportDefaultFonts(detectedFonts, hasText, hasSocial, hasButtons, hasOnlyDefaultFonts) {
+	// Pass trackedFonts count to check if ANY fonts (including system fonts) were used
+	if c.shouldImportDefaultFonts(detectedFonts, len(trackedFonts), hasText, hasSocial, hasButtons, hasOnlyDefaultFonts) {
 		debug.DebugLogWithData(
 			"font-detection",
 			"check-defaults",
