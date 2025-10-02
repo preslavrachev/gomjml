@@ -151,57 +151,97 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		// Custom MSO conditional
 	continueMSOComment := c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose
 
+	singleColumnSplit := false
+	if len(c.Children) == 1 {
+		if col, ok := c.Children[0].(*MJColumnComponent); ok && col.requiresSingleColumnSplit() {
+			singleColumnSplit = true
+		}
+	}
+
 	if !skipSectionMSOTable {
 		cssClassOutlook := ""
 		if cssClass := c.GetCSSClass(); cssClass != "" {
 			cssClassOutlook = cssClass + "-outlook"
 		}
 
-		if continueMSOComment {
-			if c.RenderOpts != nil {
-				c.RenderOpts.PendingMSOSectionClose = false
+		customSplitWrapper := singleColumnSplit && cssClassOutlook == "" && !continueMSOComment
+
+		if customSplitWrapper {
+			if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation"`); err != nil {
+				return err
 			}
-			if _, err := w.WriteString(`<table`); err != nil {
+			if alignAttr != "" {
+				if _, err := w.WriteString(` align="` + alignAttr + `"`); err != nil {
+					return err
+				}
+			}
+			if _, err := w.WriteString(` width="` + strconv.Itoa(msoTableWidth) + `"`); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(` style="width:` + getPixelWidthString(msoTableWidth) + `;"`); err != nil {
+				return err
+			}
+			if backgroundColor != "" {
+				if _, err := w.WriteString(` bgcolor="` + backgroundColor + `"`); err != nil {
+					return err
+				}
+			}
+			if _, err := w.WriteString(`>`); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(`<tr>`); err != nil {
+				return err
+			}
+			if err := msoTd.RenderOpen(w); err != nil {
 				return err
 			}
 		} else {
-			if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
+			if continueMSOComment {
+				if c.RenderOpts != nil {
+					c.RenderOpts.PendingMSOSectionClose = false
+				}
+				if _, err := w.WriteString(`<table`); err != nil {
+					return err
+				}
+			} else {
+				if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
+					return err
+				}
+			}
+			if alignAttr != "" {
+				if _, err := w.WriteString(` align="` + alignAttr + `"`); err != nil {
+					return err
+				}
+			}
+			if _, err := w.WriteString(` border="0" cellpadding="0" cellspacing="0"`); err != nil {
 				return err
 			}
-		}
-		if alignAttr != "" {
-			if _, err := w.WriteString(` align="` + alignAttr + `"`); err != nil {
+			if _, err := w.WriteString(` class="` + cssClassOutlook + `"`); err != nil {
 				return err
 			}
-		}
-		if _, err := w.WriteString(` border="0" cellpadding="0" cellspacing="0"`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(` class="` + cssClassOutlook + `"`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(` role="presentation"`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(` style="width:` + getPixelWidthString(msoTableWidth) + `;"`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(` width="` + strconv.Itoa(msoTableWidth) + `"`); err != nil {
-			return err
-		}
-		if backgroundColor != "" {
-			if _, err := w.WriteString(` bgcolor="` + backgroundColor + `"`); err != nil {
+			if _, err := w.WriteString(` role="presentation"`); err != nil {
 				return err
 			}
-		}
-		if _, err := w.WriteString(` >`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`<tr>`); err != nil {
-			return err
-		}
-		if err := msoTd.RenderOpen(w); err != nil {
-			return err
+			if _, err := w.WriteString(` style="width:` + getPixelWidthString(msoTableWidth) + `;"`); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(` width="` + strconv.Itoa(msoTableWidth) + `"`); err != nil {
+				return err
+			}
+			if backgroundColor != "" {
+				if _, err := w.WriteString(` bgcolor="` + backgroundColor + `"`); err != nil {
+					return err
+				}
+			}
+			if _, err := w.WriteString(` >`); err != nil {
+				return err
+			}
+			if _, err := w.WriteString(`<tr>`); err != nil {
+				return err
+			}
+			if err := msoTd.RenderOpen(w); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -584,6 +624,37 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				outlookClass := cssClass + "-outlook"
 				if cssClass == "" {
 					outlookClass = ""
+				}
+
+				if columnComp.requiresSingleColumnSplit() {
+					if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation"><tr><![endif]-->`); err != nil {
+						return err
+					}
+
+					if _, err := w.WriteString("<!--[if mso | IE]><td"); err != nil {
+						return err
+					}
+					if outlookClass != "" {
+						if _, err := w.WriteString(` class="` + outlookClass + `"`); err != nil {
+							return err
+						}
+					}
+					if _, err := w.WriteString(` style="vertical-align:` + getAttr("vertical-align") + `;width:` + columnComp.GetWidthAsPixel() + `;"><![endif]-->`); err != nil {
+						return err
+					}
+
+					if err := columnComp.Render(w); err != nil {
+						return err
+					}
+
+					if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+						return err
+					}
+					if _, err := w.WriteString(`<!--[if mso | IE]></tr></table><![endif]-->`); err != nil {
+						return err
+					}
+
+					continue
 				}
 
 				if _, err := w.WriteString(`<!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="`); err != nil {

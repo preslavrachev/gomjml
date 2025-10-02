@@ -1324,6 +1324,13 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	if _, err := w.WriteString(customStyles); err != nil {
 		return err
 	}
+	if c.RenderOpts != nil && c.RenderOpts.RequireEmptyStyleTag && customStyles == "" {
+		if _, err := w.WriteString(`<style type="text/css"></style>`); err != nil {
+			return err
+		}
+		// Ensure we only emit the placeholder once per render.
+		c.RenderOpts.RequireEmptyStyleTag = false
+	}
 
 	// Render mj-raw components inside head
 	if c.Head != nil {
