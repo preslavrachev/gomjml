@@ -745,7 +745,7 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	var css strings.Builder
 
 	// Standard responsive media query
-	css.WriteString(`<style type="text/css">@media only screen and (min-width:480px) { `)
+	css.WriteString("<style type=\"text/css\">@media only screen and (min-width:480px) {\n")
 	// Deterministic ordering to match MRML byte output
 	keys := make([]string, 0, len(c.columnClasses))
 	for k := range c.columnClasses {
@@ -755,19 +755,25 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	for _, className := range keys {
 		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
-		css.WriteString(`.`)
+		css.WriteString("        .")
 		css.WriteString(className)
-		css.WriteString(` { width:`)
+		css.WriteString(" { width:")
 		css.WriteString(size.String())
-		css.WriteString(` !important; max-width: `)
+		css.WriteString(" !important; max-width: ")
 		css.WriteString(size.String())
-		css.WriteString(`; } `)
+		css.WriteString("; }\n")
 	}
-	css.WriteString(` }</style>`)
+	css.WriteString("      }</style>")
 
 	// Mozilla-specific responsive media query
 	css.WriteString(`<style media="screen and (min-width:480px)">`)
+	first := true
 	for _, className := range keys {
+		if !first {
+			css.WriteByte(' ')
+		}
+		first = false
+
 		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
 		css.WriteString(`.moz-text-html .`)
@@ -776,7 +782,7 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 		css.WriteString(size.String())
 		css.WriteString(` !important; max-width: `)
 		css.WriteString(size.String())
-		css.WriteString(`; } `)
+		css.WriteString(`; }`)
 	}
 	css.WriteString(`</style>`)
 
@@ -895,7 +901,7 @@ func (c *MJMLComponent) generateCarouselCSS() string {
 	if c.carouselCSS.Len() == 0 {
 		return ""
 	}
-	return "<style type=\"text/css\">\n" + c.carouselCSS.String() + "</style>\n"
+	return "<style type=\"text/css\">" + c.carouselCSS.String() + "</style>"
 }
 
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS

@@ -10,12 +10,26 @@ import (
 	"github.com/preslavrachev/gomjml/parser"
 )
 
-// Global counter for unique carousel IDs
-var carouselIDCounter int64
+// Global pseudo-random state for unique carousel IDs. We use a deterministic
+// linear congruential generator to mirror MJML's random hex identifiers while
+// keeping test runs repeatable.
+var carouselIDState uint64
+
+const (
+	// Default seed matches the initial value used by MJML's JavaScript
+	// compiler (see packages/mjml-carousel/src/index.js). Starting from the
+	// same point keeps our deterministic LCG aligned with the canonical HTML
+	// output produced by the reference implementation.
+	carouselIDSeed = 0xf01ab44896143632
+	// Parameters from PCG-XSH-RR. Any full-period LCG works; these provide
+	// good distribution while remaining lightweight.
+	carouselIDMultiplier = 6364136223846793005
+	carouselIDIncrement  = 1442695040888963407
+)
 
 // ResetCarouselIDCounter resets the global counter for deterministic testing
 func ResetCarouselIDCounter() {
-	atomic.StoreInt64(&carouselIDCounter, 0)
+	atomic.StoreUint64(&carouselIDState, 0)
 }
 
 // MJCarouselComponent represents the mj-carousel component
@@ -191,125 +205,181 @@ func (c *MJCarouselComponent) buildCarouselCSS(carouselID string, imageCount int
 
 	var css strings.Builder
 
-	buildLevelPadding := func(level int) string {
-		padding := " +"
-		for i := 0; i < level; i++ {
-			padding += " * +"
+	repeat := func(count int) string {
+		if count <= 0 {
+			return ""
 		}
-		return padding
+		return strings.Repeat("+ * ", count)
 	}
 
-	// Base carousel styles
-	css.WriteString(".mj-carousel { -webkit-user-select: none;\n")
-	css.WriteString("-moz-user-select: none;\n")
-	css.WriteString("user-select: none; }\n")
-
-	// Icon cell styles
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-icons-cell { display: table-cell !important;\n", carouselID))
-	css.WriteString(fmt.Sprintf("width: %s !important; }\n", iconWidth))
-
-	// Hide radio buttons and navigation by default
-	css.WriteString(".mj-carousel-radio,\n")
-	css.WriteString(".mj-carousel-next,\n")
-	css.WriteString(".mj-carousel-previous { display: none !important; }\n")
-
-	// Touch action for thumbnails and navigation
-	css.WriteString(".mj-carousel-thumbnail,\n")
-	css.WriteString(".mj-carousel-next,\n")
-	css.WriteString(".mj-carousel-previous { touch-action: manipulation; }\n")
-
-	// Hide all images by default when radio button is checked
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio:checked%s .mj-carousel-content .mj-carousel-image", carouselID, buildLevelPadding(0)))
-	if imageCount > 1 {
-		css.WriteString(",\n")
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio:checked%s .mj-carousel-content .mj-carousel-image", carouselID, buildLevelPadding(1)))
-	}
-	if imageCount > 2 {
-		css.WriteString(",\n")
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio:checked%s .mj-carousel-content .mj-carousel-image", carouselID, buildLevelPadding(2)))
-	}
-	css.WriteString(" { display: none !important; }\n")
-
-	// Show specific images when their radio button is checked
-	for i := 1; i <= imageCount; i++ {
-		padding := buildLevelPadding(imageCount - i)
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-image-%d", carouselID, i, padding, i))
-		if i < imageCount {
-			css.WriteString(",\n")
+	writeSelectorBlock := func(selectors []string, joiner, body string) {
+		if len(selectors) == 0 {
+			return
 		}
+
+		css.WriteString("    ")
+		css.WriteString(strings.Join(selectors, joiner))
+		css.WriteString(" {\n")
+		css.WriteString(body)
+		css.WriteString("\n    }\n\n")
 	}
-	css.WriteString(" { display: block !important; }\n")
 
-	// Navigation icons visibility
-	css.WriteString(".mj-carousel-previous-icons,\n")
-	css.WriteString(".mj-carousel-next-icons")
-	for i := 1; i <= imageCount; i++ {
-		nextImage := i%imageCount + 1
-		prevImage := imageCount
-		if i > 1 {
-			prevImage = i - 1
-		}
-		padding := buildLevelPadding(imageCount - i)
-		css.WriteString(fmt.Sprintf(",\n.mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-next-%d", carouselID, i, padding, nextImage))
-		css.WriteString(fmt.Sprintf(",\n.mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-previous-%d", carouselID, i, padding, prevImage))
+	css.WriteString(".mj-carousel {\n")
+	css.WriteString("      -webkit-user-select: none;\n")
+	css.WriteString("      -moz-user-select: none;\n")
+	css.WriteString("      user-select: none;\n")
+	css.WriteString("    }\n\n")
+
+	writeSelectorBlock(
+		[]string{fmt.Sprintf(".mj-carousel-%s-icons-cell", carouselID)},
+		",\n    ",
+		fmt.Sprintf("      display: table-cell !important;\n      width: %s !important;", iconWidth),
+	)
+
+	css.WriteString("    .mj-carousel-radio,\n")
+	css.WriteString("    .mj-carousel-next,\n")
+	css.WriteString("    .mj-carousel-previous {\n")
+	css.WriteString("      display: none !important;\n")
+	css.WriteString("    }\n\n")
+
+	css.WriteString("    .mj-carousel-thumbnail,\n")
+	css.WriteString("    .mj-carousel-next,\n")
+	css.WriteString("    .mj-carousel-previous {\n")
+	css.WriteString("      touch-action: manipulation;\n")
+	css.WriteString("    }\n\n")
+
+	hideSelectors := make([]string, imageCount)
+	for i := 0; i < imageCount; i++ {
+		hideSelectors[i] = fmt.Sprintf(
+			".mj-carousel-%s-radio:checked %s+ .mj-carousel-content .mj-carousel-image",
+			carouselID,
+			repeat(i),
+		)
 	}
-	css.WriteString(" { display: block !important; }\n")
+	writeSelectorBlock(hideSelectors, ",", "      display: none !important;")
 
-	// Thumbnail selection styles
-	for i := 1; i <= imageCount; i++ {
-		padding := buildLevelPadding(imageCount - i)
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-radio-%d:checked%s .mj-carousel-content .mj-carousel-%s-thumbnail-%d", carouselID, i, padding, carouselID, i))
-		if i < imageCount {
-			css.WriteString(",\n")
-		}
+	showSelectors := make([]string, imageCount)
+	for i := 0; i < imageCount; i++ {
+		showSelectors[i] = fmt.Sprintf(
+			".mj-carousel-%s-radio-%d:checked %s+ .mj-carousel-content .mj-carousel-image-%d",
+			carouselID,
+			i+1,
+			repeat(imageCount-i-1),
+			i+1,
+		)
 	}
-	css.WriteString(fmt.Sprintf(" { border-color: %s !important; }\n", tbSelectedBorderColor))
+	writeSelectorBlock(showSelectors, ",", "      display: block !important;")
 
-	// Hide div after images
-	css.WriteString(".mj-carousel-image img + div,\n")
-	css.WriteString(".mj-carousel-thumbnail img + div { display: none !important; }\n")
+	nextSelectors := make([]string, imageCount)
+	previousSelectors := make([]string, imageCount)
+	for i := 0; i < imageCount; i++ {
+		padding := repeat(imageCount - i - 1)
 
-	// Hover effects for thumbnails
-	for k := imageCount - 1; k >= 1; k-- {
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-thumbnail:hover%s .mj-carousel-main .mj-carousel-image,\n", carouselID, buildLevelPadding(k)))
+		nextSelectors[i] = fmt.Sprintf(
+			".mj-carousel-%s-radio-%d:checked %s+ .mj-carousel-content .mj-carousel-next-%d",
+			carouselID,
+			i+1,
+			padding,
+			(i+1)%imageCount+1,
+		)
+		previousSelectors[i] = fmt.Sprintf(
+			".mj-carousel-%s-radio-%d:checked %s+ .mj-carousel-content .mj-carousel-previous-%d",
+			carouselID,
+			i+1,
+			padding,
+			(i-1+imageCount)%imageCount+1,
+		)
 	}
-	css.WriteString(fmt.Sprintf(".mj-carousel-%s-thumbnail:hover + .mj-carousel-main .mj-carousel-image { display: none !important; }\n", carouselID))
 
-	css.WriteString(fmt.Sprintf(".mj-carousel-thumbnail:hover { border-color: %s !important; }\n", tbHoverBorderColor))
+	css.WriteString("    .mj-carousel-previous-icons,\n")
+	css.WriteString("    .mj-carousel-next-icons,\n")
+	css.WriteString("    ")
+	css.WriteString(strings.Join(nextSelectors, ","))
+	css.WriteString(",\n")
+	css.WriteString("    ")
+	css.WriteString(strings.Join(previousSelectors, ","))
+	css.WriteString(" {\n")
+	css.WriteString("      display: block !important;\n")
+	css.WriteString("    }\n\n")
 
-	// Show image on thumbnail hover
-	for i := 1; i <= imageCount; i++ {
-		padding := buildLevelPadding(imageCount - i)
-		css.WriteString(fmt.Sprintf(".mj-carousel-%s-thumbnail-%d:hover%s .mj-carousel-main .mj-carousel-image-%d", carouselID, i, padding, i))
-		if i < imageCount {
-			css.WriteString(",\n")
-		}
+	thumbSelectors := make([]string, imageCount)
+	for i := 0; i < imageCount; i++ {
+		thumbSelectors[i] = fmt.Sprintf(
+			".mj-carousel-%s-radio-%d:checked %s+ .mj-carousel-content .mj-carousel-%s-thumbnail-%d",
+			carouselID,
+			i+1,
+			repeat(imageCount-i-1),
+			carouselID,
+			i+1,
+		)
 	}
-	css.WriteString(" { display: block !important; }\n")
+	writeSelectorBlock(
+		thumbSelectors,
+		",",
+		fmt.Sprintf("      border-color: %s !important;", tbSelectedBorderColor),
+	)
 
-	// Fallback styles for no input support
-	css.WriteString(".mj-carousel noinput { display:block !important; }\n")
-	css.WriteString(".mj-carousel noinput .mj-carousel-image-1 { display: block !important;  }\n")
-	css.WriteString(".mj-carousel noinput .mj-carousel-arrows, .mj-carousel noinput .mj-carousel-thumbnails { display: none !important; }\n")
+	writeSelectorBlock(
+		[]string{".mj-carousel-image img + div", ".mj-carousel-thumbnail img + div"},
+		",\n    ",
+		"      display: none !important;",
+	)
 
-	// Outlook Web App thumbnail hiding
-	css.WriteString("[owa] .mj-carousel-thumbnail { display: none !important; }\n")
+	hoverSelectors := make([]string, 0, imageCount)
+	for i := imageCount - 1; i >= 0; i-- {
+		hoverSelectors = append(hoverSelectors, fmt.Sprintf(
+			".mj-carousel-%s-thumbnail:hover %s+ .mj-carousel-main .mj-carousel-image",
+			carouselID,
+			repeat(i),
+		))
+	}
+	writeSelectorBlock(hoverSelectors, ",", "      display: none !important;")
 
-	// Media query for screen and yahoo
-	css.WriteString("\n        @media screen, yahoo {\n")
-	css.WriteString(fmt.Sprintf("            .mj-carousel-%s-icons-cell,\n", carouselID))
-	css.WriteString("            .mj-carousel-previous-icons,\n")
-	css.WriteString("            .mj-carousel-next-icons {\n")
-	css.WriteString("                display: none !important;\n")
-	css.WriteString("            }\n\n")
+	css.WriteString(fmt.Sprintf("    .mj-carousel-thumbnail:hover {\n      border-color: %s !important;\n    }\n\n", tbHoverBorderColor))
+
+	showThumbSelectors := make([]string, imageCount)
+	for i := 0; i < imageCount; i++ {
+		showThumbSelectors[i] = fmt.Sprintf(
+			".mj-carousel-%s-thumbnail-%d:hover %s+ .mj-carousel-main .mj-carousel-image-%d",
+			carouselID,
+			i+1,
+			repeat(imageCount-i-1),
+			i+1,
+		)
+	}
+	css.WriteString("    ")
+	css.WriteString(strings.Join(showThumbSelectors, ","))
+	css.WriteString(" {\n")
+	css.WriteString("      display: block !important;\n")
+	css.WriteString("    }\n")
+	css.WriteString("    \n\n")
+
+	css.WriteString("      .mj-carousel noinput { display:block !important; }\n")
+	css.WriteString("      .mj-carousel noinput .mj-carousel-image-1 { display: block !important;  }\n")
+	css.WriteString("      .mj-carousel noinput .mj-carousel-arrows,\n")
+	css.WriteString("      .mj-carousel noinput .mj-carousel-thumbnails { display: none !important; }\n\n")
+	css.WriteString("      [owa] .mj-carousel-thumbnail { display: none !important; }\n")
+	css.WriteString("      \n")
+	css.WriteString("      @media screen yahoo {\n")
+	css.WriteString(fmt.Sprintf("          .mj-carousel-%s-icons-cell,\n", carouselID))
+	css.WriteString("          .mj-carousel-previous-icons,\n")
+	css.WriteString("          .mj-carousel-next-icons {\n")
+	css.WriteString("              display: none !important;\n")
+	css.WriteString("          }\n\n")
+
 	padding := " + *+"
 	if imageCount > 2 {
 		padding = " + *+ *+"
 	}
-	css.WriteString(fmt.Sprintf("            .mj-carousel-%s-radio-1:checked%s .mj-carousel-content .mj-carousel-%s-thumbnail-1 {\n", carouselID, padding, carouselID))
-	css.WriteString("                border-color: transparent;\n")
-	css.WriteString("            }\n")
-	css.WriteString("        }")
+	css.WriteString(fmt.Sprintf(
+		"          .mj-carousel-%s-radio-1:checked%s .mj-carousel-content .mj-carousel-%s-thumbnail-1 {\n",
+		carouselID,
+		padding,
+		carouselID,
+	))
+	css.WriteString("              border-color: transparent;\n")
+	css.WriteString("          }\n")
+	css.WriteString("      }")
 
 	return css.String()
 }
@@ -319,10 +389,27 @@ func (c *MJCarouselComponent) generateCarouselID() string {
 	if c.id != "" {
 		return c.id
 	}
-	counter := atomic.LoadInt64(&carouselIDCounter)
-	c.id = fmt.Sprintf("%08d", counter) // Start from 00000000
-	atomic.AddInt64(&carouselIDCounter, 1)
+	idValue := nextCarouselIDValue()
+	c.id = fmt.Sprintf("%016x", idValue)
 	return c.id
+}
+
+// nextCarouselIDValue returns the next pseudo-random ID in a deterministic sequence.
+func nextCarouselIDValue() uint64 {
+	for {
+		current := atomic.LoadUint64(&carouselIDState)
+		if current == 0 {
+			if atomic.CompareAndSwapUint64(&carouselIDState, 0, carouselIDSeed) {
+				return carouselIDSeed
+			}
+			continue
+		}
+
+		next := current*carouselIDMultiplier + carouselIDIncrement
+		if atomic.CompareAndSwapUint64(&carouselIDState, current, next) {
+			return next
+		}
+	}
 }
 
 // getCarouselImages gets all mj-carousel-image children
@@ -403,7 +490,7 @@ func (c *MJCarouselComponent) renderMSOFallback(w io.StringWriter, carouselImage
 
 	// Show only first image in Outlook
 	if len(carouselImages) > 0 {
-		if err := c.renderCarouselImageContent(w, carouselImages[0], 1, "600"); err != nil {
+		if err := c.renderCarouselImageContent(w, carouselImages[0], 1, "600", true); err != nil {
 			return err
 		}
 	}
@@ -419,13 +506,15 @@ func (c *MJCarouselComponent) renderMSOFallback(w io.StringWriter, carouselImage
 func (c *MJCarouselComponent) renderRadioButtons(w io.StringWriter, carouselID string, imageCount int) error {
 	for i := 1; i <= imageCount; i++ {
 		// First radio button is checked by default
-		checked := ""
+		checkedAttr := ""
 		if i == 1 {
-			checked = ` checked="checked"`
+			checkedAttr = ` checked="checked"`
 		}
 
-		if _, err := w.WriteString(fmt.Sprintf(`<input%s type="radio" name="mj-carousel-radio-%s" id="mj-carousel-%s-radio-%d" class="mj-carousel-radio mj-carousel-%s-radio mj-carousel-%s-radio-%d" style="display:none;mso-hide:all;" />`,
-			checked, carouselID, carouselID, i, carouselID, carouselID, i)); err != nil {
+		className := fmt.Sprintf("mj-carousel-radio mj-carousel-%s-radio mj-carousel-%s-radio-%d", carouselID, carouselID, i)
+
+		if _, err := w.WriteString(fmt.Sprintf(`<input class="%s"%s type="radio" name="mj-carousel-radio-%s" id="mj-carousel-%s-radio-%d" style="display:none;mso-hide:all;">`,
+			className, checkedAttr, carouselID, carouselID, i)); err != nil {
 			return err
 		}
 	}
@@ -456,18 +545,15 @@ func (c *MJCarouselComponent) renderThumbnails(w io.StringWriter, carouselID str
 		}
 
 		// Thumbnail link
-		if _, err := w.WriteString(fmt.Sprintf(`<a href="%s" target="%s" class="%s" style="border:%s;border-radius:%s;display:inline-block;overflow:hidden;width:%s;">`,
-			href, target, baseClasses, tbBorder, tbBorderRadius, tbWidth)); err != nil {
+		if _, err := w.WriteString(fmt.Sprintf(`<a style="border:%s;border-radius:%s;display:inline-block;overflow:hidden;width:%s;" href="%s" target="%s" class="%s">`,
+			tbBorder, tbBorderRadius, tbWidth, href, target, baseClasses)); err != nil {
 			return err
 		}
 
 		// Thumbnail label and image
 		alt := img.Node.GetAttribute("alt")
-		altAttr := ""
-		if alt != "" {
-			altAttr = fmt.Sprintf(` alt="%s"`, alt)
-		}
-		if _, err := w.WriteString(fmt.Sprintf(`<label for="mj-carousel-%s-radio-%d"><img src="%s"%s width="%s" style="display:block;width:100%%;height:auto;" /></label>`,
+		altAttr := fmt.Sprintf(` alt="%s"`, alt)
+		if _, err := w.WriteString(fmt.Sprintf(`<label for="mj-carousel-%s-radio-%d"><img style="display:block;width:100%%;height:auto;" src="%s"%s width="%s"></label>`,
 			carouselID, imageNum, src, altAttr, strings.TrimSuffix(tbWidth, "px"))); err != nil {
 			return err
 		}
@@ -507,7 +593,7 @@ func (c *MJCarouselComponent) renderCarouselTable(w io.StringWriter, carouselID 
 	// Render all carousel images
 	for i, img := range carouselImages {
 		imageNum := i + 1
-		if err := c.renderCarouselImageContent(w, img, imageNum, "600"); err != nil {
+		if err := c.renderCarouselImageContent(w, img, imageNum, "600", false); err != nil {
 			return err
 		}
 	}
@@ -547,8 +633,8 @@ func (c *MJCarouselComponent) renderPreviousIcons(w io.StringWriter, carouselID 
 
 	for i := 1; i <= imageCount; i++ {
 		iconWidthValue := strings.TrimSuffix(iconWidth, "px")
-		if _, err := w.WriteString(fmt.Sprintf(`<label for="mj-carousel-%s-radio-%d" class="mj-carousel-previous mj-carousel-previous-%d"><img src="%s" alt="previous" width="%s" style="display:block;width:%s;height:auto;" /></label>`,
-			carouselID, i, i, leftIcon, iconWidthValue, iconWidth)); err != nil {
+		if _, err := w.WriteString(fmt.Sprintf(`<label for="mj-carousel-%s-radio-%d" class="mj-carousel-previous mj-carousel-previous-%d"><img src="%s" alt="previous" style="display:block;width:%s;height:auto;" width="%s"></label>`,
+			carouselID, i, i, leftIcon, iconWidth, iconWidthValue)); err != nil {
 			return err
 		}
 	}
@@ -569,8 +655,8 @@ func (c *MJCarouselComponent) renderNextIcons(w io.StringWriter, carouselID stri
 
 	for i := 1; i <= imageCount; i++ {
 		iconWidthValue := strings.TrimSuffix(iconWidth, "px")
-		if _, err := w.WriteString(fmt.Sprintf(`<label for="mj-carousel-%s-radio-%d" class="mj-carousel-next mj-carousel-next-%d"><img src="%s" alt="next" width="%s" style="display:block;width:%s;height:auto;" /></label>`,
-			carouselID, i, i, rightIcon, iconWidthValue, iconWidth)); err != nil {
+		if _, err := w.WriteString(fmt.Sprintf(`<label for="mj-carousel-%s-radio-%d" class="mj-carousel-next mj-carousel-next-%d"><img src="%s" alt="next" style="display:block;width:%s;height:auto;" width="%s"></label>`,
+			carouselID, i, i, rightIcon, iconWidth, iconWidthValue)); err != nil {
 			return err
 		}
 	}
@@ -582,7 +668,7 @@ func (c *MJCarouselComponent) renderNextIcons(w io.StringWriter, carouselID stri
 }
 
 // renderCarouselImageContent renders a single carousel image
-func (c *MJCarouselComponent) renderCarouselImageContent(w io.StringWriter, img *MJCarouselImageComponent, imageNum int, width string) error {
+func (c *MJCarouselComponent) renderCarouselImageContent(w io.StringWriter, img *MJCarouselImageComponent, imageNum int, width string, isFallback bool) error {
 	src := img.Node.GetAttribute("src")
 	borderRadius := c.GetAttributeWithDefault(c, "border-radius")
 	alt := img.Node.GetAttribute("alt")
@@ -590,9 +676,11 @@ func (c *MJCarouselComponent) renderCarouselImageContent(w io.StringWriter, img 
 	href := img.Node.GetAttribute("href")
 
 	// Container div with CSS classes
-	style := ""
-	if imageNum > 1 {
-		style = ` style="display:none;mso-hide:all;"`
+	styleAttr := ""
+	if isFallback {
+		styleAttr = ` style="" `
+	} else if imageNum > 1 {
+		styleAttr = ` style="display:none;mso-hide:all;"`
 	}
 
 	// Build CSS classes for the container div
@@ -600,9 +688,11 @@ func (c *MJCarouselComponent) renderCarouselImageContent(w io.StringWriter, img 
 	imageClasses := img.Node.GetAttribute("css-class")
 	if imageClasses != "" {
 		containerClasses += " " + imageClasses
+	} else if isFallback {
+		containerClasses += " "
 	}
 
-	if _, err := w.WriteString(fmt.Sprintf(`<div class="%s"%s>`, containerClasses, style)); err != nil {
+	if _, err := w.WriteString(fmt.Sprintf(`<div class="%s"%s>`, containerClasses, styleAttr)); err != nil {
 		return err
 	}
 
@@ -614,16 +704,27 @@ func (c *MJCarouselComponent) renderCarouselImageContent(w io.StringWriter, img 
 	}
 
 	// Image element with alt and title attributes
-	altAttr := ""
-	if alt != "" {
-		altAttr = fmt.Sprintf(` alt="%s"`, alt)
-	}
+	altAttr := fmt.Sprintf(` alt="%s"`, alt)
 	titleAttr := ""
 	if title != "" {
 		titleAttr = fmt.Sprintf(` title="%s"`, title)
 	}
-	if _, err := w.WriteString(fmt.Sprintf(`<img border="0"%s src="%s"%s width="%s" style="border-radius:%s;display:block;width:%spx;max-width:100%%;height:auto;" />`,
-		altAttr, src, titleAttr, width, borderRadius, width)); err != nil {
+	var imgBuilder strings.Builder
+	imgBuilder.WriteString("<img")
+	if titleAttr != "" {
+		imgBuilder.WriteString(titleAttr)
+	}
+	imgBuilder.WriteString(fmt.Sprintf(` src="%s"`, src))
+	imgBuilder.WriteString(altAttr)
+	imgBuilder.WriteString(fmt.Sprintf(` style="border-radius:%s;display:block;width:%spx;max-width:100%%;height:auto;"`, borderRadius, width))
+	imgBuilder.WriteString(fmt.Sprintf(` width="%s"`, width))
+	if isFallback {
+		imgBuilder.WriteString(` border="0" />`)
+	} else {
+		imgBuilder.WriteString(` border="0">`)
+	}
+
+	if _, err := w.WriteString(imgBuilder.String()); err != nil {
 		return err
 	}
 
