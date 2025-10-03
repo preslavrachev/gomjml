@@ -143,7 +143,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-image-class"},
 		// {name: "mj-image-src-with-url-params"},
 		// {name: "mj-section"},
-		// {name: "mj-section-background-vml"},
+		{name: "mj-section-background-vml"},
 		// {name: "mj-section-background-color"},
 		// {name: "mj-section-background-url"},
 		// {name: "mj-section-background-url-full"},
