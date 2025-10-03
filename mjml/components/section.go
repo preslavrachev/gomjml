@@ -48,11 +48,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Check if we have a background image for VML generation
 	hasBackgroundImage := backgroundUrl != ""
+	isFullWidth := fullWidth != ""
+	msoVMLWrapperOpen := hasBackgroundImage && isFullWidth
 
 	// For full-width sections, add an outer table wrapper like MRML does.
 	// This wrapper is always present for full-width sections, even when no
 	// background is specified, ensuring proper structure and alignment.
-	if fullWidth != "" {
+	if isFullWidth {
 		outerTable := html.NewTableTag().
 			AddAttribute("align", "center").
 			AddStyle("width", "100%")
@@ -119,10 +121,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 			// Note: VML color attribute is only included when backgroundColor is explicitly set
 
-			vmlOpen := `<v:rect mso-width-percent="1000" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill origin="` + vOriginX + `, ` + vOriginY +
+			vmlOpen := `<v:rect style="mso-width-percent:1000;" xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"><v:fill origin="` + vOriginX + `, ` + vOriginY +
 				`" position="` + vPosX + `, ` + vPosY + `" src="` + htmlEscape(backgroundUrl) + `"` + colorFragment +
 				` type="` + vmlType + `"` + sizeFragment + aspectFragment +
-				` /><v:textbox style="mso-fit-shape-to-text:true" inset="0,0,0,0"><![endif]-->`
+				` /><v:textbox style="mso-fit-shape-to-text:true" inset="0,0,0,0">`
 
 			if _, err := w.WriteString(vmlOpen); err != nil {
 				return err
@@ -167,7 +169,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		customSplitWrapper := singleColumnSplit && cssClassOutlook == "" && !continueMSOComment
 
 		if customSplitWrapper {
-			if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation"`); err != nil {
+			prefix := ""
+			if !msoVMLWrapperOpen {
+				prefix = "<!--[if mso | IE]>"
+			}
+			if _, err := w.WriteString(prefix + `<table border="0" cellpadding="0" cellspacing="0" role="presentation"`); err != nil {
 				return err
 			}
 			if alignAttr != "" {
@@ -204,8 +210,14 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 					return err
 				}
 			} else {
-				if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
-					return err
+				if msoVMLWrapperOpen {
+					if _, err := w.WriteString(`<table`); err != nil {
+						return err
+					}
+				} else {
+					if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
+						return err
+					}
 				}
 			}
 			if alignAttr != "" {
@@ -763,7 +775,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close MSO table structure
-	if hasBackgroundImage && fullWidth == "" {
+	if hasBackgroundImage && !isFullWidth {
 		if skipSectionMSOTable {
 			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect><![endif]-->"); err != nil {
 				return err
@@ -774,25 +786,34 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			}
 		}
 	} else if !skipSectionMSOTable {
-		if c.RenderOpts != nil && c.RenderOpts.RemainingBodySections > 0 {
-			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table>"); err != nil {
-				return err
-			}
-			c.RenderOpts.PendingMSOSectionClose = true
-		} else {
-			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+		if msoVMLWrapperOpen {
+			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table></v:textbox></v:rect><![endif]-->"); err != nil {
 				return err
 			}
 			if c.RenderOpts != nil {
 				c.RenderOpts.PendingMSOSectionClose = false
 			}
+		} else {
+			if c.RenderOpts != nil && c.RenderOpts.RemainingBodySections > 0 {
+				if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table>"); err != nil {
+					return err
+				}
+				c.RenderOpts.PendingMSOSectionClose = true
+			} else {
+				if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+					return err
+				}
+				if c.RenderOpts != nil {
+					c.RenderOpts.PendingMSOSectionClose = false
+				}
+			}
 		}
 	}
 
 	// Close outer table if we added one for full-width sections
-	if fullWidth != "" {
-		// Close VML first if present, then outer table
-		if hasBackgroundImage {
+	if isFullWidth {
+		// Close VML first if present, then outer table when no MSO table was rendered
+		if hasBackgroundImage && skipSectionMSOTable {
 			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect><![endif]-->"); err != nil {
 				return err
 			}
