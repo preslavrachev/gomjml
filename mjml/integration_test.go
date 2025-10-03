@@ -62,13 +62,13 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "wrapper-fullwidth"},
 		{name: "wrapper-border"},
 		{name: "group-footer-test"},
-		// {name: "section-bg-vml-color"},
+		{name: "section-bg-vml-color"},
 		// {name: "section-fullwidth-background-image"},
 		// {name: "section-fullwidth-bg-transparent"},
 		// {name: "section-padding-top-zero"},
 		// //{name: "austin-layout-from-mjml-io"}, // Commented out
 		// // Austin layout component tests
-		// {name: "austin-header-section"},
+		{name: "austin-header-section"},
 		// {name: "austin-hero-images"},
 		{name: "austin-wrapper-basic"},
 		// {name: "austin-text-with-links"},
