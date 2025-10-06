@@ -45,6 +45,12 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	fullWidth := c.GetAttributeWithDefault(c, "full-width")
 	borderRadius := c.GetAttributeWithDefault(c, "border-radius")
 	align := c.GetAttributeWithDefault(c, "align")
+	border := c.GetAttributeFast(c, constants.MJMLBorder)
+	borderTop := c.GetAttributeFast(c, constants.MJMLBorderTop)
+	borderRight := c.GetAttributeFast(c, constants.MJMLBorderRight)
+	borderBottom := c.GetAttributeFast(c, constants.MJMLBorderBottom)
+	borderLeft := c.GetAttributeFast(c, constants.MJMLBorderLeft)
+	hasBorder := border != "" || borderTop != "" || borderRight != "" || borderBottom != "" || borderLeft != ""
 
 	// Check if we have a background image for VML generation
 	hasBackgroundImage := backgroundUrl != ""
@@ -326,9 +332,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	sectionDiv.AddStyle("margin", "0px auto").
 		AddStyle("max-width", strconv.Itoa(c.GetContainerWidth())+"px")
 
-	// Add border-radius if specified
+		// Add border-radius if specified
 	if borderRadius != "" {
-		sectionDiv.AddStyle("border-radius", borderRadius)
+		sectionDiv.AddStyle(constants.CSSBorderRadius, borderRadius).
+			AddStyle("overflow", "hidden")
 	}
 
 	if err := sectionDiv.RenderOpen(w); err != nil {
@@ -374,10 +381,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Then add width and border-radius
 	innerTable.AddStyle("width", "100%")
-
-	// Add border-radius if specified
-	if borderRadius != "" {
-		innerTable.AddStyle("border-radius", borderRadius)
+	if hasBorder || borderRadius != "" {
+		innerTable.AddStyle(constants.CSSBorderCollapse, "separate")
 	}
 
 	if err := innerTable.RenderOpen(w); err != nil {
@@ -388,10 +393,27 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	}
 
 	// TD with padding and text alignment
-	tdTag := html.NewHTMLTag("td").
-		AddStyle("direction", direction).
-		AddStyle("font-size", "0px").
-		AddStyle("padding", padding)
+	tdTag := html.NewHTMLTag("td")
+
+	toPtr := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
+
+	styles.ApplyBorderStyles(tdTag,
+		toPtr(border),
+		toPtr(borderRadius),
+		toPtr(borderTop),
+		toPtr(borderRight),
+		toPtr(borderBottom),
+		toPtr(borderLeft),
+	)
+
+	tdTag.AddStyle(constants.CSSDirection, direction).
+		AddStyle(constants.CSSFontSize, "0px").
+		AddStyle(constants.CSSPadding, padding)
 
 	// Add specific padding overrides in MRML order: left, right, bottom, top
 	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil {
@@ -406,24 +428,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if paddingTopAttr := c.GetAttribute(constants.MJMLPaddingTop); paddingTopAttr != nil {
 		tdTag.AddStyle(constants.CSSPaddingTop, *paddingTopAttr)
 	}
-
-	// Apply border styles to the content container. Global attributes for
-	// mj-section define border properties that should apply to the inner
-	// TD rather than the wrapping tables.
-	toPtr := func(s string) *string {
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-	styles.ApplyBorderStyles(tdTag,
-		toPtr(c.GetAttributeFast(c, constants.MJMLBorder)),
-		nil,
-		toPtr(c.GetAttributeFast(c, "border-top")),
-		toPtr(c.GetAttributeFast(c, "border-right")),
-		toPtr(c.GetAttributeFast(c, "border-bottom")),
-		toPtr(c.GetAttributeFast(c, "border-left")),
-	)
 
 	tdTag.AddStyle("text-align", textAlign)
 
