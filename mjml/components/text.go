@@ -20,6 +20,10 @@ type MJTextComponent struct {
 
 var selfClosingVoidTagPattern = regexp.MustCompile(`(?i)<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b([^>]*)/>`)
 
+var voidTagsWithoutClosingSlash = map[string]struct{}{
+	"br": {},
+}
+
 // NewMJTextComponent creates a new mj-text component
 func NewMJTextComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJTextComponent {
 	return &MJTextComponent{
@@ -140,7 +144,7 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 		return err
 	}
 	if innerHTML != "" {
-		normalized := ensureVoidHTMLTagsSelfClosed(innerHTML)
+		normalized := normalizeVoidHTMLTags(innerHTML)
 		if _, err := w.WriteString(normalized); err != nil {
 			return err
 		}
@@ -250,15 +254,56 @@ func (c *MJTextComponent) restoreHTMLEntities(text string) string {
 	return result
 }
 
-func ensureVoidHTMLTagsSelfClosed(html string) string {
+// normalizeVoidHTMLTags canonicalizes the serialization of HTML void tags within
+// mj-text content. Most void tags keep the trailing space and slash to match the
+// MRML output we historically compared against, but certain tags like <br>
+// intentionally drop the slash to reflect the HTML emitted by the MJML
+// reference compiler.
+func normalizeVoidHTMLTags(html string) string {
 	if html == "" {
 		return html
 	}
 
-	return selfClosingVoidTagPattern.ReplaceAllStringFunc(html, func(tag string) string {
+	normalized := selfClosingVoidTagPattern.ReplaceAllStringFunc(html, func(tag string) string {
+		matches := selfClosingVoidTagPattern.FindStringSubmatch(tag)
+		if len(matches) < 2 {
+			base := strings.TrimRight(tag[:len(tag)-2], " \n\r\t")
+			return base + " />"
+		}
+
+		tagName := strings.ToLower(matches[1])
 		base := strings.TrimRight(tag[:len(tag)-2], " \n\r\t")
+
+		if _, shouldDropSlash := voidTagsWithoutClosingSlash[tagName]; shouldDropSlash {
+			return base + ">"
+		}
+
 		return base + " />"
 	})
+
+	if strings.Contains(normalized, "<br") {
+		normalized = trimSpacesAroundBR(normalized)
+	}
+
+	return normalized
+}
+
+func trimSpacesAroundBR(value string) string {
+	replacements := []struct {
+		old string
+		new string
+	}{
+		{" <br>", "<br>"},
+		{"<br> ", "<br>"},
+		{" <BR>", "<BR>"},
+		{"<BR> ", "<BR>"},
+	}
+
+	result := value
+	for _, repl := range replacements {
+		result = strings.ReplaceAll(result, repl.old, repl.new)
+	}
+	return result
 }
 
 func collapseTextWhitespace(value string) string {
