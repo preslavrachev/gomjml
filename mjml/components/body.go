@@ -99,16 +99,17 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// Track remaining mj-section siblings so sections can replicate MJML's MSO comment chaining
+	if c.RenderOpts != nil {
+		c.RenderOpts.PendingMSOSectionClose = false
+	}
+
+	// Track how many mj-section siblings remain so Outlook conditional comments can
+	// be chained only when intermediate markup doesn't require closing them.
 	remainingSections := 0
 	for _, child := range c.Children {
 		if _, ok := child.(*MJSectionComponent); ok {
 			remainingSections++
 		}
-	}
-
-	if c.RenderOpts != nil {
-		c.RenderOpts.PendingMSOSectionClose = false
 	}
 
 	for _, child := range c.Children {

@@ -150,7 +150,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-		// Custom MSO conditional
 	continueMSOComment := c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose
 
 	singleColumnSplit := false
@@ -209,15 +208,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				if _, err := w.WriteString(`<table`); err != nil {
 					return err
 				}
+			} else if msoVMLWrapperOpen {
+				if _, err := w.WriteString(`<table`); err != nil {
+					return err
+				}
 			} else {
-				if msoVMLWrapperOpen {
-					if _, err := w.WriteString(`<table`); err != nil {
-						return err
-					}
-				} else {
-					if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
-						return err
-					}
+				if _, err := w.WriteString(`<!--[if mso | IE]><table`); err != nil {
+					return err
 				}
 			}
 			if alignAttr != "" {
@@ -794,7 +791,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				c.RenderOpts.PendingMSOSectionClose = false
 			}
 		} else {
-			if c.RenderOpts != nil && c.RenderOpts.RemainingBodySections > 0 {
+			if c.RenderOpts != nil && c.RenderOpts.RemainingBodySections > 0 && !isFullWidth {
 				if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table>"); err != nil {
 					return err
 				}
