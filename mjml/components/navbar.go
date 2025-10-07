@@ -239,45 +239,25 @@ func (c *MJNavbarComponent) renderInlineLinks(w io.StringWriter, baseURL string)
 		return err
 	}
 
-	// Render navbar links
+	// Collect navbar links so we can mirror MJML's MSO table comment structure
+	navbarLinks := make([]*MJNavbarLinkComponent, 0, len(c.Children))
 	for _, child := range c.Children {
 		if navbarLink, ok := child.(*MJNavbarLinkComponent); ok {
-			// MSO table cell with CSS class and padding
-			originalClass := navbarLink.getAttribute(constants.MJMLCSSClass)
-			if _, err := w.WriteString("<!--[if mso | IE]><td"); err != nil {
-				return err
-			}
-			if originalClass != "" {
-				msoClass := originalClass + "-outlook"
-				if _, err := w.WriteString(" class=\"" + msoClass + "\""); err != nil {
-					return err
-				}
-			}
-			// Build padding styles including individual overrides
-			style := "padding:" + navbarLink.getAttribute(constants.MJMLPadding) + ";"
-			if pb := navbarLink.getAttribute(constants.MJMLPaddingBottom); pb != "" {
-				style += "padding-bottom:" + pb + ";"
-			}
-			if pt := navbarLink.getAttribute(constants.MJMLPaddingTop); pt != "" {
-				style += "padding-top:" + pt + ";"
-			}
-			if pl := navbarLink.getAttribute(constants.MJMLPaddingLeft); pl != "" {
-				style += "padding-left:" + pl + ";"
-			}
-			if pr := navbarLink.getAttribute(constants.MJMLPaddingRight); pr != "" {
-				style += "padding-right:" + pr + ";"
-			}
-			if _, err := w.WriteString(" style=\"" + style + "\"><![endif]-->"); err != nil {
-				return err
-			}
+			navbarLinks = append(navbarLinks, navbarLink)
+		}
+	}
 
-			if err := navbarLink.RenderWithBaseURL(w, baseURL); err != nil {
-				return err
-			}
+	for index, navbarLink := range navbarLinks {
+		if err := c.renderMSOTableCellOpen(w, navbarLink, index); err != nil {
+			return err
+		}
 
-			if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
-				return err
-			}
+		if err := navbarLink.RenderWithBaseURL(w, baseURL); err != nil {
+			return err
+		}
+
+		if err := c.renderMSOTableCellClose(w, index, len(navbarLinks)); err != nil {
+			return err
 		}
 	}
 
@@ -289,6 +269,62 @@ func (c *MJNavbarComponent) renderInlineLinks(w io.StringWriter, baseURL string)
 		return err
 	}
 
+	return nil
+}
+
+func (c *MJNavbarComponent) renderMSOTableCellOpen(w io.StringWriter, navbarLink *MJNavbarLinkComponent, index int) error {
+	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
+		return err
+	}
+	if index > 0 {
+		if _, err := w.WriteString("</td>"); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString("<td"); err != nil {
+		return err
+	}
+
+	style := "padding:" + navbarLink.getAttribute(constants.MJMLPadding) + ";"
+	if pb := navbarLink.getAttribute(constants.MJMLPaddingBottom); pb != "" {
+		style += "padding-bottom:" + pb + ";"
+	}
+	if pt := navbarLink.getAttribute(constants.MJMLPaddingTop); pt != "" {
+		style += "padding-top:" + pt + ";"
+	}
+	if pl := navbarLink.getAttribute(constants.MJMLPaddingLeft); pl != "" {
+		style += "padding-left:" + pl + ";"
+	}
+	if pr := navbarLink.getAttribute(constants.MJMLPaddingRight); pr != "" {
+		style += "padding-right:" + pr + ";"
+	}
+
+	if _, err := w.WriteString(" style=\"" + style + "\""); err != nil {
+		return err
+	}
+
+	msoClass := ""
+	if originalClass := navbarLink.getAttribute(constants.MJMLCSSClass); originalClass != "" {
+		msoClass = originalClass + "-outlook"
+	}
+
+	if _, err := w.WriteString(" class=\"" + msoClass + "\" "); err != nil {
+		return err
+	}
+
+	if _, err := w.WriteString("><![endif]-->"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *MJNavbarComponent) renderMSOTableCellClose(w io.StringWriter, index, total int) error {
+	if index == total-1 {
+		if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
