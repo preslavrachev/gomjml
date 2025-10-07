@@ -6,7 +6,6 @@ import (
 	"hash/maphash"
 	"io"
 	"regexp"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -506,11 +505,12 @@ func normalizeGroupColumnClassOrder(input string) string {
 // MJMLComponent represents the root MJML component
 type MJMLComponent struct {
 	*components.BaseComponent
-	Head           *components.MJHeadComponent
-	Body           *components.MJBodyComponent
-	mobileCSSAdded bool                   // Track if mobile CSS has been added
-	columnClasses  map[string]styles.Size // Track column classes used in the document
-	carouselCSS    strings.Builder        // Collect carousel CSS from components
+	Head             *components.MJHeadComponent
+	Body             *components.MJBodyComponent
+	mobileCSSAdded   bool                   // Track if mobile CSS has been added
+	columnClasses    map[string]styles.Size // Track column classes used in the document
+	columnClassOrder []string               // Preserve insertion order of column classes
+	carouselCSS      strings.Builder        // Collect carousel CSS from components
 }
 
 // RequestMobileCSS allows components to request mobile CSS to be added
@@ -685,12 +685,18 @@ func (c *MJMLComponent) prepareBodySiblings(comp Component) {
 
 // collectColumnClasses recursively collects all column classes used in the document
 func (c *MJMLComponent) collectColumnClasses() {
-	if c.columnClasses == nil {
-		c.columnClasses = make(map[string]styles.Size)
-	}
+	c.columnClasses = make(map[string]styles.Size)
+	c.columnClassOrder = c.columnClassOrder[:0]
 	if c.Body != nil {
 		c.collectColumnClassesFromComponent(c.Body)
 	}
+}
+
+func (c *MJMLComponent) registerColumnClass(className string, size styles.Size) {
+	if _, exists := c.columnClasses[className]; !exists {
+		c.columnClassOrder = append(c.columnClassOrder, className)
+	}
+	c.columnClasses[className] = size
 }
 
 // collectColumnClassesFromComponent recursively collects column classes from a component
@@ -698,7 +704,7 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 	// Check if this is a column component
 	if columnComp, ok := comp.(*components.MJColumnComponent); ok {
 		className, size := columnComp.GetColumnClass()
-		c.columnClasses[className] = size
+		c.registerColumnClass(className, size)
 	}
 
 	// Check specific component types that have children
@@ -727,10 +733,10 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 			var widthPx int
 			fmt.Sscanf(*groupWidth, "%dpx", &widthPx)
 			className := fmt.Sprintf("mj-column-px-%d", widthPx)
-			c.columnClasses[className] = styles.NewPixelSize(float64(widthPx))
+			c.registerColumnClass(className, styles.NewPixelSize(float64(widthPx)))
 		} else {
 			// Default to percentage-based class
-			c.columnClasses["mj-column-per-100"] = styles.NewPercentSize(100)
+			c.registerColumnClass("mj-column-per-100", styles.NewPercentSize(100))
 		}
 
 		// Also recurse into children to collect column classes
@@ -747,12 +753,7 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	// Standard responsive media query
 	css.WriteString("<style type=\"text/css\">@media only screen and (min-width:480px) {\n")
 	// Deterministic ordering to match MRML byte output
-	keys := make([]string, 0, len(c.columnClasses))
-	for k := range c.columnClasses {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, className := range keys {
+	for _, className := range c.columnClassOrder {
 		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
 		css.WriteString("        .")
@@ -768,7 +769,7 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	// Mozilla-specific responsive media query
 	css.WriteString(`<style media="screen and (min-width:480px)">`)
 	first := true
-	for _, className := range keys {
+	for _, className := range c.columnClassOrder {
 		if !first {
 			css.WriteByte(' ')
 		}

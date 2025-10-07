@@ -452,8 +452,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	c.ApplyBackgroundStyles(innerTable, c)
 
 	innerTable.AddStyle("width", "100%")
-	if hasBorder {
-		innerTable.AddStyle("border-collapse", "separate")
+	if hasBorder || borderRadius != "" {
+		innerTable.AddStyle(constants.CSSBorderCollapse, constants.BorderCollapseSeparate)
 	}
 
 	if err := innerTable.RenderOpen(w); err != nil {

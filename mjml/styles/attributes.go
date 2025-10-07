@@ -243,7 +243,11 @@ func (s Size) String() string {
 	if s.isPixel {
 		return fmt.Sprintf("%.0fpx", s.value)
 	}
-	return fmt.Sprintf("%g%%", float32(s.value))
+	formatted := strconv.FormatFloat(s.value, 'g', -1, 64)
+	if formatted == "" {
+		formatted = "0"
+	}
+	return formatted + "%"
 }
 
 // ParseSize parses a string value into a Size struct.

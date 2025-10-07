@@ -259,6 +259,14 @@ func (bc *BaseComponent) getClassAttribute(attrName string) string {
 	return ""
 }
 
+// GetClassAttribute returns the resolved value for an attribute defined via mj-class.
+// This exposes the already computed class attribute map to specialized components
+// that need custom resolution order while still benefiting from the centralized
+// mj-class handling performed by BaseComponent.
+func (bc *BaseComponent) GetClassAttribute(attrName string) string {
+	return bc.getClassAttribute(attrName)
+}
+
 // GetAttributeAsPixel parses an attribute value as a CSS pixel value
 func (bc *BaseComponent) GetAttributeAsPixel(name string) *styles.Pixel {
 	if attr := bc.GetAttribute(name); attr != nil {

@@ -284,6 +284,15 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 		}
 	}
 
+	// Preserve raw text/comments when the column has no MJML children
+	if len(c.Children) == 0 {
+		if raw := strings.TrimSpace(c.Node.Text); raw != "" {
+			if _, err := w.WriteString(raw); err != nil {
+				return err
+			}
+		}
+	}
+
 	if _, err := w.WriteString("</tbody>"); err != nil {
 		return err
 	}
@@ -348,8 +357,7 @@ func (c *MJColumnComponent) GetColumnClass() (string, styles.Size) {
 
 	if parsedWidth.IsPercent() {
 		// Format: mj-column-per-{width} where dots are replaced with dashes
-		f32Value := float32(parsedWidth.Value())
-		widthStr := strconv.FormatFloat(float64(f32Value), 'g', -1, 32)
+		widthStr := strings.TrimSuffix(parsedWidth.String(), "%")
 		className = "mj-column-per-" + strings.ReplaceAll(widthStr, ".", "-")
 	} else {
 		// Format: mj-column-px-{width} for pixel values

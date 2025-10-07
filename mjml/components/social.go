@@ -39,6 +39,23 @@ var platformDefaults = map[string]string{
 	"xing":       "#296366",
 }
 
+// Attributes that mj-social-element is allowed to inherit from its parent.
+var socialElementInheritableAttributes = map[string]struct{}{
+	"color":           {},
+	"font-family":     {},
+	"font-size":       {},
+	"line-height":     {},
+	"text-decoration": {},
+	"border-radius":   {},
+	"icon-size":       {},
+	"font-weight":     {},
+	"font-style":      {},
+	"icon-height":     {},
+	"icon-padding":    {},
+	"inner-padding":   {},
+	"text-padding":    {},
+}
+
 // MJSocialComponent represents mj-social
 type MJSocialComponent struct {
 	*BaseComponent
@@ -388,57 +405,60 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 		return value
 	}
 
-	// 2. Check parent mj-social for inheritable attributes
-	if c.parentSocial != nil {
-		inheritableAttrs := []string{
-			"color", "font-family", "font-size", "line-height",
-			"text-decoration", "border-radius", "icon-size",
-			"font-weight", "font-style", "icon-height", "icon-padding",
-			"inner-padding", "text-padding",
+	// 2. Check mj-class definitions for the element
+	if classValue := c.GetClassAttribute(name); classValue != "" {
+		if name == constants.MJMLFontFamily {
+			c.TrackFontFamily(classValue)
 		}
-		for _, attr := range inheritableAttrs {
-			if attr == name {
-				// First check parent's explicit attribute
-				if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
-					debug.DebugLogWithData(
-						"social-attr",
-						"parent-explicit",
-						"Using parent explicit attribute",
-						map[string]interface{}{
-							"attr":    name,
-							"value":   parentValue,
-							"element": c.Node.GetAttribute("name"),
-						},
-					)
-					// Track font families
-					if name == constants.MJMLFontFamily {
-						c.TrackFontFamily(parentValue)
-					}
-					return parentValue
+		return classValue
+	}
+
+	// 3. Check parent mj-social for inheritable attributes
+	if c.parentSocial != nil {
+		if _, inheritable := socialElementInheritableAttributes[name]; inheritable {
+			// First check parent's explicit attribute
+			if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
+				debug.DebugLogWithData(
+					"social-attr",
+					"parent-explicit",
+					"Using parent explicit attribute",
+					map[string]interface{}{
+						"attr":    name,
+						"value":   parentValue,
+						"element": c.Node.GetAttribute("name"),
+					},
+				)
+				if name == constants.MJMLFontFamily {
+					c.TrackFontFamily(parentValue)
 				}
-				// Then check parent's resolved attribute (includes global attributes)
-				if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
-					debug.DebugLogWithData(
-						"social-attr",
-						"parent-resolved",
-						"Using parent resolved attribute",
-						map[string]interface{}{
-							"attr":    name,
-							"value":   parentResolved,
-							"element": c.Node.GetAttribute("name"),
-						},
-					)
-					// Track font families
-					if name == constants.MJMLFontFamily {
-						c.TrackFontFamily(parentResolved)
-					}
-					return parentResolved
+				return parentValue
+			}
+			// Then check parent's resolved attribute (includes global attributes)
+			if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
+				debug.DebugLogWithData(
+					"social-attr",
+					"parent-resolved",
+					"Using parent resolved attribute",
+					map[string]interface{}{
+						"attr":    name,
+						"value":   parentResolved,
+						"element": c.Node.GetAttribute("name"),
+					},
+				)
+				if name == constants.MJMLFontFamily {
+					c.TrackFontFamily(parentResolved)
 				}
+				return parentResolved
 			}
 		}
 	}
 
-	// 3. Check platform-specific defaults (for background-color)
+	// 4. Check global attributes and component defaults
+	if resolved := c.GetAttributeWithDefault(c, name); resolved != "" {
+		return resolved
+	}
+
+	// 5. Check platform-specific defaults (for background-color)
 	if name == constants.MJMLBackgroundColor {
 		socialName := c.Node.GetAttribute("name")
 
@@ -453,7 +473,7 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 		}
 	}
 
-	// 4. Fall back to component defaults
+	// 6. Fall back to component defaults
 	return c.GetDefaultAttribute(name)
 }
 
@@ -494,7 +514,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
 		} else if nameAttr == "twitter" || nameAttr == "x" {
 			if href == "#" {
-				href = "https://twitter.com/home?status=" + href
+				href = "https://twitter.com/intent/tweet?url=" + href
 			} else if !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
 				// Convert href to Twitter/X sharing URL if not already a sharing or profile URL
 				href = "https://twitter.com/intent/tweet?url=" + href
