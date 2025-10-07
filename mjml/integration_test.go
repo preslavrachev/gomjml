@@ -112,7 +112,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-button-border"},
 		// {name: "mj-button-border-radius"},
 		// {name: "mj-button-class"},
-		// {name: "mj-button-color"},
+		{name: "mj-button-color"},
 		// {name: "mj-button-container-background-color"},
 		// {name: "mj-button-example"},
 		{name: "mj-button-font-family"},
@@ -173,7 +173,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-wrapper-border"},
 		// {name: "mj-wrapper-border-radius"},
 		// {name: "mj-wrapper-multiple-sections"},
-		// {name: "mj-wrapper-other"},
+		{name: "mj-wrapper-other"},
 		// {name: "mj-wrapper-padding"},
 		// // MJ-Text tests
 		// {name: "mj-text"},
@@ -185,7 +185,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-text-font-family"},
 		// {name: "mj-text-font-size"},
 		// {name: "mj-text-font-style"},
-		// {name: "mj-text-font-weight"},
+		{name: "mj-text-font-weight"},
 		// {name: "mj-text-class"},
 		// // MJ-RAW tests
 		// {name: "mj-raw"},
@@ -194,7 +194,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-raw-go-template"},
 		// // MJ-SOCIAL tests
 		// {name: "mj-social"},
-		// {name: "mj-social-anchors"},
+		{name: "mj-social-anchors"},
 		// {name: "mj-social-align"},
 		{name: "mj-social-border-radius"},
 		// {name: "mj-social-class"},
@@ -216,14 +216,14 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-social-ubuntu-fonts-with-text-content"},
 		// {name: "mj-social-ubuntu-fonts-icons-only-fallback"},
 		// // MJ-ACCORDION tests
-		// {name: "mj-accordion"},
+		{name: "mj-accordion"},
 		// {name: "mj-accordion-font-padding"},
 		{name: "mj-accordion-icon"},
 		// {name: "mj-accordion-other"},
 		// // MJ-NAVBAR tests
 		// {name: "mj-navbar"},
 		// {name: "mj-navbar-ico"},
-		// {name: "mj-navbar-align-class"},
+		{name: "mj-navbar-align-class"},
 		// {name: "mj-navbar-multiple"},
 		// // MJ-HERO tests
 		{name: "mj-hero"},
