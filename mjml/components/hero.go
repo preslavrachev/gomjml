@@ -64,24 +64,20 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	if backgroundWidth != "" && backgroundWidth != "0px" {
 		widthAttr = backgroundWidth
 	}
+	vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
+	if backgroundHeight != "" && backgroundHeight != "0px" {
+		vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
+	}
+
+	vmlImage := html.NewHTMLTag("v:image").
+		AddAttribute(constants.AttrStyle, vmlStyle)
 	if backgroundUrl != "" {
-		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
-		if backgroundHeight != "" && backgroundHeight != "0px" {
-			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
-		}
-		vmlImage := fmt.Sprintf(`<v:image src="%s" xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, backgroundUrl, vmlStyle)
-		if _, err := w.WriteString(vmlImage); err != nil {
-			return err
-		}
-	} else {
-		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
-		if backgroundHeight != "" && backgroundHeight != "0px" {
-			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
-		}
-		vmlImage := fmt.Sprintf(`<v:image style="%s" xmlns:v="urn:schemas-microsoft-com:vml" />`, vmlStyle)
-		if _, err := w.WriteString(vmlImage); err != nil {
-			return err
-		}
+		vmlImage.AddAttribute("src", backgroundUrl)
+	}
+	vmlImage.AddAttribute("xmlns:v", "urn:schemas-microsoft-com:vml")
+
+	if err := vmlImage.RenderSelfClosing(w); err != nil {
+		return err
 	}
 
 	if _, err := w.WriteString("<![endif]-->"); err != nil {

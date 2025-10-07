@@ -843,7 +843,7 @@ func (c *MJMLComponent) generateCustomStyles() string {
 				if attr := styleComp.GetAttribute("inline"); attr != nil {
 					inlineAttr = strings.ToLower(strings.TrimSpace(*attr))
 				}
-				if inlineAttr == "inline" && c.RenderOpts != nil && c.RenderOpts.SkipInlineStylesInHead {
+				if inlineAttr == "inline" {
 					continue
 				}
 

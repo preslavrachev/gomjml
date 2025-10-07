@@ -145,6 +145,7 @@ func (c *MJTextComponent) Render(w io.StringWriter) error {
 	}
 	if innerHTML != "" {
 		normalized := normalizeVoidHTMLTags(innerHTML)
+		normalized = c.ApplyInlineStylesToHTMLContent(normalized)
 		if _, err := w.WriteString(normalized); err != nil {
 			return err
 		}
@@ -355,18 +356,62 @@ func (c *MJTextComponent) reconstructHTMLElement(node *parser.MJMLNode, w io.Str
 		return err
 	}
 
+	classAttr := ""
+	for _, attr := range node.Attrs {
+		name := attr.Name.Local
+		if attr.Name.Space != "" {
+			name = attr.Name.Space + ":" + name
+		}
+		if name == constants.AttrClass {
+			classAttr = attr.Value
+			break
+		}
+	}
+	inlineStyle := ""
+	if classAttr != "" {
+		inlineStyle = c.BuildInlineStyleString(classAttr)
+	}
+
+	styleApplied := false
 	// Attributes
 	for _, attr := range node.Attrs {
 		if _, err := w.WriteString(" "); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(attr.Name.Local); err != nil {
+		name := attr.Name.Local
+		if attr.Name.Space != "" {
+			name = attr.Name.Space + ":" + name
+		}
+		if _, err := w.WriteString(name); err != nil {
 			return err
 		}
 		if _, err := w.WriteString(`="`); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(attr.Value); err != nil {
+		value := attr.Value
+		if inlineStyle != "" && name == constants.AttrStyle {
+			value = mergeInlineStyleValues(value, inlineStyle)
+			styleApplied = true
+		}
+		if _, err := w.WriteString(value); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`"`); err != nil {
+			return err
+		}
+	}
+
+	if inlineStyle != "" && !styleApplied {
+		if _, err := w.WriteString(" "); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(constants.AttrStyle); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(`="`); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(inlineStyle); err != nil {
 			return err
 		}
 		if _, err := w.WriteString(`"`); err != nil {
@@ -440,4 +485,29 @@ func isVoidHTMLElement(tagName string) bool {
 		"wbr":    true,
 	}
 	return voidElements[tagName]
+}
+
+func mergeInlineStyleValues(existing, inline string) string {
+	if existing == "" {
+		return inline
+	}
+	if inline == "" {
+		return existing
+	}
+
+	trimmedExisting := strings.TrimSpace(existing)
+	trimmedInline := strings.TrimSpace(inline)
+
+	if trimmedExisting == "" {
+		return trimmedInline
+	}
+	if trimmedInline == "" {
+		return trimmedExisting
+	}
+
+	if !strings.HasSuffix(trimmedExisting, ";") {
+		trimmedExisting += ";"
+	}
+
+	return trimmedExisting + trimmedInline
 }
