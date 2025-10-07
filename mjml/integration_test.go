@@ -191,7 +191,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-raw"},
 		{name: "mj-raw-conditional-comment"},
 		// {name: "mj-raw-head"}, // MJML says file badly formatted
-		//{name: "mj-raw-go-template"},
+		{name: "mj-raw-go-template"},
 		// // MJ-SOCIAL tests
 		// {name: "mj-social"},
 		{name: "mj-social-anchors"},
