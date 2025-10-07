@@ -65,7 +65,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "section-bg-vml-color"},
 		// {name: "section-fullwidth-background-image"},
 		// {name: "section-fullwidth-bg-transparent"},
-		// {name: "section-padding-top-zero"},
+		{name: "section-padding-top-zero"},
 		// //{name: "austin-layout-from-mjml-io"}, // Commented out
 		// // Austin layout component tests
 		{name: "austin-header-section"},
@@ -76,7 +76,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "austin-two-column-images"},
 		// {name: "austin-divider"},
 		// {name: "mj-divider"},
-		// {name: "mj-divider-alignment"},
+		{name: "mj-divider-alignment"},
 		// {name: "mj-divider-border"},
 		// {name: "mj-divider-class"},
 		{name: "mj-divider-container-background-color"},
@@ -89,7 +89,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// //{name: "austin-social-media"}, // Commented out
 		// {name: "austin-footer-text"},
 		// {name: "austin-group-component"},
-		// {name: "austin-global-attributes"},
+		{name: "austin-global-attributes"},
 		// {name: "austin-map-image"},
 		// // MRML reference tests
 		// {name: "mrml-divider-basic"},
@@ -198,7 +198,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-social-align"},
 		{name: "mj-social-border-radius"},
 		// {name: "mj-social-class"},
-		// {name: "mj-social-color"},
+		{name: "mj-social-color"},
 		// {name: "mj-social-complex-styling"},
 		// {name: "mj-social-container-background-color"},
 		{name: "mj-social-element-ending"},
@@ -213,7 +213,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-social-text"},
 		// {name: "mj-social-text-wrapper"},
 		{name: "mj-social-no-ubuntu-fonts-overridden"},
-		// {name: "mj-social-ubuntu-fonts-with-text-content"},
+		{name: "mj-social-ubuntu-fonts-with-text-content"},
 		// {name: "mj-social-ubuntu-fonts-icons-only-fallback"},
 		// // MJ-ACCORDION tests
 		{name: "mj-accordion"},
@@ -231,7 +231,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-hero-background-height"},
 		// {name: "mj-hero-background-position"},
 		// {name: "mj-hero-background-url"},
-		// {name: "mj-hero-background-width"},
+		{name: "mj-hero-background-width"},
 		// {name: "mj-hero-class"},
 		// {name: "mj-hero-height"},
 		{name: "mj-hero-width", errHandler: func(err error) error {
