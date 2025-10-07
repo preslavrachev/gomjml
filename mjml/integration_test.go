@@ -1437,6 +1437,11 @@ func findRegexMatches(text, pattern string) []string {
 // semantic differences rather than serialization quirks. It removes empty style
 // tags and merges split MSO conditional blocks that MJML now emits as a single
 // table/td wrapper.
+var (
+	mustacheAfterClosingPattern  = regexp.MustCompile(`(-->|>)\s+(\{\{)`)
+	mustacheBeforeOpeningPattern = regexp.MustCompile(`(\}\})\s+(<!--|<)`)
+)
+
 func normalizeMJMLReference(html string) string {
 	normalized := html
 
@@ -1540,6 +1545,13 @@ func normalizeMJMLReference(html string) string {
 
 		return fmt.Sprintf("<body%s><div%s>", bodyAttrs, b.String())
 	})
+
+	// Normalize moustache templating markers so trailing whitespace produced by
+	// legacy MRML fixtures doesn't cause mismatches. MJML trims raw content,
+	// so remove any whitespace directly surrounding templating blocks when
+	// they abut HTML tags or conditional comments.
+	normalized = mustacheAfterClosingPattern.ReplaceAllString(normalized, "$1$2")
+	normalized = mustacheBeforeOpeningPattern.ReplaceAllString(normalized, "$1$2")
 
 	// Normalize viewport meta spacing differences (remove spaces after commas)
 	viewportPattern := regexp.MustCompile(`(<meta[^>]*name="viewport"[^>]*content=")([^"]*)(")`)
