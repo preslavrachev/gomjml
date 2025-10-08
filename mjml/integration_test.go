@@ -94,7 +94,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// // MRML reference tests
 		// {name: "mrml-divider-basic"},
 		{name: "mrml-text-basic"},
-		// {name: "mrml-button-basic"},
+		{name: "mrml-button-basic"},
 		// {name: "body-wrapper-section"},
 		{name: "mj-attributes"},
 		// // MJ-Group tests from MRML
@@ -119,7 +119,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-button-font-size"},
 		{name: "mj-button-font-style"},
 		// {name: "mj-button-font-weight"},
-		// {name: "mj-button-height"},
+		{name: "mj-button-height"},
 		{name: "mj-button-href"},
 		// {name: "mj-button-inner-padding"},
 		{name: "mj-button-line-height"},
@@ -180,7 +180,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-text-align"},
 		{name: "mj-text-color"},
 		// {name: "mj-text-container-background-color"},
-		// {name: "mj-text-decoration"},
+		{name: "mj-text-decoration"},
 		// {name: "mj-text-example"},
 		{name: "mj-text-font-family"},
 		// {name: "mj-text-font-size"},
@@ -246,12 +246,12 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// // MJ-SPACER test
 		// {name: "mj-spacer"},
 		// // MJ-TABLE tests
-		// {name: "mj-table"},
+		{name: "mj-table"},
 		// {name: "mj-table-other"},
 		{name: "mj-table-table"},
 		// {name: "mj-table-text"},
 		// // MJ-CAROUSEL tests
-		// {name: "mj-carousel"},
+		{name: "mj-carousel"},
 		// {name: "mj-carousel-align-border-radius-class"},
 		{name: "mj-carousel-icon"},
 		{name: "mj-carousel-tb"},
