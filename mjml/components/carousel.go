@@ -21,10 +21,13 @@ const (
 	// same point keeps our deterministic LCG aligned with the canonical HTML
 	// output produced by the reference implementation.
 	carouselIDSeed = 0xf01ab44896143632
-	// Parameters from PCG-XSH-RR. Any full-period LCG works; these provide
-	// good distribution while remaining lightweight.
-	carouselIDMultiplier = 6364136223846793005
-	carouselIDIncrement  = 1442695040888963407
+	// Parameters derived from the glibc LCG allow us to reproduce the
+	// sequence of identifiers emitted by the reference MJML compiler when
+	// seeded with the value above. The coefficients satisfy Hull-Dobell
+	// requirements ensuring a full period over the uint64 domain while
+	// remaining extremely cheap to compute.
+	carouselIDMultiplier = 2862933555777941757
+	carouselIDIncrement  = 0x57d59d39d9fc49f1
 )
 
 // ResetCarouselIDCounter resets the global counter for deterministic testing
