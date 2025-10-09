@@ -255,7 +255,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-carousel-align-border-radius-class"},
 		{name: "mj-carousel-icon"},
 		{name: "mj-carousel-tb"},
-		// {name: "mj-carousel-thumbnails"},
+		{name: "mj-carousel-thumbnails"},
 		// // Custom test cases
 		{name: "notifuse-open-br-tags"},
 		// {name: "notifuse-full"}, //-- NOTE: HTML has been compiled with the MJML compiler already.
