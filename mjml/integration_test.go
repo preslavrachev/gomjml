@@ -53,7 +53,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-body-background-color"},
 		{name: "mj-body-class"},
 		{name: "mj-body-width"},
-		// {name: "basic"},
+		{name: "basic"},
 		{name: "comment"},
 		{name: "with-head"},
 		// {name: "complex-layout"},
@@ -63,7 +63,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "wrapper-border"},
 		{name: "group-footer-test"},
 		{name: "section-bg-vml-color"},
-		// {name: "section-fullwidth-background-image"},
+		{name: "section-fullwidth-background-image"},
 		// {name: "section-fullwidth-bg-transparent"},
 		{name: "section-padding-top-zero"},
 		// //{name: "austin-layout-from-mjml-io"}, // Commented out
