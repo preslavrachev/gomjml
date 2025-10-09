@@ -155,7 +155,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-section-padding"},
 		// {name: "mj-section-text-align"},
 		{name: "mj-section-bg-cover-no-repeat"},
-		// {name: "mj-section-global-attributes"},
+		{name: "mj-section-global-attributes"},
 		{name: "mj-section-width"},
 		// {name: "mj-section-with-columns"},
 		{name: "mj-section-class"},
@@ -232,8 +232,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// {name: "mj-hero-background-position"},
 		// {name: "mj-hero-background-url"},
 		{name: "mj-hero-background-width"},
-		// {name: "mj-hero-class"},
-		// {name: "mj-hero-height"},
+		{name: "mj-hero-class"},
+		{name: "mj-hero-height"},
 		{name: "mj-hero-width", errHandler: func(err error) error {
 			expectedErr := ErrInvalidAttribute("mj-hero", "width", 3)
 			if err.Error() == expectedErr.Error() {
