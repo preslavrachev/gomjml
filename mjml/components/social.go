@@ -18,25 +18,127 @@ func stripPxSuffix(value string) string {
 	return strings.TrimSuffix(value, "px")
 }
 
-// platformDefaults defines the default background colors for social media platforms
-var platformDefaults = map[string]string{
-	"youtube":    "#EB3323",
-	"facebook":   "#3b5998",
-	"twitter":    "#55acee",
-	"x":          "#000000",
-	"google":     "#dc4e41",
-	"github":     "#000000",
-	"dribbble":   "#D95988",
-	"instagram":  "#3f729b",
-	"linkedin":   "#0077b5",
-	"pinterest":  "#bd081c",
-	"medium":     "#000000",
-	"tumblr":     "#344356",
-	"vimeo":      "#53B4E7",
-	"web":        "#4BADE9",
-	"snapchat":   "#FFFA54",
-	"soundcloud": "#EF7F31",
-	"xing":       "#296366",
+// socialNetworkDefaults describes the default MJML metadata for a social network.
+type socialNetworkDefaults struct {
+	backgroundColor        string
+	iconURL                string
+	shareURLTemplate       string
+	shareURLSkipSubstrings []string
+}
+
+// baseSocialNetworkDefaults matches MJML's default network definitions.
+var baseSocialNetworkDefaults = map[string]socialNetworkDefaults{
+	"facebook": {
+		backgroundColor:        "#3b5998",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/facebook.png",
+		shareURLTemplate:       "https://www.facebook.com/sharer/sharer.php?u=[[URL]]",
+		shareURLSkipSubstrings: []string{"facebook.com/sharer"},
+	},
+	"twitter": {
+		backgroundColor:        "#55acee",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter.png",
+		shareURLTemplate:       "https://twitter.com/intent/tweet?url=[[URL]]",
+		shareURLSkipSubstrings: []string{"twitter.com/", "x.com/"},
+	},
+	"x": {
+		backgroundColor:        "#000000",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter-x.png",
+		shareURLTemplate:       "https://twitter.com/intent/tweet?url=[[URL]]",
+		shareURLSkipSubstrings: []string{"twitter.com/", "x.com/"},
+	},
+	"google": {
+		backgroundColor:        "#dc4e41",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/google-plus.png",
+		shareURLTemplate:       "https://plus.google.com/share?url=[[URL]]",
+		shareURLSkipSubstrings: []string{"plus.google.com/share"},
+	},
+	"pinterest": {
+		backgroundColor:        "#bd081c",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/pinterest.png",
+		shareURLTemplate:       "https://pinterest.com/pin/create/button/?url=[[URL]]&media=&description=",
+		shareURLSkipSubstrings: []string{"pinterest.com/pin/create/button"},
+	},
+	"linkedin": {
+		backgroundColor:        "#0077b5",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png",
+		shareURLTemplate:       "https://www.linkedin.com/shareArticle?mini=true&url=[[URL]]&title=&summary=&source=",
+		shareURLSkipSubstrings: []string{"linkedin.com/shareArticle"},
+	},
+	"instagram": {
+		backgroundColor: "#3f729b",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/instagram.png",
+	},
+	"web": {
+		backgroundColor: "#4BADE9",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/web.png",
+	},
+	"snapchat": {
+		backgroundColor: "#FFFA54",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/snapchat.png",
+	},
+	"youtube": {
+		backgroundColor: "#EB3323",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/youtube.png",
+	},
+	"tumblr": {
+		backgroundColor:        "#344356",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/tumblr.png",
+		shareURLTemplate:       "https://www.tumblr.com/widgets/share/tool?canonicalUrl=[[URL]]",
+		shareURLSkipSubstrings: []string{"tumblr.com/widgets/share"},
+	},
+	"github": {
+		backgroundColor: "#000000",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/github.png",
+	},
+	"xing": {
+		backgroundColor:        "#296366",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/xing.png",
+		shareURLTemplate:       "https://www.xing.com/app/user?op=share&url=[[URL]]",
+		shareURLSkipSubstrings: []string{"xing.com/app/user?op=share"},
+	},
+	"vimeo": {
+		backgroundColor: "#53B4E7",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/vimeo.png",
+	},
+	"medium": {
+		backgroundColor: "#000000",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/medium.png",
+	},
+	"soundcloud": {
+		backgroundColor: "#EF7F31",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/soundcloud.png",
+	},
+	"dribbble": {
+		backgroundColor: "#D95988",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/dribbble.png",
+	},
+}
+
+const shareURLPlaceholder = "[[URL]]"
+
+// getSocialNetworkDefaults resolves MJML defaults for a given social element name.
+func getSocialNetworkDefaults(name string) (socialNetworkDefaults, bool) {
+	if name == "" {
+		return socialNetworkDefaults{}, false
+	}
+
+	if defaults, exists := baseSocialNetworkDefaults[name]; exists {
+		return defaults, true
+	}
+
+	if idx := strings.Index(name, "-"); idx != -1 {
+		baseName := name[:idx]
+		if defaults, exists := baseSocialNetworkDefaults[baseName]; exists {
+			// Copy the struct to avoid mutating the base definition.
+			resolved := defaults
+			if strings.HasSuffix(name, "-noshare") && resolved.shareURLTemplate != "" {
+				resolved.shareURLTemplate = shareURLPlaceholder
+			}
+			return resolved, true
+		}
+	}
+
+	return socialNetworkDefaults{}, false
 }
 
 // Attributes that mj-social-element is allowed to inherit from its parent.
@@ -334,54 +436,10 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case constants.MJMLPadding:
 		return "4px"
 	case "src":
-		// Default social icons from MJML standard locations
-		// Get name directly from node to avoid circular dependency
-		nameAttr := c.Node.GetAttribute("name")
-
-		// Handle variants like "facebook-noshare" by extracting base platform name
-		baseName := nameAttr
-		if strings.Contains(nameAttr, "-") {
-			baseName = strings.Split(nameAttr, "-")[0]
+		if defaults, ok := getSocialNetworkDefaults(c.Node.GetAttribute("name")); ok {
+			return defaults.iconURL
 		}
-
-		switch baseName {
-		case "facebook":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/facebook.png"
-		case "twitter":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter.png"
-		case "x":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter-x.png"
-		case "linkedin":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png"
-		case "google":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/google-plus.png"
-		case "github":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/github.png"
-		case "dribbble":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/dribbble.png"
-		case "instagram":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/instagram.png"
-		case "youtube":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/youtube.png"
-		case "pinterest":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/pinterest.png"
-		case "medium":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/medium.png"
-		case "tumblr":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/tumblr.png"
-		case "vimeo":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/vimeo.png"
-		case "web":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/web.png"
-		case "snapchat":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/snapchat.png"
-		case "soundcloud":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/soundcloud.png"
-		case "xing":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/xing.png"
-		default:
-			return ""
-		}
+		return ""
 	case constants.MJMLTarget:
 		return constants.TargetBlank
 	case constants.MJMLTextDecoration:
@@ -460,16 +518,8 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 
 	// 5. Check platform-specific defaults (for background-color)
 	if name == constants.MJMLBackgroundColor {
-		socialName := c.Node.GetAttribute("name")
-
-		// Handle variants like "facebook-noshare" by extracting base platform name
-		baseName := socialName
-		if strings.Contains(socialName, "-") {
-			baseName = strings.Split(socialName, "-")[0]
-		}
-
-		if bgColor, exists := platformDefaults[baseName]; exists {
-			return bgColor
+		if defaults, ok := getSocialNetworkDefaults(c.Node.GetAttribute("name")); ok {
+			return defaults.backgroundColor
 		}
 	}
 
@@ -509,15 +559,23 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	// Handle special sharing URL generation for known platforms
 	nameAttr := c.Node.GetAttribute("name")
 	if href != "" {
-		if nameAttr == "facebook" && !strings.Contains(href, "facebook.com/sharer") {
-			// Convert href to Facebook sharing URL if not already a sharing URL
-			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
-		} else if nameAttr == "twitter" || nameAttr == "x" {
-			if href == "#" {
-				href = "https://twitter.com/intent/tweet?url=" + href
-			} else if !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
-				// Convert href to Twitter/X sharing URL if not already a sharing or profile URL
-				href = "https://twitter.com/intent/tweet?url=" + href
+		if defaults, ok := getSocialNetworkDefaults(nameAttr); ok && defaults.shareURLTemplate != "" {
+			hrefLower := strings.ToLower(href)
+			skipShare := false
+			for _, pattern := range defaults.shareURLSkipSubstrings {
+				if strings.Contains(hrefLower, pattern) {
+					skipShare = true
+					break
+				}
+			}
+
+			if !skipShare {
+				template := defaults.shareURLTemplate
+				if strings.Contains(template, shareURLPlaceholder) {
+					href = strings.ReplaceAll(template, shareURLPlaceholder, href)
+				} else {
+					href = template
+				}
 			}
 		}
 	}

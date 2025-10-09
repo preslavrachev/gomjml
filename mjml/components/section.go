@@ -449,7 +449,7 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Sections with columns/components already get MSO tables from their children
 	textContent := c.Node.Text
 	trimmedText := strings.TrimSpace(textContent)
-	hasTextContent := trimmedText != "" || (textContent != "" && !strings.Contains(textContent, "\n"))
+	hasTextContent := trimmedText != ""
 	hasChildContent := len(c.Children) > 0
 	needsContentMSOTable := hasTextContent && !hasChildContent
 
