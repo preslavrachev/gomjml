@@ -127,6 +127,47 @@ func getChildAlign(child Component) string {
 	return ""
 }
 
+// shouldUseOuterOnlyMSOWrapper reports whether the wrapper's Outlook fallback should
+// emit only the outer table, leaving the inner wrapper table to be handled by the
+// section itself. This mirrors MJML's behavior for wrappers that exclusively contain
+// full-width sections with background images—those sections open (and close) the
+// inner MSO table inside their VML markup to ensure the background renders correctly
+// in Outlook. Mixing such sections with standard sections would require both tables,
+// so we only take this path when every non-raw child consumes the inner wrapper
+// table.
+func (c *MJWrapperComponent) shouldUseOuterOnlyMSOWrapper() bool {
+	hasSection := false
+	anyConsumer := false
+	allConsumers := true
+
+	for _, child := range c.Children {
+		if child.IsRawElement() {
+			continue
+		}
+
+		section, ok := child.(*MJSectionComponent)
+		if !ok {
+			// Wrappers are only expected to contain sections (and raw nodes).
+			// If we encounter anything else, fall back to the standard
+			// wrapper table structure for safety.
+			return false
+		}
+
+		hasSection = true
+
+		fullWidth := section.GetAttributeWithDefault(section, "full-width")
+		backgroundURL := section.GetAttributeWithDefault(section, constants.MJMLBackgroundUrl)
+		consumesWrapperTable := fullWidth != "" && backgroundURL != ""
+
+		anyConsumer = anyConsumer || consumesWrapperTable
+		if !consumesWrapperTable {
+			allConsumers = false
+		}
+	}
+
+	return hasSection && anyConsumer && allConsumers
+}
+
 func (c *MJWrapperComponent) isFullWidth() bool {
 	// Full width only if explicitly set
 	return c.getAttribute("full-width") == "full-width"
@@ -300,12 +341,21 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		break
 	}
 
-	if err := html.RenderMSOWrapperTableOpenWithWidths(w, c.GetEffectiveWidth(), effectiveWidth, firstAlign, firstBgColor); err != nil {
-		return err
+	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
+	if useOuterOnlyMSO {
+		if err := html.RenderMSOWrapperOuterOpen(w, c.GetEffectiveWidth(), firstAlign, firstBgColor); err != nil {
+			return err
+		}
+	} else {
+		if err := html.RenderMSOWrapperTableOpenWithWidths(w, c.GetEffectiveWidth(), effectiveWidth, firstAlign, firstBgColor); err != nil {
+			return err
+		}
 	}
 
 	// Render children with standard body width
 	// Add MSO section transitions between section children (like MRML does)
+	wrapperMSOClosedByChild := false
+
 	for i, child := range c.Children {
 		if child.IsRawElement() {
 			// Inject raw content inside the MSO transition block so Outlook maintains table structure
@@ -329,10 +379,23 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		if err := child.Render(w); err != nil {
 			return err
 		}
+		if consumer, ok := child.(interface{ ConsumedWrapperMSOTable() bool }); ok && consumer.ConsumedWrapperMSOTable() {
+			wrapperMSOClosedByChild = true
+		}
 	}
 
-	if err := html.RenderMSOWrapperTableClose(w); err != nil {
-		return err
+	if wrapperMSOClosedByChild {
+		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+			return err
+		}
+	} else if useOuterOnlyMSO {
+		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+			return err
+		}
+	} else {
+		if err := html.RenderMSOWrapperTableClose(w); err != nil {
+			return err
+		}
 	}
 
 	if err := innerTd.RenderClose(w); err != nil {
@@ -528,12 +591,21 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// For basic wrapper, we need a specific MSO conditional pattern
 	// that matches MRML's output more closely - use the outer container width
 	outerWidth := c.GetEffectiveWidth()
-	if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
-		return err
+	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
+	if useOuterOnlyMSO {
+		if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, firstBgColor); err != nil {
+			return err
+		}
+	} else {
+		if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+			return err
+		}
 	}
 
 	// Render children - pass the effective width (600px - border width)
 	// Add MSO section transitions between section children (like MJML does)
+
+	wrapperMSOClosedByChild := false
 
 	for i, child := range c.Children {
 		if child.IsRawElement() {
@@ -557,10 +629,23 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		if err := child.Render(w); err != nil {
 			return err
 		}
+		if consumer, ok := child.(interface{ ConsumedWrapperMSOTable() bool }); ok && consumer.ConsumedWrapperMSOTable() {
+			wrapperMSOClosedByChild = true
+		}
 	}
 
-	if err := html.RenderMSOWrapperTableClose(w); err != nil {
-		return err
+	if wrapperMSOClosedByChild {
+		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+			return err
+		}
+	} else if useOuterOnlyMSO {
+		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+			return err
+		}
+	} else {
+		if err := html.RenderMSOWrapperTableClose(w); err != nil {
+			return err
+		}
 	}
 
 	if err := mainTd.RenderClose(w); err != nil {

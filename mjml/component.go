@@ -166,7 +166,6 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 				// TODO: Evaluate if cloning the opts is the best option here.
 				wrapperChildOpts := *opts // Copy the options
 				wrapperChildOpts.InsideWrapper = true
-
 				for _, childNode := range comp.Node.Children {
 					if childComponent, err := CreateComponent(childNode, &wrapperChildOpts); err == nil {
 						comp.Children = append(comp.Children, childComponent)

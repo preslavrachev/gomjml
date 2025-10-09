@@ -486,6 +486,47 @@ func RenderMSOWrapperTableOpenWithWidths(w io.StringWriter, outerWidthPx int, in
 	return nil
 }
 
+// RenderMSOWrapperOuterOpen renders only the outer Outlook table wrapper, leaving the
+// inner wrapper table to be handled by child components. This matches MJML's output
+// when sections with full-width background images are rendered inside an mj-wrapper.
+func RenderMSOWrapperOuterOpen(w io.StringWriter, outerWidthPx int, align string, bgColor string) error {
+	if _, err := w.WriteString("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td class=\"\""); err != nil {
+		return err
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(outerWidthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px\""); err != nil {
+		return err
+	}
+	if bgColor != "" {
+		if _, err := w.WriteString(" " + constants.AttrBgcolor + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(bgColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString("><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RenderMSOWrapperTableClose renders MSO wrapper table closing directly to Writer
 func RenderMSOWrapperTableClose(w io.StringWriter) error {
 	return RenderMSOConditional(w, "</td></tr></table></td></tr></table>")

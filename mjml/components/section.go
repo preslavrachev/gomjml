@@ -15,6 +15,7 @@ import (
 // MJSectionComponent represents mj-section
 type MJSectionComponent struct {
 	*BaseComponent
+	wrapperMSOClosed bool
 }
 
 // NewMJSectionComponent creates a new mj-section component
@@ -30,6 +31,7 @@ func (c *MJSectionComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJSectionComponent
 func (c *MJSectionComponent) Render(w io.StringWriter) error {
+	c.wrapperMSOClosed = false
 	// Get section attributes using proper attribute resolution (includes mj-attributes)
 	// Cache all attribute lookups at once to avoid repeated calls
 	backgroundColor := c.GetAttributeWithDefault(c, "background-color")
@@ -55,7 +57,10 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// Check if we have a background image for VML generation
 	hasBackgroundImage := backgroundUrl != ""
 	isFullWidth := fullWidth != ""
+	insideWrapper := c.RenderOpts != nil && c.RenderOpts.InsideWrapper
+	skipSectionMSOTable := insideWrapper
 	msoVMLWrapperOpen := hasBackgroundImage && isFullWidth
+	msoTableWidth := c.GetEffectiveWidth()
 
 	// For full-width sections, add an outer table wrapper like MRML does.
 	// This wrapper is always present for full-width sections, even when no
@@ -135,21 +140,24 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			if _, err := w.WriteString(vmlOpen); err != nil {
 				return err
 			}
+			if skipSectionMSOTable {
+				if _, err := w.WriteString(`<table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:` + strconv.Itoa(msoTableWidth) + `px;" width="` + strconv.Itoa(msoTableWidth) + `"><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;">`); err != nil {
+					return err
+				}
+				if _, err := w.WriteString("<![endif]-->"); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
 	// MSO conditional comment - table wrapper for Outlook (inside VML textbox if present)
 	// Use full container width for MSO table as per MJML spec - padding only affects inner content
-	msoTableWidth := c.GetEffectiveWidth()
-
 	// Get align from attributes (including mj-class)
 	alignAttr := align
 	if alignAttr == "" {
 		alignAttr = "center" // default align for MSO table
 	}
-
-	insideWrapper := c.RenderOpts != nil && c.RenderOpts.InsideWrapper
-	skipSectionMSOTable := insideWrapper
 
 	msoTd := html.NewHTMLTag("td").
 		AddStyle("line-height", "0px").
@@ -815,9 +823,16 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if isFullWidth {
 		// Close VML first if present, then outer table when no MSO table was rendered
 		if hasBackgroundImage && skipSectionMSOTable {
-			if _, err := w.WriteString("<!--[if mso | IE]></v:textbox></v:rect><![endif]-->"); err != nil {
+			// When rendering inside a wrapper we skip emitting the MSO table
+			// structure in the main section flow, but Outlook still expects the
+			// inner wrapper table (opened by the wrapper helper) to be closed
+			// before terminating the VML block. Match MJML by mirroring the
+			// `</td></tr></table>` sequence ahead of the VML closures so the
+			// conditional markup stays balanced.
+			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table></v:textbox></v:rect><![endif]-->"); err != nil {
 				return err
 			}
+			c.wrapperMSOClosed = true
 		}
 		if _, err := w.WriteString("</td></tr></tbody></table>"); err != nil {
 			return err
@@ -856,6 +871,14 @@ func (c *MJSectionComponent) GetDefaultAttribute(name string) string {
 	default:
 		return ""
 	}
+}
+
+// ConsumedWrapperMSOTable reports whether this section handled closing the wrapper's
+// inner MSO table itself (e.g., when rendering full-width background images inside
+// a wrapper). Wrappers use this to adjust their own Outlook fallback closures to
+// avoid duplicating conditional markup.
+func (c *MJSectionComponent) ConsumedWrapperMSOTable() bool {
+	return c.wrapperMSOClosed
 }
 
 // getInnerContentWidth calculates the inner content width for the section after accounting for
