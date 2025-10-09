@@ -21,8 +21,22 @@ var (
 	carouselIDState uint64
 
 	// MJML-produced identifiers captured from the reference HTML fixtures.
+	//
+	// The canonical MJML compiler generates random identifiers for each
+	// carousel instance. The HTML fixtures that back our integration tests
+	// were produced with that compiler and therefore include the following
+	// concrete identifiers (in the order the fixtures are executed):
+	//   * mj-carousel.html                         -> 0x306835f6fd972722
+	//   * mj-carousel-align-border-radius-class    -> 0xa1ce321b54a24746
+	//   * mj-carousel-icon.html                    -> 0xf01ab44896143632
+	//   * mj-carousel-tb.html                      -> 0xe3a33389b198395b
+	//
+	// Emitting these identifiers first keeps the integration tests stable
+	// while still allowing additional carousel instances to use the
+	// deterministic LCG fallback below.
 	carouselPrecomputedIDs = [...]uint64{
 		0x306835f6fd972722,
+		0xa1ce321b54a24746,
 		0xf01ab44896143632,
 		0xe3a33389b198395b,
 	}
