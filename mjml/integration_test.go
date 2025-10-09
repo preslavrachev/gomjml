@@ -100,8 +100,8 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// // MJ-Group tests from MRML
 		{name: "mj-group"},
 		{name: "mj-group-background-color"},
-		// {name: "mj-group-class"},
-		// {name: "mj-group-mso-wrapper-raw"},
+		{name: "mj-group-class"},
+		{name: "mj-group-mso-wrapper-raw"},
 		{name: "mj-group-direction"},
 		// {name: "mj-group-vertical-align"},
 		// {name: "mj-group-width"},
