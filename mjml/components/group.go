@@ -106,6 +106,23 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		childWidthPx = groupWidthPx / columnCount
 	}
 
+	// Determine Outlook-specific class name (css-class + "-outlook")
+	outlookClass := ""
+	if cssClass := c.GetCSSClass(); cssClass != "" {
+		outlookClass = cssClass + "-outlook"
+	}
+
+	// Only include vertical-align style in MSO wrapper when explicitly set
+	msoVerticalAlign := ""
+	if verticalAlign != defaultVerticalAlign {
+		msoVerticalAlign = verticalAlign
+	}
+
+	// MSO conditional table structure with dynamic bgcolor and wrapper metadata
+	if err := html.RenderMSOGroupTableOpen(w, groupWidthPx, backgroundColor, outlookClass, msoVerticalAlign); err != nil {
+		return err
+	}
+
 	// Root div wrapper (following MRML set_style_root_div)
 	// Note: Class order should match MRML output
 	rootDiv := html.NewHTMLTag("div")
@@ -129,23 +146,6 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 	}
 
 	if err := rootDiv.RenderOpen(w); err != nil {
-		return err
-	}
-
-	// Determine Outlook-specific class name (css-class + "-outlook")
-	outlookClass := ""
-	if cssClass := c.GetCSSClass(); cssClass != "" {
-		outlookClass = cssClass + "-outlook"
-	}
-
-	// Only include vertical-align style in MSO wrapper when explicitly set
-	msoVerticalAlign := ""
-	if verticalAlign != defaultVerticalAlign {
-		msoVerticalAlign = verticalAlign
-	}
-
-	// MSO conditional table structure with dynamic bgcolor and wrapper metadata
-	if err := html.RenderMSOGroupTableOpen(w, groupWidthPx, backgroundColor, outlookClass, msoVerticalAlign); err != nil {
 		return err
 	}
 
@@ -215,12 +215,12 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close MSO conditional table
-	if err := html.RenderMSOGroupTableClose(w); err != nil {
+	// Close root div
+	if err := rootDiv.RenderClose(w); err != nil {
 		return err
 	}
 
-	// Close root div
-	if err := rootDiv.RenderClose(w); err != nil {
+	if err := html.RenderMSOGroupTableClose(w); err != nil {
 		return err
 	}
 
