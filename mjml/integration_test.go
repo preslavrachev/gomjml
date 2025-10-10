@@ -66,7 +66,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "section-fullwidth-background-image"},
 		{name: "section-fullwidth-bg-transparent"},
 		{name: "section-padding-top-zero"},
-		// //{name: "austin-layout-from-mjml-io"}, // Commented out
+		{name: "austin-layout-from-mjml-io"},
 		// // Austin layout component tests
 		{name: "austin-header-section"},
 		{name: "austin-hero-images"},
