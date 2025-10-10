@@ -88,11 +88,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 			// Apply background color only when provided
 			c.ApplyBackgroundStyles(outerTable, c)
 		}
-		// Only border-radius applies to the outer table. Border
-		// properties belong to the inner content container.
-		if borderRadius != "" {
-			outerTable.AddStyle("border-radius", borderRadius)
-		}
+
+		// MJML's reference implementation never forwards border-radius to the
+		// outer full-width wrapper table. Keeping this wrapper free of border
+		// styling avoids redundant values (like 0px) and matches the DOM
+		// produced by mjml-section.
 
 		if err := outerTable.RenderOpen(w); err != nil {
 			return err
