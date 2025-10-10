@@ -56,7 +56,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "basic"},
 		{name: "comment"},
 		{name: "with-head"},
-		// {name: "complex-layout"},
+		{name: "complex-layout"},
 		{name: "wrapper-basic"},
 		{name: "wrapper-background"},
 		{name: "wrapper-fullwidth"},
