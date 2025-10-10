@@ -71,7 +71,8 @@ type BaseComponent struct {
 func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComponent {
 	attrs := make(map[string]string, len(node.Attrs))
 	for _, attr := range node.Attrs {
-		attrs[attr.Name.Local] = attr.Value
+		name := attr.Name.Local
+		attrs[name] = normalizeAttributeValue(name, attr.Value)
 	}
 
 	var classNames []string
@@ -88,7 +89,7 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 							cssClassParts = append(cssClassParts, v)
 							continue
 						}
-						classAttrs[k] = v // last class wins
+						classAttrs[k] = normalizeAttributeValue(k, v) // last class wins
 					}
 				}
 			}
@@ -119,6 +120,18 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 	return bc
 }
 
+func normalizeAttributeValue(name, value string) string {
+	if value == "" {
+		return value
+	}
+
+	if strings.Contains(strings.ToLower(name), "color") {
+		return styles.NormalizeColor(value)
+	}
+
+	return value
+}
+
 // IsRawElement returns whether this component should be treated as a raw element.
 // Base components are not raw by default.
 func (bc *BaseComponent) IsRawElement() bool {
@@ -133,11 +146,18 @@ func (bc *BaseComponent) IsRawElement() bool {
 func (bc *BaseComponent) GetAttribute(name string) *string {
 	// 1. Check element attributes
 	if value, exists := bc.Attrs[name]; exists && value != "" {
+		normalized := normalizeAttributeValue(name, value)
+		if normalized != value {
+			bc.Attrs[name] = normalized
+			value = normalized
+		}
 		return &value
 	}
 
 	// 2. Check mj-class definitions
 	if classValue := bc.getClassAttribute(name); classValue != "" {
+		normalized := normalizeAttributeValue(name, classValue)
+		classValue = normalized
 		return &classValue
 	}
 
@@ -146,6 +166,8 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 
 	// 4. Check component defaults
 	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
+		normalized := normalizeAttributeValue(name, defaultVal)
+		defaultVal = normalized
 		return &defaultVal
 	}
 
@@ -156,22 +178,26 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
 	// 1. Element attributes
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		return value
+		normalized := normalizeAttributeValue(name, value)
+		if normalized != value {
+			bc.Attrs[name] = normalized
+		}
+		return normalized
 	}
 
 	// 2. mj-class definitions
 	if classValue := bc.getClassAttribute(name); classValue != "" {
-		return classValue
+		return normalizeAttributeValue(name, classValue)
 	}
 
 	// 3. Global attributes
 	if globalValue := globals.GetGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-		return globalValue
+		return normalizeAttributeValue(name, globalValue)
 	}
 
 	// 4. Component defaults
 	if defaultVal := comp.GetDefaultAttribute(name); defaultVal != "" {
-		return defaultVal
+		return normalizeAttributeValue(name, defaultVal)
 	}
 
 	return ""
@@ -187,6 +213,11 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"attr_name":  name,
 				"attr_value": value,
 			})
+		}
+		normalized := normalizeAttributeValue(name, value)
+		if normalized != value {
+			bc.Attrs[name] = normalized
+			value = normalized
 		}
 		// Track font families
 		if name == constants.MJMLFontFamily {
@@ -204,6 +235,10 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"classes":    bc.Attrs["mj-class"],
 			})
 		}
+		normalized := normalizeAttributeValue(name, classValue)
+		if normalized != classValue {
+			classValue = normalized
+		}
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(classValue)
 		}
@@ -218,11 +253,11 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"attr_value": globalValue,
 			})
 		}
-		// Track font families
+		normalized := normalizeAttributeValue(name, globalValue)
 		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(globalValue)
+			bc.TrackFontFamily(normalized)
 		}
-		return globalValue
+		return normalized
 	}
 
 	// 4. Check component defaults via interface method (properly calls overridden method)
@@ -234,12 +269,14 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"attr_value": defaultValue,
 			})
 		}
+		normalized := normalizeAttributeValue(name, defaultValue)
 		// Track font families
 		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(defaultValue)
+			bc.TrackFontFamily(normalized)
 		}
+		return normalized
 	}
-	return defaultValue
+	return ""
 }
 
 // getGlobalAttribute gets a global attribute value from the global store
