@@ -1,5 +1,21 @@
 <mjml>
   <mj-body background-color="#eceff1" width="600px">
-    <mj-wrapper background-color="#263238" padding="0px"> </mj-wrapper>
+    <mj-wrapper background-color="#263238" padding="0px">
+      <mj-section
+        full-width="full-width"
+        background-color="#263238"
+        padding="0px"
+      >
+        <mj-column padding="24px">
+          <mj-text
+            color="#ffffff"
+            font-size="22px"
+            align="center"
+            font-weight="bold"
+            >Dark wrapper header</mj-text
+          >
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
   </mj-body>
 </mjml>
