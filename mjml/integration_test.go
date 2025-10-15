@@ -1439,8 +1439,11 @@ func findRegexMatches(text, pattern string) []string {
 // tags and merges split MSO conditional blocks that MJML now emits as a single
 // table/td wrapper.
 var (
-	mustacheAfterClosingPattern  = regexp.MustCompile(`(-->|>)\s+(\{\{)`)
-	mustacheBeforeOpeningPattern = regexp.MustCompile(`(\}\})\s+(<!--|<)`)
+	mustacheAfterClosingPattern           = regexp.MustCompile(`(-->|>)\s+(\{\{)`)
+	mustacheBeforeOpeningPattern          = regexp.MustCompile(`(\}\})\s+(<!--|<)`)
+	legacyMSOWrapperPlaceholderPattern    = regexp.MustCompile(`<!--\[if mso \| IE\]><table role="presentation" border="0" cellpadding="0" cellspacing="0"></table><!\[endif\]-->`)
+	legacyMSOWrapperMaxWidthPattern       = regexp.MustCompile(`max-width:\s*([0-9]+)px`)
+	legacyMSOWrapperOuterWidthAttrPattern = regexp.MustCompile(`width="([0-9]+)"`)
 )
 
 func normalizeMJMLReference(html string) string {
@@ -1479,6 +1482,9 @@ func normalizeMJMLReference(html string) string {
 	// Merge split closing sequences: <!--[if mso | IE]></td><![endif]--><!--[if mso | IE]></tr></table><![endif]-->
 	msoClosePattern := regexp.MustCompile(`<!--\[if mso \| IE\]>\s*</td>\s*<!\[endif\]-->\s*<!--\[if mso \| IE\]>\s*</tr>\s*</table>\s*<!\[endif\]-->`)
 	normalized = msoClosePattern.ReplaceAllString(normalized, "<!--[if mso | IE]></td></tr></table><![endif]-->")
+
+	// Expand legacy MSO wrapper placeholders so they match modern MJML output.
+	normalized = upgradeLegacyMSOWrapperBlocks(normalized)
 
 	// Ensure MSO tables include the empty class attribute MJML injects
 	// so comparisons are done against the same attribute set.
@@ -1567,6 +1573,88 @@ func normalizeMJMLReference(html string) string {
 	})
 
 	return normalized
+}
+
+func upgradeLegacyMSOWrapperBlocks(html string) string {
+	matches := legacyMSOWrapperPlaceholderPattern.FindAllStringIndex(html, -1)
+	if len(matches) == 0 {
+		return html
+	}
+
+	const legacyClosing = "<!--[if mso | IE]></td></tr></table><![endif]-->"
+
+	var result strings.Builder
+	prevEnd := 0
+
+	for _, match := range matches {
+		start, end := match[0], match[1]
+
+		// Append content before the placeholder.
+		if start > prevEnd {
+			result.WriteString(html[prevEnd:start])
+		}
+
+		closingRelativeIdx := strings.Index(html[end:], legacyClosing)
+		if closingRelativeIdx == -1 {
+			// No matching closing block found – fall back to the original placeholder.
+			result.WriteString(html[start:end])
+			prevEnd = end
+			continue
+		}
+
+		closingIdx := end + closingRelativeIdx
+		width := extractMSOWrapperWidth(html[:start])
+
+		result.WriteString(buildModernMSOWrapperOpen(width))
+		result.WriteString(html[end:closingIdx])
+		result.WriteString(buildModernMSOWrapperClose())
+		result.WriteString(legacyClosing)
+
+		prevEnd = closingIdx + len(legacyClosing)
+	}
+
+	if prevEnd < len(html) {
+		result.WriteString(html[prevEnd:])
+	}
+
+	return result.String()
+}
+
+func extractMSOWrapperWidth(context string) string {
+	// Prefer the closest outer MSO table width attribute.
+	if idx := strings.LastIndex(context, "<!--[if mso | IE]><table align=\"center\""); idx != -1 {
+		if match := legacyMSOWrapperOuterWidthAttrPattern.FindStringSubmatch(context[idx:]); len(match) == 2 {
+			return match[1]
+		}
+	}
+
+	// Fallback to the last max-width style before the placeholder.
+	if matches := legacyMSOWrapperMaxWidthPattern.FindAllStringSubmatch(context, -1); len(matches) > 0 {
+		return matches[len(matches)-1][1]
+	}
+
+	return ""
+}
+
+func buildModernMSOWrapperOpen(width string) string {
+	widthDigits, widthPx := normalizeMSOWrapperWidth(width)
+
+	return fmt.Sprintf("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td class=\"\" width=\"%s\" ><table align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" role=\"presentation\" style=\"width:%s;\" width=\"%s\" ><tr><td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\"><![endif]-->", widthPx, widthPx, widthDigits)
+}
+
+func buildModernMSOWrapperClose() string {
+	return "<!--[if mso | IE]></td></tr></table></td></tr></table><![endif]-->"
+}
+
+func normalizeMSOWrapperWidth(width string) (string, string) {
+	cleaned := strings.TrimSpace(width)
+	cleaned = strings.TrimSuffix(cleaned, "px")
+
+	if cleaned == "" || strings.Contains(cleaned, "%") {
+		cleaned = "600"
+	}
+
+	return cleaned, cleaned + "px"
 }
 
 // extractMSOSequences extracts sequences of MSO conditional comments and adjacent HTML elements
