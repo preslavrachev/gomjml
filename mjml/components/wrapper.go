@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -125,6 +126,21 @@ func getChildAlign(child Component) string {
 		return sec.GetAttributeWithDefault(sec, "align")
 	}
 	return ""
+}
+
+func (c *MJWrapperComponent) hasRenderableChildren() bool {
+	for _, child := range c.Children {
+		if child.IsRawElement() {
+			if raw, ok := child.(*MJRawComponent); ok {
+				if strings.TrimSpace(raw.Content) == "" {
+					continue
+				}
+			}
+			return true
+		}
+		return true
+	}
+	return false
 }
 
 // shouldUseOuterOnlyMSOWrapper reports whether the wrapper's Outlook fallback should
@@ -342,14 +358,22 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
-	if useOuterOnlyMSO {
+	hasRenderableChildren := c.hasRenderableChildren()
+	msoWrapperOpened := false
+	if !hasRenderableChildren {
+		if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
+			return err
+		}
+	} else if useOuterOnlyMSO {
 		if err := html.RenderMSOWrapperOuterOpen(w, c.GetEffectiveWidth(), firstAlign, firstBgColor); err != nil {
 			return err
 		}
+		msoWrapperOpened = true
 	} else {
 		if err := html.RenderMSOWrapperTableOpenWithWidths(w, c.GetEffectiveWidth(), effectiveWidth, firstAlign, firstBgColor); err != nil {
 			return err
 		}
+		msoWrapperOpened = true
 	}
 
 	// Render children with standard body width
@@ -388,13 +412,15 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
 			return err
 		}
-	} else if useOuterOnlyMSO {
-		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
-			return err
-		}
-	} else {
-		if err := html.RenderMSOWrapperTableClose(w); err != nil {
-			return err
+	} else if msoWrapperOpened {
+		if useOuterOnlyMSO {
+			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+				return err
+			}
+		} else {
+			if err := html.RenderMSOWrapperTableClose(w); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -592,14 +618,22 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// that matches MRML's output more closely - use the outer container width
 	outerWidth := c.GetEffectiveWidth()
 	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
-	if useOuterOnlyMSO {
+	hasRenderableChildren := c.hasRenderableChildren()
+	msoWrapperOpened := false
+	if !hasRenderableChildren {
+		if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
+			return err
+		}
+	} else if useOuterOnlyMSO {
 		if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, firstBgColor); err != nil {
 			return err
 		}
+		msoWrapperOpened = true
 	} else {
 		if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
 			return err
 		}
+		msoWrapperOpened = true
 	}
 
 	// Render children - pass the effective width (600px - border width)
@@ -638,13 +672,15 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
 			return err
 		}
-	} else if useOuterOnlyMSO {
-		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
-			return err
-		}
-	} else {
-		if err := html.RenderMSOWrapperTableClose(w); err != nil {
-			return err
+	} else if msoWrapperOpened {
+		if useOuterOnlyMSO {
+			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+				return err
+			}
+		} else {
+			if err := html.RenderMSOWrapperTableClose(w); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -486,6 +486,14 @@ func RenderMSOWrapperTableOpenWithWidths(w io.StringWriter, outerWidthPx int, in
 	return nil
 }
 
+// RenderMSOEmptyWrapperPlaceholder emits the minimal Outlook wrapper structure MJML
+// uses when a wrapper contains no renderable children. The empty table keeps
+// Outlook's table layout intact without introducing extra rows or columns.
+func RenderMSOEmptyWrapperPlaceholder(w io.StringWriter) error {
+	_, err := w.WriteString("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"></table><![endif]-->")
+	return err
+}
+
 // RenderMSOWrapperOuterOpen renders only the outer Outlook table wrapper, leaving the
 // inner wrapper table to be handled by child components. This matches MJML's output
 // when sections with full-width background images are rendered inside an mj-wrapper.
