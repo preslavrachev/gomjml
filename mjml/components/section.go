@@ -15,7 +15,9 @@ import (
 // MJSectionComponent represents mj-section
 type MJSectionComponent struct {
 	*BaseComponent
-	wrapperMSOClosed bool
+	wrapperMSOClosed          bool
+	wrapperMSOBackgroundColor string
+	wrapperMSOAlign           string
 }
 
 // NewMJSectionComponent creates a new mj-section component
@@ -23,6 +25,13 @@ func NewMJSectionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJS
 	return &MJSectionComponent{
 		BaseComponent: NewBaseComponent(node, opts),
 	}
+}
+
+// SetWrapperMSOBackground configures the section to emit an additional MSO table wrapper
+// around its content when rendered inside a wrapper that requires Outlook background support.
+func (c *MJSectionComponent) SetWrapperMSOBackground(bgColor, align string) {
+	c.wrapperMSOBackgroundColor = bgColor
+	c.wrapperMSOAlign = align
 }
 
 func (c *MJSectionComponent) GetTagName() string {
@@ -157,6 +166,35 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	alignAttr := align
 	if alignAttr == "" {
 		alignAttr = "center" // default align for MSO table
+	}
+
+	wrapperMSOTableOpened := false
+	var wrapperMSOTable *html.HTMLTag
+	var wrapperMSOTd *html.HTMLTag
+	wrapperMSOBackground := c.wrapperMSOBackgroundColor
+	if wrapperMSOBackground != "" {
+		alignForWrapper := c.wrapperMSOAlign
+		if alignForWrapper == "" {
+			alignForWrapper = constants.AlignCenter
+		}
+		wrapperMSOTable = html.NewHTMLTag("table").
+			AddAttribute("align", alignForWrapper).
+			AddAttribute(constants.AttrBgcolor, wrapperMSOBackground).
+			AddAttribute("border", "0").
+			AddAttribute("cellpadding", "0").
+			AddAttribute("cellspacing", "0").
+			AddAttribute("class", "").
+			AddAttribute("role", "presentation").
+			AddStyle("width", strconv.Itoa(msoTableWidth)+"px").
+			AddAttribute("width", strconv.Itoa(msoTableWidth))
+		wrapperMSOTd = html.NewHTMLTag("td").
+			AddStyle("line-height", "0px").
+			AddStyle("font-size", "0px").
+			AddStyle("mso-line-height-rule", "exactly")
+		if err := html.RenderMSOTableOpenConditional(w, wrapperMSOTable, wrapperMSOTd); err != nil {
+			return err
+		}
+		wrapperMSOTableOpened = true
 	}
 
 	msoTd := html.NewHTMLTag("td").
@@ -782,6 +820,15 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if err := sectionDiv.RenderClose(w); err != nil {
 		return err
 	}
+
+	if wrapperMSOTableOpened {
+		if err := html.RenderMSOTableCloseConditional(w, wrapperMSOTd, wrapperMSOTable); err != nil {
+			return err
+		}
+	}
+
+	c.wrapperMSOBackgroundColor = ""
+	c.wrapperMSOAlign = ""
 
 	// Close MSO table structure
 	if hasBackgroundImage && !isFullWidth {

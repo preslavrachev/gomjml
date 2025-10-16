@@ -184,6 +184,20 @@ func (c *MJWrapperComponent) shouldUseOuterOnlyMSOWrapper() bool {
 	return hasSection && anyConsumer && allConsumers
 }
 
+func (c *MJWrapperComponent) hasFullWidthSectionChild() bool {
+	for _, child := range c.Children {
+		if child.IsRawElement() {
+			continue
+		}
+		if section, ok := child.(*MJSectionComponent); ok {
+			if section.GetAttributeWithDefault(section, "full-width") != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (c *MJWrapperComponent) isFullWidth() bool {
 	// Full width only if explicitly set
 	return c.getAttribute("full-width") == "full-width"
@@ -204,6 +218,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
 	cssClass := c.getAttribute("css-class")
+	wrapperBgColor := c.getAttribute("background-color")
 
 	// Calculate effective content width by subtracting horizontal padding and border widths
 	effectiveWidth := GetDefaultBodyWidthPixels() - c.getBorderWidth()
@@ -261,8 +276,8 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
 
 	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
-	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
+	if wrapperBgColor != "" {
+		msoTable.AddAttribute(constants.AttrBgcolor, wrapperBgColor)
 	}
 
 	msoTd := html.NewHTMLTag("td").
@@ -357,20 +372,34 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		break
 	}
 
+	splitMSOWrapper := c.hasFullWidthSectionChild()
+	msoBgColor := firstBgColor
+	if msoBgColor == "" && splitMSOWrapper {
+		msoBgColor = c.getAttribute("background-color")
+	}
+
 	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
 	hasRenderableChildren := c.hasRenderableChildren()
 	msoWrapperOpened := false
+	delegatedWrapperBackground := false
+	wrapperWidth := c.GetEffectiveWidth()
 	if !hasRenderableChildren {
 		if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
 			return err
 		}
 	} else if useOuterOnlyMSO {
-		if err := html.RenderMSOWrapperOuterOpen(w, c.GetEffectiveWidth(), firstAlign, firstBgColor); err != nil {
+		if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, msoBgColor); err != nil {
 			return err
 		}
 		msoWrapperOpened = true
+	} else if splitMSOWrapper && msoBgColor != "" {
+		if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, ""); err != nil {
+			return err
+		}
+		msoWrapperOpened = true
+		delegatedWrapperBackground = true
 	} else {
-		if err := html.RenderMSOWrapperTableOpenWithWidths(w, c.GetEffectiveWidth(), effectiveWidth, firstAlign, firstBgColor); err != nil {
+		if err := html.RenderMSOWrapperTableOpenWithWidths(w, wrapperWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
 			return err
 		}
 		msoWrapperOpened = true
@@ -400,6 +429,21 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
+
+		if delegatedWrapperBackground {
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+					sectionBg := sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+					if sectionBg == "" {
+						sectionBg = wrapperBgColor
+					}
+					if sectionBg != "" {
+						alignForSection := getChildAlign(sectionComp)
+						sectionComp.SetWrapperMSOBackground(sectionBg, alignForSection)
+					}
+				}
+			}
+		}
 		if err := child.Render(w); err != nil {
 			return err
 		}
@@ -413,7 +457,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 			return err
 		}
 	} else if msoWrapperOpened {
-		if useOuterOnlyMSO {
+		if useOuterOnlyMSO || delegatedWrapperBackground {
 			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
 				return err
 			}
@@ -461,6 +505,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	direction := c.getAttribute("direction")
 	cssClass := c.getAttribute("css-class")
 	borderRadius := c.getAttribute("border-radius")
+	wrapperBgColor := c.getAttribute("background-color")
 	effectiveWidth := c.getEffectiveWidth()
 
 	hasBorder := false
@@ -489,8 +534,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
 
 	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
-	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
+	if wrapperBgColor != "" {
+		msoTable.AddAttribute(constants.AttrBgcolor, wrapperBgColor)
 	}
 
 	msoTd := html.NewHTMLTag("td").
@@ -614,21 +659,34 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		break
 	}
 
+	splitMSOWrapper := c.hasFullWidthSectionChild()
+	msoBgColor := firstBgColor
+	if msoBgColor == "" && splitMSOWrapper {
+		msoBgColor = c.getAttribute("background-color")
+	}
+
 	// For basic wrapper, we need a specific MSO conditional pattern
 	// that matches MRML's output more closely - use the outer container width
 	outerWidth := c.GetEffectiveWidth()
 	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
 	hasRenderableChildren := c.hasRenderableChildren()
 	msoWrapperOpened := false
+	delegatedWrapperBackground := false
 	if !hasRenderableChildren {
 		if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
 			return err
 		}
 	} else if useOuterOnlyMSO {
-		if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, firstBgColor); err != nil {
+		if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, msoBgColor); err != nil {
 			return err
 		}
 		msoWrapperOpened = true
+	} else if splitMSOWrapper && msoBgColor != "" {
+		if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, ""); err != nil {
+			return err
+		}
+		msoWrapperOpened = true
+		delegatedWrapperBackground = true
 	} else {
 		if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
 			return err
@@ -660,6 +718,21 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
+
+		if delegatedWrapperBackground {
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+					sectionBg := sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+					if sectionBg == "" {
+						sectionBg = wrapperBgColor
+					}
+					if sectionBg != "" {
+						alignForSection := getChildAlign(sectionComp)
+						sectionComp.SetWrapperMSOBackground(sectionBg, alignForSection)
+					}
+				}
+			}
+		}
 		if err := child.Render(w); err != nil {
 			return err
 		}
@@ -673,7 +746,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 			return err
 		}
 	} else if msoWrapperOpened {
-		if useOuterOnlyMSO {
+		if useOuterOnlyMSO || delegatedWrapperBackground {
 			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
 				return err
 			}
