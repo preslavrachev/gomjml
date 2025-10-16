@@ -259,7 +259,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		// // Custom test cases
 		{name: "notifuse-open-br-tags"},
 		{name: "notifuse-wrapper-bgcolor"},
-		// {name: "notifuse-full"},
+		{name: "notifuse-full"},
 	}
 
 	for _, tc := range testCases {
@@ -372,7 +372,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 				// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
 				styleResult := testutils.CompareStylesPrecise(normalizedExpected, normalizedActual)
 				if styleResult.ParseError != nil {
-					allDifferences = append(allDifferences, fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError))
+					allDifferences = append(
+						allDifferences,
+						fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError),
+					)
 				} else if styleResult.HasDifferences {
 					var styleDiffs []string
 					styleDiffs = append(styleDiffs, fmt.Sprintf("Style differences for %s:", tc.name))
@@ -411,7 +414,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 			// Check for self-closing tag serialization differences regardless of DOM tree match
 			selfClosingDiff := checkSelfClosingTagDifferences(normalizedExpected, normalizedActual)
 			if selfClosingDiff != "" {
-				allDifferences = append(allDifferences, "Self-closing tag serialization differences found:\n"+selfClosingDiff)
+				allDifferences = append(
+					allDifferences,
+					"Self-closing tag serialization differences found:\n"+selfClosingDiff,
+				)
 			}
 
 			// Report ALL collected differences
@@ -1141,7 +1147,21 @@ func normalizeCSSContent(css string) string {
 // between expected and actual HTML that would be missed by DOM comparison
 func checkSelfClosingTagDifferences(expected, actual string) string {
 	// HTML5 void elements that should be self-closing
-	voidTags := []string{"br", "hr", "img", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"}
+	voidTags := []string{
+		"br",
+		"hr",
+		"img",
+		"input",
+		"meta",
+		"link",
+		"area",
+		"base",
+		"col",
+		"embed",
+		"source",
+		"track",
+		"wbr",
+	}
 
 	var differences []string
 
@@ -1150,14 +1170,34 @@ func checkSelfClosingTagDifferences(expected, actual string) string {
 		expectedUnclosed := countTagPattern(expected, fmt.Sprintf("<%s>", tag))
 		actualUnclosed := countTagPattern(actual, fmt.Sprintf("<%s>", tag))
 
-		expectedSelfClosed := countTagPattern(expected, fmt.Sprintf("<%s/>", tag)) + countTagPattern(expected, fmt.Sprintf("<%s />", tag))
-		actualSelfClosed := countTagPattern(actual, fmt.Sprintf("<%s/>", tag)) + countTagPattern(actual, fmt.Sprintf("<%s />", tag))
+		expectedSelfClosed := countTagPattern(
+			expected,
+			fmt.Sprintf("<%s/>", tag),
+		) + countTagPattern(
+			expected,
+			fmt.Sprintf("<%s />", tag),
+		)
+		actualSelfClosed := countTagPattern(
+			actual,
+			fmt.Sprintf("<%s/>", tag),
+		) + countTagPattern(
+			actual,
+			fmt.Sprintf("<%s />", tag),
+		)
 
 		// Check for differences in serialization
 		if expectedUnclosed != actualUnclosed || expectedSelfClosed != actualSelfClosed {
-			differences = append(differences,
-				fmt.Sprintf("<%s> tag serialization mismatch:\n  Expected: %d unclosed + %d self-closed\n  Actual:   %d unclosed + %d self-closed",
-					tag, expectedUnclosed, expectedSelfClosed, actualUnclosed, actualSelfClosed))
+			differences = append(
+				differences,
+				fmt.Sprintf(
+					"<%s> tag serialization mismatch:\n  Expected: %d unclosed + %d self-closed\n  Actual:   %d unclosed + %d self-closed",
+					tag,
+					expectedUnclosed,
+					expectedSelfClosed,
+					actualUnclosed,
+					actualSelfClosed,
+				),
+			)
 		}
 	}
 
@@ -1373,7 +1413,14 @@ func checkMSOTableAttributeDifferences(expected, actual string) string {
 
 // checkBackgroundPropertyDifferences detects differences in CSS background properties
 func checkBackgroundPropertyDifferences(expected, actual string) string {
-	bgProps := []string{"background", "background-color", "background-image", "background-position", "background-size", "background-repeat"}
+	bgProps := []string{
+		"background",
+		"background-color",
+		"background-image",
+		"background-position",
+		"background-size",
+		"background-repeat",
+	}
 
 	var differences []string
 
@@ -1449,7 +1496,9 @@ func normalizeMJMLReference(html string) string {
 	// Merge split MSO conditionals of the form:
 	// <!--[if mso | IE]><table ...><tr><![endif]-->\n<!-- [if mso | IE]><td ...><![endif]-->
 	// into the modern MJML style: <!--[if mso | IE]><table ...><tr><td ...><![endif]-->
-	msoSplitPattern := regexp.MustCompile(`<!--\[if mso \| IE\]><table([^>]*)><tr><!\[endif\]-->\s*<!--\[if mso \| IE\]><td([^>]*)><!\[endif\]-->`)
+	msoSplitPattern := regexp.MustCompile(
+		`<!--\[if mso \| IE\]><table([^>]*)><tr><!\[endif\]-->\s*<!--\[if mso \| IE\]><td([^>]*)><!\[endif\]-->`,
+	)
 	normalized = msoSplitPattern.ReplaceAllStringFunc(normalized, func(match string) string {
 		submatches := msoSplitPattern.FindStringSubmatch(match)
 		if len(submatches) != 3 {
@@ -1477,7 +1526,9 @@ func normalizeMJMLReference(html string) string {
 	})
 
 	// Merge split closing sequences: <!--[if mso | IE]></td><![endif]--><!--[if mso | IE]></tr></table><![endif]-->
-	msoClosePattern := regexp.MustCompile(`<!--\[if mso \| IE\]>\s*</td>\s*<!\[endif\]-->\s*<!--\[if mso \| IE\]>\s*</tr>\s*</table>\s*<!\[endif\]-->`)
+	msoClosePattern := regexp.MustCompile(
+		`<!--\[if mso \| IE\]>\s*</td>\s*<!\[endif\]-->\s*<!--\[if mso \| IE\]>\s*</tr>\s*</table>\s*<!\[endif\]-->`,
+	)
 	normalized = msoClosePattern.ReplaceAllString(normalized, "<!--[if mso | IE]></td></tr></table><![endif]-->")
 
 	// Ensure MSO tables include the empty class attribute MJML injects
