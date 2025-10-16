@@ -224,43 +224,34 @@ func (c *MJDividerComponent) GetTagName() string {
 // parseDividerPaddingLeftRight parses CSS padding shorthand to get left and right padding values in pixels
 // Optimized to avoid allocations by parsing in place
 func (c *MJDividerComponent) parseDividerPaddingLeftRight(padding string) (left, right int) {
-	if len(padding) == 0 {
+	if padding == "" {
 		return 0, 0
 	}
 
-	// Fast path: single value like "20px"
-	if len(padding) > 2 && padding[len(padding)-2:] == "px" {
-		// Parse without allocating substring
-		if value, err := strconv.Atoi(padding[:len(padding)-2]); err == nil {
-			return value, value // same value for all sides
+	parts := strings.Fields(padding)
+	parse := func(part string) int {
+		px, err := styles.ParsePixel(part)
+		if err != nil || px == nil {
+			return 0
 		}
+		return int(px.Value)
 	}
 
-	// Handle "10px 25px" format - find space separator without Fields allocation
-	spaceIdx := -1
-	for i := 0; i < len(padding); i++ {
-		if padding[i] == ' ' {
-			spaceIdx = i
-			break
-		}
+	switch len(parts) {
+	case 1:
+		v := parse(parts[0])
+		return v, v
+	case 2:
+		v := parse(parts[1])
+		return v, v
+	case 3:
+		v := parse(parts[1])
+		return v, v
+	case 4:
+		return parse(parts[3]), parse(parts[1])
+	default:
+		return 0, 0
 	}
-
-	if spaceIdx > 0 {
-		// Find second token (skip spaces)
-		secondStart := spaceIdx + 1
-		for secondStart < len(padding) && padding[secondStart] == ' ' {
-			secondStart++
-		}
-
-		if secondStart < len(padding) && len(padding) > secondStart+2 && padding[len(padding)-2:] == "px" {
-			// Parse second value (left/right padding) without substring allocation
-			if value, err := strconv.Atoi(padding[secondStart : len(padding)-2]); err == nil {
-				return value, value
-			}
-		}
-	}
-
-	return 0, 0
 }
 
 func (c *MJDividerComponent) marginForAlign(align string) string {

@@ -412,7 +412,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	for i, child := range c.Children {
 		if child.IsRawElement() {
 			// Inject raw content inside the MSO transition block so Outlook maintains table structure
-			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", "", false, func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -422,7 +422,22 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 		// Add MSO section transition between successive sections
 		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
+			nextBgColor := ""
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				nextBgColor = sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+				if nextBgColor == "" && delegatedWrapperBackground {
+					if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+						nextBgColor = wrapperBgColor
+					}
+				}
+			}
+			closeWrapper := true
+			if prevSection, ok := c.Children[i-1].(*MJSectionComponent); ok {
+				if prevSection.GetAttributeWithDefault(prevSection, "full-width") != "" {
+					closeWrapper = false
+				}
+			}
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper); err != nil {
 				return err
 			}
 		}
@@ -457,7 +472,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 			return err
 		}
 	} else if msoWrapperOpened {
-		if useOuterOnlyMSO || delegatedWrapperBackground {
+		if useOuterOnlyMSO {
 			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
 				return err
 			}
@@ -701,7 +716,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, effectiveWidth, "", func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, effectiveWidth, "", "", false, func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -711,7 +726,22 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 		// Add MSO section transition between sections (but not before the first section)
 		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, outerWidth, getChildAlign(child)); err != nil {
+			nextBgColor := ""
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				nextBgColor = sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+				if nextBgColor == "" && delegatedWrapperBackground {
+					if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+						nextBgColor = wrapperBgColor
+					}
+				}
+			}
+			closeWrapper := true
+			if prevSection, ok := c.Children[i-1].(*MJSectionComponent); ok {
+				if prevSection.GetAttributeWithDefault(prevSection, "full-width") != "" {
+					closeWrapper = false
+				}
+			}
+			if err := html.RenderMSOSectionTransition(w, outerWidth, effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper); err != nil {
 				return err
 			}
 		}
@@ -746,7 +776,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 			return err
 		}
 	} else if msoWrapperOpened {
-		if useOuterOnlyMSO || delegatedWrapperBackground {
+		if useOuterOnlyMSO {
 			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
 				return err
 			}

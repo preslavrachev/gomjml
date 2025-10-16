@@ -543,8 +543,8 @@ func RenderMSOWrapperTableClose(w io.StringWriter) error {
 // RenderMSOSectionTransition renders MSO conditional comment that bridges between sections in a wrapper.
 // This generates the pattern: <!--[if mso | IE]></td></tr><tr><td width="600px"><![endif]-->
 // widthPx should typically be the body width (600 by default).
-func RenderMSOSectionTransition(w io.StringWriter, widthPx int, align string) error {
-	return RenderMSOSectionTransitionWithContent(w, widthPx, widthPx, align, nil)
+func RenderMSOSectionTransition(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool) error {
+	return RenderMSOSectionTransitionWithContent(w, outerWidthPx, innerWidthPx, align, bgColor, closeWrapper, nil)
 }
 
 // RenderMSOSectionTransitionWithContent renders an MSO section transition that can inject
@@ -552,32 +552,9 @@ func RenderMSOSectionTransition(w io.StringWriter, widthPx int, align string) er
 //
 // It produces the sequence: <!--[if mso | IE]></td></tr>{content}<tr><td width="XXXpx"><![endif]-->
 // where {content} is rendered via the provided callback while the conditional comment is still open.
-func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, renderContent func(io.StringWriter) error) error {
+func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool, renderContent func(io.StringWriter) error) error {
 	if renderContent == nil {
-		if _, err := w.WriteString("<!--[if mso | IE]></td></tr>"); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("<tr><td"); err != nil {
-			return err
-		}
-		if align != "" {
-			if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
-				return err
-			}
-			if _, err := w.WriteString(align + "\""); err != nil {
-				return err
-			}
-		}
-		if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(strconv.Itoa(outerWidthPx)); err != nil {
-			return err
-		}
-		if _, err := w.WriteString("px\"><![endif]-->"); err != nil {
-			return err
-		}
-		return nil
+		return renderMSOSectionTransitionNoContent(w, outerWidthPx, innerWidthPx, align, bgColor, closeWrapper)
 	}
 
 	if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table></td></tr><![endif]-->"); err != nil {
@@ -588,10 +565,73 @@ func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, 
 		return err
 	}
 
+	return renderMSOSectionTransitionReopen(w, outerWidthPx, innerWidthPx, align, bgColor)
+}
+
+func renderMSOSectionTransitionNoContent(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool) error {
 	if innerWidthPx <= 0 {
 		innerWidthPx = outerWidthPx
 	}
+	if closeWrapper {
+		if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table></td></tr><tr><td class=\"\""); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("<!--[if mso | IE]></td></tr><tr><td class=\"\""); err != nil {
+			return err
+		}
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(outerWidthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px\" ><table align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" role=\"presentation\" style=\"width:"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
+		return err
+	}
+	if bgColor != "" {
+		if _, err := w.WriteString("\" " + constants.AttrBgcolor + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(bgColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" ><tr><td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\"><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
 
+func renderMSOSectionTransitionReopen(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string) error {
+	if innerWidthPx <= 0 {
+		innerWidthPx = outerWidthPx
+	}
 	if _, err := w.WriteString("<!--[if mso | IE]><tr><td class=\"\""); err != nil {
 		return err
 	}
@@ -621,7 +661,22 @@ func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, 
 	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("\" ><tr><td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\"><![endif]-->"); err != nil {
+	if bgColor != "" {
+		if _, err := w.WriteString("\" " + constants.AttrBgcolor + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(bgColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" ><tr><td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\"><![endif]-->"); err != nil {
 		return err
 	}
 	return nil
