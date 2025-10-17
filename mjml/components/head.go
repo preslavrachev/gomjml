@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -101,15 +102,22 @@ func NewMJPreviewComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJP
 
 func (c *MJPreviewComponent) Render(w io.StringWriter) error {
 	// Preview text is rendered as hidden div in body
-	if c.Node.Text != "" {
-		previewHTML := fmt.Sprintf(
-			`<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">%s</div>`,
-			c.Node.Text,
-		)
-		_, err := w.WriteString(previewHTML)
-		return err
+	if c.Node.Text == "" {
+		return nil
 	}
-	return nil
+
+	normalizedText := strings.Join(strings.Fields(c.Node.Text), " ")
+	if normalizedText == "" {
+		return nil
+	}
+
+	previewHTML := fmt.Sprintf(
+		`<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">%s</div>`,
+		normalizedText,
+	)
+
+	_, err := w.WriteString(previewHTML)
+	return err
 }
 
 func (c *MJPreviewComponent) GetTagName() string {
