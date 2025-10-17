@@ -150,7 +150,20 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				return err
 			}
 			if skipSectionMSOTable {
-				if _, err := w.WriteString(`<table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:` + strconv.Itoa(msoTableWidth) + `px;" width="` + strconv.Itoa(msoTableWidth) + `"><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;">`); err != nil {
+				var sb strings.Builder
+				sb.WriteString(`<table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:`)
+				sb.WriteString(strconv.Itoa(msoTableWidth))
+				sb.WriteString(`px;" width="`)
+				sb.WriteString(strconv.Itoa(msoTableWidth))
+				sb.WriteString(`"`)
+				if backgroundColor != "" {
+					sb.WriteString(` bgcolor="`)
+					sb.WriteString(backgroundColor)
+					sb.WriteString(`"`)
+				}
+				sb.WriteString(`><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;">`)
+
+				if _, err := w.WriteString(sb.String()); err != nil {
 					return err
 				}
 				if _, err := w.WriteString("<![endif]-->"); err != nil {

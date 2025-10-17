@@ -383,6 +383,9 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	msoWrapperOpened := false
 	delegatedWrapperBackground := false
 	wrapperWidth := c.GetEffectiveWidth()
+	forceWrapperTableSections := delegatedWrapperBackground && wrapperBgColor != ""
+	forceWrapperTableRaw := forceWrapperTableSections || !delegatedWrapperBackground
+
 	if !hasRenderableChildren {
 		if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
 			return err
@@ -412,7 +415,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	for i, child := range c.Children {
 		if child.IsRawElement() {
 			// Inject raw content inside the MSO transition block so Outlook maintains table structure
-			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", "", false, func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", "", false, forceWrapperTableRaw, func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -437,7 +440,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 					closeWrapper = false
 				}
 			}
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper); err != nil {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections); err != nil {
 				return err
 			}
 		}
@@ -712,11 +715,14 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Render children - pass the effective width (600px - border width)
 	// Add MSO section transitions between section children (like MJML does)
 
+	forceWrapperTableSections := delegatedWrapperBackground && wrapperBgColor != ""
+	forceWrapperTableRaw := forceWrapperTableSections || !delegatedWrapperBackground
+
 	wrapperMSOClosedByChild := false
 
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, effectiveWidth, "", "", false, func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, effectiveWidth, "", "", false, forceWrapperTableRaw, func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -741,7 +747,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 					closeWrapper = false
 				}
 			}
-			if err := html.RenderMSOSectionTransition(w, outerWidth, effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper); err != nil {
+			if err := html.RenderMSOSectionTransition(w, outerWidth, effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections); err != nil {
 				return err
 			}
 		}
