@@ -61,7 +61,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	borderRight := c.GetAttributeFast(c, constants.MJMLBorderRight)
 	borderBottom := c.GetAttributeFast(c, constants.MJMLBorderBottom)
 	borderLeft := c.GetAttributeFast(c, constants.MJMLBorderLeft)
-	hasBorder := border != "" || borderTop != "" || borderRight != "" || borderBottom != "" || borderLeft != ""
 
 	// Check if we have a background image for VML generation
 	hasBackgroundImage := backgroundUrl != ""
@@ -440,8 +439,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	// Then add width and border-radius
 	innerTable.AddStyle("width", "100%")
-	if hasBorder || borderRadius != "" {
-		innerTable.AddStyle(constants.CSSBorderCollapse, "separate")
+	if borderRadius != "" {
+		innerTable.AddStyle(constants.CSSBorderCollapse, constants.BorderCollapseSeparate)
 	}
 
 	if err := innerTable.RenderOpen(w); err != nil {
