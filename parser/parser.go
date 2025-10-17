@@ -161,7 +161,7 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 	lookup := newLineLookup(contentBytes)
 
 	decoder := xml.NewDecoder(bytes.NewReader(contentBytes))
-	root, err := parseNode(decoder, xml.StartElement{}, lookup, 0)
+	root, err := parseNode(decoder, xml.StartElement{}, lookup, 0, contentBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MJML: %w", err)
 	}
@@ -625,7 +625,7 @@ func normalizeSelfClosingVoidTags(b []byte) []byte {
 }
 
 // parseNode recursively parses XML nodes
-func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup, startOffset int64) (*MJMLNode, error) {
+func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup, startOffset int64, content []byte) (*MJMLNode, error) {
 	node := &MJMLNode{
 		XMLName:      start.Name,
 		Attrs:        start.Attr,
@@ -654,7 +654,7 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup,
 
 	// Special handling for mj-raw: capture original inner content including comments
 	if node.XMLName.Local == "mj-raw" {
-		raw, err := parseRawContent(decoder)
+		raw, err := parseRawContent(decoder, content, startOffset)
 		if err != nil {
 			return nil, err
 		}
@@ -684,7 +684,7 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup,
 		case xml.StartElement:
 			flushSegment()
 			childOffset := decoder.InputOffset()
-			child, err := parseNode(decoder, t, lookup, childOffset)
+			child, err := parseNode(decoder, t, lookup, childOffset, content)
 			if err != nil {
 				return nil, err
 			}
@@ -715,90 +715,40 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup,
 }
 
 // parseRawContent reads tokens until the matching end tag and returns the raw HTML content
-func parseRawContent(decoder *xml.Decoder) (string, error) {
+func parseRawContent(decoder *xml.Decoder, content []byte, startOffset int64) (string, error) {
 	origStrict := decoder.Strict
 	decoder.Strict = false
 	defer func() { decoder.Strict = origStrict }()
 
-	var builder strings.Builder
+	start := int(startOffset)
 	depth := 1
-	tagStack := make([]string, 0)
+	var end int
 	for depth > 0 {
+		tokenStart := decoder.InputOffset()
 		tok, err := decoder.Token()
 		if err != nil {
 			return "", err
 		}
-		switch t := tok.(type) {
+		switch tok.(type) {
 		case xml.StartElement:
-			tagName := t.Name.Local
-			builder.WriteString("<")
-			builder.WriteString(tagName)
-			for _, attr := range t.Attr {
-				builder.WriteString(" ")
-				builder.WriteString(attr.Name.Local)
-				builder.WriteString("=\"")
-				builder.WriteString(attr.Value)
-				builder.WriteString("\"")
-			}
-			builder.WriteString(">")
-
-			// Track depth for all start elements
 			depth++
-
-			if !isVoidHTMLElement(tagName) {
-				// Only non-void elements participate in stack tracking
-				tagStack = append(tagStack, tagName)
-			}
-
 		case xml.EndElement:
-			tagName := t.Name.Local
-
-			if isVoidHTMLElement(tagName) {
-				// Ignore end tags for void elements
-				depth--
-				if depth == 0 {
-					break
-				}
-				continue
-			}
-
 			depth--
-			if len(tagStack) > 0 {
-				lastTag := tagStack[len(tagStack)-1]
-				if lastTag == tagName {
-					tagStack = tagStack[:len(tagStack)-1]
-				}
-			}
-
 			if depth == 0 {
+				end = int(tokenStart)
 				break
 			}
-
-			builder.WriteString("</")
-			builder.WriteString(tagName)
-			builder.WriteString(">")
-		case xml.CharData:
-			builder.WriteString(string(t))
-		case xml.Comment:
-			builder.WriteString("<!--")
-			builder.WriteString(string(t))
-			builder.WriteString("-->")
-		case xml.Directive:
-			builder.WriteString("<!")
-			builder.WriteString(string(t))
-			builder.WriteString(">")
-		case xml.ProcInst:
-			builder.WriteString("<")
-			builder.WriteString("?")
-			builder.WriteString(t.Target)
-			if len(t.Inst) > 0 {
-				builder.WriteString(" ")
-				builder.Write(t.Inst)
-			}
-			builder.WriteString("?>")
 		}
 	}
-	return builder.String(), nil
+
+	if start < 0 {
+		start = 0
+	}
+	if end < start || end > len(content) {
+		end = len(content)
+	}
+
+	return string(content[start:end]), nil
 }
 
 // GetAttribute retrieves an attribute value by name

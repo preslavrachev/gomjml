@@ -4,6 +4,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/parser"
@@ -21,6 +22,7 @@ var (
 	conditionalCommentGapAfter  = regexp.MustCompile(`(-->)\s+(<)`)
 	conditionalCommentGapBefore = regexp.MustCompile(`(>)\s+(<!--)`)
 	interTagWhitespace          = regexp.MustCompile(`>(\s+)<`)
+	selfClosingTagPattern       = regexp.MustCompile(`<([a-zA-Z0-9:-]+)([^>]*)\s*/>`)
 )
 
 // NewMJRawComponent creates a new mj-raw component
@@ -49,6 +51,14 @@ func (c *MJRawComponent) Render(w io.StringWriter) error {
 	}
 
 	content = interTagWhitespace.ReplaceAllString(content, "><")
+	content = selfClosingTagPattern.ReplaceAllStringFunc(content, func(match string) string {
+		parts := selfClosingTagPattern.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		attrs := strings.TrimRightFunc(parts[2], unicode.IsSpace)
+		return "<" + parts[1] + attrs + ">"
+	})
 
 	if _, err := w.WriteString(content); err != nil {
 		return err

@@ -386,6 +386,16 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	}
 	debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
 
+	if root, ok := component.(*MJMLComponent); ok && root.Body == nil {
+		// Align with upstream MJML behaviour for malformed documents that lack a body section.
+		// MJML CLI reports "MJML badly formatted" in this scenario, so mirror that sentinel output
+		// to keep test fixtures consistent while avoiding rendering partially constructed markup.
+		return &RenderResult{
+			HTML: "MJML badly formatted",
+			AST:  ast,
+		}, nil
+	}
+
 	// Render to HTML with optimized pre-allocation based on template complexity
 	bufferSize := calculateOptimalBufferSize(mjmlContent)
 	debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
