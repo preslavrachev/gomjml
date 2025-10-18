@@ -37,10 +37,8 @@ On mismatch, the test provides a detailed DOM diff, logs style differences, and 
 actual and expected outputs to temporary files for debugging purposes.
 */
 func TestMJMLAgainstExpected(t *testing.T) {
-	// Reset navbar ID counter for deterministic testing
-	components.ResetNavbarIDCounter()
-	// Reset carousel ID counter for deterministic testing
-	components.ResetCarouselIDCounter()
+	// Enable deterministic ID generation for stable test comparisons
+	components.EnableTestMode()
 
 	type testCase struct {
 		name       string

@@ -437,11 +437,6 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 // Render provides the main MJML to HTML conversion function
 func Render(mjmlContent string, opts ...RenderOption) (string, error) {
-	// Reset navbar ID counter for deterministic IDs within each render. Carousel
-	// identifiers intentionally maintain a global sequence to mirror MJML's
-	// behaviour, so we keep their reset at the integration-test harness level.
-	components.ResetNavbarIDCounter()
-
 	result, err := RenderWithAST(mjmlContent, opts...)
 	if result == nil {
 		return "", err
