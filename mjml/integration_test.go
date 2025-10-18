@@ -193,17 +193,17 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-raw-head"}, // MJML says file badly formatted
 		{name: "mj-raw-go-template"},
 		// // MJ-SOCIAL tests
-		// {name: "mj-social"},
+		{name: "mj-social"},
 		{name: "mj-social-anchors"},
-		// {name: "mj-social-align"},
+		{name: "mj-social-align"},
 		{name: "mj-social-border-radius"},
-		// {name: "mj-social-class"},
+		{name: "mj-social-class"},
 		{name: "mj-social-color"},
-		// {name: "mj-social-complex-styling"},
-		// {name: "mj-social-container-background-color"},
+		{name: "mj-social-complex-styling"},
+		{name: "mj-social-container-background-color"},
 		{name: "mj-social-element-ending"},
 		{name: "mj-social-font-family"},
-		// {name: "mj-social-font"},
+		{name: "mj-social-font"},
 		{name: "mj-social-icon"},
 		{name: "mj-social-link"},
 		{name: "mj-social-mode"},
@@ -217,12 +217,12 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-social-ubuntu-fonts-icons-only-fallback"},
 		// // MJ-ACCORDION tests
 		{name: "mj-accordion"},
-		// {name: "mj-accordion-font-padding"},
+		{name: "mj-accordion-font-padding"},
 		{name: "mj-accordion-icon"},
 		{name: "mj-accordion-other"},
 		// // MJ-NAVBAR tests
 		{name: "mj-navbar"},
-		// {name: "mj-navbar-ico"},
+		{name: "mj-navbar-ico"},
 		{name: "mj-navbar-align-class"},
 		// {name: "mj-navbar-multiple"},
 		// // MJ-HERO tests
