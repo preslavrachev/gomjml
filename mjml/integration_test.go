@@ -64,7 +64,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "section-fullwidth-background-image"},
 		{name: "section-fullwidth-bg-transparent"},
 		{name: "section-padding-top-zero"},
-		// {name: "austin-layout-from-mjml-io"}, Formatted with MJML, but too many lines (80) differ. Fix last.
+		{name: "austin-layout-from-mjml-io"},
 		// // Austin layout component tests
 		{name: "austin-header-section"},
 		{name: "austin-hero-images"},
@@ -255,9 +255,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		}},
 		// // MJ-TABLE tests
 		{name: "mj-table"},
-		// {name: "mj-table-other"},
+		{name: "mj-table-other"},
 		{name: "mj-table-table"},
-		// {name: "mj-table-text"},
+		{name: "mj-table-text"},
 		// // MJ-CAROUSEL tests
 		{name: "mj-carousel"},
 		{name: "mj-carousel-align-border-radius-class"},
