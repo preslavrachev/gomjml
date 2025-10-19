@@ -242,7 +242,16 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-hero-mode"},
 		{name: "mj-hero-vertical-align"},
 		// // MJ-SPACER test
-		{name: "mj-spacer"},
+		{name: "mj-spacer-invalid-attributes", errHandler: func(err error) error {
+			expectedErr1 := ErrInvalidAttribute("mj-spacer", "vertical-align", 16)
+			expectedErr2 := ErrInvalidAttribute("mj-spacer", "width", 18)
+			errMesg := err.Error()
+			if strings.Contains(errMesg, expectedErr1.Details[0].Message) &&
+				strings.Contains(errMesg, expectedErr2.Details[0].Message) {
+				return nil
+			}
+			return err
+		}},
 		// // MJ-TABLE tests
 		{name: "mj-table"},
 		// {name: "mj-table-other"},
