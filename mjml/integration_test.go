@@ -222,13 +222,13 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-navbar"},
 		{name: "mj-navbar-ico"},
 		{name: "mj-navbar-align-class"},
-		// {name: "mj-navbar-multiple"},
+		// {name: "mj-navbar-multiple"}, // This will require rework of the ID generation strategy --- IGNORE --- for now
 		// // MJ-HERO tests
 		{name: "mj-hero"},
 		{name: "mj-hero-background-color"},
 		{name: "mj-hero-background-height"},
-		// {name: "mj-hero-background-position"},
-		// {name: "mj-hero-background-url"},
+		{name: "mj-hero-background-position"},
+		{name: "mj-hero-background-url"},
 		{name: "mj-hero-background-width"},
 		{name: "mj-hero-class"},
 		{name: "mj-hero-height"},
@@ -239,10 +239,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 			}
 			return expectedErr
 		}},
-		// {name: "mj-hero-mode"},
-		// {name: "mj-hero-vertical-align"},
+		{name: "mj-hero-mode"},
+		{name: "mj-hero-vertical-align"},
 		// // MJ-SPACER test
-		// {name: "mj-spacer"},
+		{name: "mj-spacer"},
 		// // MJ-TABLE tests
 		{name: "mj-table"},
 		// {name: "mj-table-other"},
