@@ -290,19 +290,19 @@ Based on the integration test suite in `mjml/integration_test.go`, the implement
 
 | Benchmark                                        |  Time   | Memory  | Allocs |
 | :----------------------------------------------- | :-----: | :-----: | :----: |
-| BenchmarkMJMLRender_10_Sections-8                | 0.48ms  | 0.60MB  |  4.2K  |
-| BenchmarkMJMLRender_10_Sections_Cache-8          | 0.23ms  | 0.47MB  |  2.0K  |
-| BenchmarkMJMLRender_100_Sections-8               | 5.21ms  | 6.26MB  | 39.6K  |
-| BenchmarkMJMLRender_100_Sections_Cache-8         | 2.72ms  | 5.03MB  | 19.4K  |
-| BenchmarkMJMLRender_1000_Sections-8              | 47.47ms | 63.78MB | 393.4K |
-| BenchmarkMJMLRender_1000_Sections_Cache-8        | 23.83ms | 50.44MB | 192.2K |
-| BenchmarkMJMLRender_10_Sections_Memory-8         | 0.54ms  | 0.60MB  |  4.2K  |
-| BenchmarkMJMLRender_10_Sections_Memory_Cache-8   | 0.27ms  | 0.47MB  |  2.0K  |
-| BenchmarkMJMLRender_100_Sections_Memory-8        | 5.06ms  | 6.20MB  | 39.6K  |
-| BenchmarkMJMLRender_100_Sections_Memory_Cache-8  | 2.56ms  | 4.97MB  | 19.3K  |
-| BenchmarkMJMLRender_1000_Sections_Memory-8       | 48.59ms | 63.81MB | 393.4K |
-| BenchmarkMJMLRender_1000_Sections_Memory_Cache-8 | 23.96ms | 50.44MB | 192.2K |
-| BenchmarkMJMLRender_100_Sections_Writer-8        | 2.35ms  | 4.53MB  | 15.0K  |
+| BenchmarkMJMLRender_10_Sections-8                | 0.56ms  | 0.68MB  |  5.1K  |
+| BenchmarkMJMLRender_10_Sections_Cache-8          | 0.31ms  | 0.53MB  |  2.9K  |
+| BenchmarkMJMLRender_100_Sections-8               | 5.88ms  | 6.92MB  | 48.0K  |
+| BenchmarkMJMLRender_100_Sections_Cache-8         | 3.39ms  | 5.53MB  | 27.8K  |
+| BenchmarkMJMLRender_1000_Sections-8              | 55.38ms | 70.58MB | 477.4K |
+| BenchmarkMJMLRender_1000_Sections_Cache-8        | 29.26ms | 55.28MB | 276.2K |
+| BenchmarkMJMLRender_10_Sections_Memory-8         | 0.62ms  | 0.67MB  |  5.1K  |
+| BenchmarkMJMLRender_10_Sections_Memory_Cache-8   | 0.34ms  | 0.53MB  |  2.9K  |
+| BenchmarkMJMLRender_100_Sections_Memory-8        | 5.88ms  | 6.86MB  | 48.0K  |
+| BenchmarkMJMLRender_100_Sections_Memory_Cache-8  | 3.18ms  | 5.47MB  | 27.8K  |
+| BenchmarkMJMLRender_1000_Sections_Memory-8       | 54.91ms | 70.59MB | 477.4K |
+| BenchmarkMJMLRender_1000_Sections_Memory_Cache-8 | 29.32ms | 55.30MB | 276.2K |
+| BenchmarkMJMLRender_100_Sections_Writer-8        | 2.71ms  | 4.52MB  | 23.4K  |
 
 For comprehensive performance analysis including comparisons with other MJML implementations, see our dedicated [performance benchmarks documentation](docs/benchmarks.md).
 
