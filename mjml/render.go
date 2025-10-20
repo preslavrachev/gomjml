@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash/maphash"
 	"io"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -328,8 +327,6 @@ type RenderResult struct {
 	AST  *MJMLNode
 }
 
-var groupColumnClassOrderRegexp = regexp.MustCompile(`class="mj-outlook-group-fix (mj-column-(?:per|px)-[^" ]+)([^"]*)"`)
-
 // RenderWithAST provides the internal MJML to HTML conversion function that returns both HTML and AST
 func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, error) {
 	startTime := time.Now()
@@ -501,10 +498,67 @@ func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
 // internal helper tests, so we keep that behaviour in RenderWithAST while
 // normalizing the public Render output to avoid integration diffs.
 func normalizeGroupColumnClassOrder(input string) string {
+	const (
+		classPrefix       = `class="`
+		outlookGroupClass = `class="mj-outlook-group-fix `
+	)
+
 	if !strings.Contains(input, "mj-outlook-group-fix mj-column-") {
 		return input
 	}
-	return groupColumnClassOrderRegexp.ReplaceAllString(input, `class="$1 mj-outlook-group-fix$2"`)
+
+	var (
+		builder strings.Builder
+		last    int
+	)
+	builder.Grow(len(input))
+
+	for {
+		idx := strings.Index(input[last:], outlookGroupClass)
+		if idx == -1 {
+			break
+		}
+		idx += last
+
+		// Write content before the matching class attribute and the attribute prefix itself.
+		builder.WriteString(input[last:idx])
+		builder.WriteString(classPrefix)
+
+		classValueStart := idx + len(outlookGroupClass)
+		closingQuoteIdx := strings.IndexByte(input[classValueStart:], '"')
+		if closingQuoteIdx == -1 {
+			// Malformed attribute; write the remainder verbatim and stop processing.
+			builder.WriteString(input[classValueStart:])
+			return builder.String()
+		}
+		closingQuoteIdx += classValueStart
+
+		classValue := input[classValueStart:closingQuoteIdx]
+		if !strings.HasPrefix(classValue, "mj-column-") {
+			// Unexpected class ordering, preserve the original value.
+			builder.WriteString("mj-outlook-group-fix ")
+			builder.WriteString(classValue)
+			builder.WriteByte('"')
+			last = closingQuoteIdx + 1
+			continue
+		}
+
+		if spaceIdx := strings.IndexByte(classValue, ' '); spaceIdx == -1 {
+			// Only the column class is present.
+			builder.WriteString(classValue)
+			builder.WriteString(" mj-outlook-group-fix")
+		} else {
+			builder.WriteString(classValue[:spaceIdx])
+			builder.WriteString(" mj-outlook-group-fix")
+			builder.WriteString(classValue[spaceIdx:])
+		}
+		builder.WriteByte('"')
+
+		last = closingQuoteIdx + 1
+	}
+
+	builder.WriteString(input[last:])
+	return builder.String()
 }
 
 // MJMLComponent represents the root MJML component
