@@ -330,7 +330,20 @@ func (c *MJAccordionElementComponent) Render(w io.StringWriter) error {
 	}
 
 	// Add checkbox input (hidden for accessibility)
-	if _, err := w.WriteString("<!--[if !mso | IE]><!--><input type=\"checkbox\" class=\"mj-accordion-checkbox\" style=\"display:none;\" /><!--<![endif]-->"); err != nil {
+	if _, err := w.WriteString("<!--[if !mso | IE]><!-->"); err != nil {
+		return err
+	}
+
+	inputTag := html.NewHTMLTag("input").
+		AddAttribute(constants.AttrClass, "mj-accordion-checkbox").
+		AddAttribute(constants.AttrType, "checkbox").
+		AddStyle(constants.CSSDisplay, constants.DisplayNone)
+
+	if err := inputTag.RenderVoid(w); err != nil {
+		return err
+	}
+
+	if _, err := w.WriteString("<!--<![endif]-->"); err != nil {
 		return err
 	}
 
@@ -527,7 +540,7 @@ func (c *MJAccordionElementComponent) renderIconCell(w io.StringWriter, iconAlig
 		AddStyle(constants.CSSWidth, iconWidth).
 		AddStyle(constants.CSSHeight, iconHeight)
 
-	if err := wrappedImg.RenderSelfClosing(w); err != nil {
+	if err := wrappedImg.RenderVoid(w); err != nil {
 		return err
 	}
 
@@ -540,7 +553,7 @@ func (c *MJAccordionElementComponent) renderIconCell(w io.StringWriter, iconAlig
 		AddStyle(constants.CSSWidth, iconWidth).
 		AddStyle(constants.CSSHeight, iconHeight)
 
-	if err := unwrappedImg.RenderSelfClosing(w); err != nil {
+	if err := unwrappedImg.RenderVoid(w); err != nil {
 		return err
 	}
 

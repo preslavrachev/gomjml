@@ -45,9 +45,7 @@ func (c *MJSpacerComponent) Render(w io.StringWriter) error {
 		td.AddStyle(constants.CSSBackground, containerBackgroundColor)
 	}
 
-	if classAttr := c.BuildClassAttribute(); classAttr != "" {
-		td.AddAttribute(constants.AttrClass, classAttr)
-	}
+	c.SetClassAttribute(td)
 
 	// Handle padding attributes
 	if padding != "" {

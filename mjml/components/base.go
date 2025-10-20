@@ -71,7 +71,8 @@ type BaseComponent struct {
 func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComponent {
 	attrs := make(map[string]string, len(node.Attrs))
 	for _, attr := range node.Attrs {
-		attrs[attr.Name.Local] = attr.Value
+		name := attr.Name.Local
+		attrs[name] = normalizeAttributeValue(name, attr.Value)
 	}
 
 	var classNames []string
@@ -88,7 +89,7 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 							cssClassParts = append(cssClassParts, v)
 							continue
 						}
-						classAttrs[k] = v // last class wins
+						classAttrs[k] = normalizeAttributeValue(k, v) // last class wins
 					}
 				}
 			}
@@ -102,7 +103,7 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		opts = &options.RenderOpts{}
 	}
 
-	return &BaseComponent{
+	bc := &BaseComponent{
 		Node:           node,
 		Attrs:          attrs,
 		classNames:     classNames,
@@ -113,6 +114,22 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 		RawSiblings:    0,
 		RenderOpts:     opts,
 	}
+
+	validateComponentAttributes(node, opts)
+
+	return bc
+}
+
+func normalizeAttributeValue(name, value string) string {
+	if value == "" {
+		return value
+	}
+
+	if strings.Contains(strings.ToLower(name), "color") {
+		return styles.NormalizeColor(value)
+	}
+
+	return value
 }
 
 // IsRawElement returns whether this component should be treated as a raw element.
@@ -142,7 +159,8 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 
 	// 4. Check component defaults
 	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
-		return &defaultVal
+		normalized := normalizeAttributeValue(name, defaultVal)
+		return &normalized
 	}
 
 	return nil
@@ -162,12 +180,12 @@ func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
 
 	// 3. Global attributes
 	if globalValue := globals.GetGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-		return globalValue
+		return normalizeAttributeValue(name, globalValue)
 	}
 
 	// 4. Component defaults
 	if defaultVal := comp.GetDefaultAttribute(name); defaultVal != "" {
-		return defaultVal
+		return normalizeAttributeValue(name, defaultVal)
 	}
 
 	return ""
@@ -184,7 +202,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"attr_value": value,
 			})
 		}
-		// Track font families
+
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(value)
 		}
@@ -200,6 +218,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"classes":    bc.Attrs["mj-class"],
 			})
 		}
+
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(classValue)
 		}
@@ -214,11 +233,11 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"attr_value": globalValue,
 			})
 		}
-		// Track font families
+		normalized := normalizeAttributeValue(name, globalValue)
 		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(globalValue)
+			bc.TrackFontFamily(normalized)
 		}
-		return globalValue
+		return normalized
 	}
 
 	// 4. Check component defaults via interface method (properly calls overridden method)
@@ -230,12 +249,14 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"attr_value": defaultValue,
 			})
 		}
+		normalized := normalizeAttributeValue(name, defaultValue)
 		// Track font families
 		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(defaultValue)
+			bc.TrackFontFamily(normalized)
 		}
+		return normalized
 	}
-	return defaultValue
+	return ""
 }
 
 // getGlobalAttribute gets a global attribute value from the global store
@@ -253,6 +274,14 @@ func (bc *BaseComponent) getClassAttribute(attrName string) string {
 		return v
 	}
 	return ""
+}
+
+// GetClassAttribute returns the resolved value for an attribute defined via mj-class.
+// This exposes the already computed class attribute map to specialized components
+// that need custom resolution order while still benefiting from the centralized
+// mj-class handling performed by BaseComponent.
+func (bc *BaseComponent) GetClassAttribute(attrName string) string {
+	return bc.getClassAttribute(attrName)
 }
 
 // GetAttributeAsPixel parses an attribute value as a CSS pixel value
@@ -378,13 +407,6 @@ func getPixelWidthString(widthPx int) string {
 
 // ApplyBackgroundStyles applies background-related CSS styles to an HTML tag
 func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
-	toPtr := func(s string) *string {
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-
 	bgcolor := bc.GetAttributeFast(comp, "background-color")
 	bgImage := bc.GetAttributeFast(comp, "background-image")
 	if bgImage == "" {
@@ -404,22 +426,15 @@ func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag, comp Component
 	}
 
 	return styles.ApplyBackgroundStyles(tag,
-		toPtr(bgcolor),
-		toPtr(bgImage),
-		toPtr(bgRepeat),
-		toPtr(bgSize),
-		toPtr(bgPosition))
+		bgcolor,
+		bgImage,
+		bgRepeat,
+		bgSize,
+		bgPosition)
 }
 
 // ApplyBorderStyles applies border-related CSS styles to an HTML tag
 func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
-	toPtr := func(s string) *string {
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-
 	border := bc.GetAttributeFast(comp, constants.MJMLBorder)
 	borderRadius := bc.GetAttributeFast(comp, constants.MJMLBorderRadius)
 	borderTop := bc.GetAttributeFast(comp, "border-top")
@@ -428,12 +443,12 @@ func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag, comp Component) *h
 	borderLeft := bc.GetAttributeFast(comp, "border-left")
 
 	return styles.ApplyBorderStyles(tag,
-		toPtr(border),
-		toPtr(borderRadius),
-		toPtr(borderTop),
-		toPtr(borderRight),
-		toPtr(borderBottom),
-		toPtr(borderLeft))
+		border,
+		borderRadius,
+		borderTop,
+		borderRight,
+		borderBottom,
+		borderLeft)
 }
 
 // ApplyPaddingStyles applies padding CSS styles to an HTML tag
@@ -584,6 +599,54 @@ func (bc *BaseComponent) BuildClassAttribute(existingClasses ...string) string {
 		b.WriteString(cssClass)
 	}
 	return b.String()
+}
+
+// SetClassAttribute applies the computed class attribute to the provided tag and
+// inlines any CSS declarations collected from mj-style inline rules.
+func (bc *BaseComponent) SetClassAttribute(tag *html.HTMLTag, existingClasses ...string) string {
+	classAttr := bc.BuildClassAttribute(existingClasses...)
+	if classAttr != "" {
+		tag.AddAttribute(constants.AttrClass, classAttr)
+		bc.ApplyInlineStyles(tag, classAttr)
+	}
+	return classAttr
+}
+
+// ApplyInlineStyles appends inline CSS declarations matching the provided class
+// attribute to the tag. Declarations retain their original ordering.
+func (bc *BaseComponent) ApplyInlineStyles(tag *html.HTMLTag, classAttr string) {
+	if bc.RenderOpts == nil || len(bc.RenderOpts.InlineClassStyles) == 0 {
+		return
+	}
+
+	for _, className := range strings.Fields(classAttr) {
+		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
+			for _, decl := range declarations {
+				tag.AddStyle(decl.Property, decl.Value)
+			}
+		}
+	}
+}
+
+// BuildInlineStyleString returns the serialized inline style string for the
+// provided class attribute, preserving declaration order.
+func (bc *BaseComponent) BuildInlineStyleString(classAttr string) string {
+	if bc.RenderOpts == nil || len(bc.RenderOpts.InlineClassStyles) == 0 || classAttr == "" {
+		return ""
+	}
+
+	var builder strings.Builder
+	for _, className := range strings.Fields(classAttr) {
+		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
+			for _, decl := range declarations {
+				builder.WriteString(decl.Property)
+				builder.WriteString(":")
+				builder.WriteString(decl.Value)
+				builder.WriteString(";")
+			}
+		}
+	}
+	return builder.String()
 }
 
 // GetMSOClassAttribute returns the MSO conditional comment class attribute with -outlook suffix

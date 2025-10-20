@@ -80,10 +80,9 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 			}
 
 			// CRITICAL: Validate inline style width values (the actual layout-controlling CSS)
-			// Use 'g' format to avoid trailing zeros (e.g., 12.5 instead of 12.500000000000000)
-			// Calculate expected percentage for validation
+			// Use double-precision formatting to match MJML's column serialization.
 			expectedPercentage := 100.0 / float64(columnCount)
-			expectedWidthPercent := fmt.Sprintf("width:%s%%", strconv.FormatFloat(expectedPercentage, 'g', -1, 32))
+			expectedWidthPercent := fmt.Sprintf("width:%s%%", strconv.FormatFloat(expectedPercentage, 'g', -1, 64))
 
 			// NOTE: We specifically target column divs (not group wrapper divs) by looking for
 			// the exact class attribute "mj-outlook-group-fix {expectedCSSClass}".

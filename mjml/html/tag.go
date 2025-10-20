@@ -75,9 +75,20 @@ func (t *HTMLTag) AddStyle(name, value string) *HTMLTag {
 //
 //	var bgcolor *string = getBackgroundColor() // might be nil
 //	tag.MaybeAddStyle("background-color", bgcolor)
+//
+// TODO:  AIDEV-TODO: Consider replacing with MaybeAddStyleString for simplicity.
 func (t *HTMLTag) MaybeAddStyle(name string, value *string) *HTMLTag {
 	if value != nil && *value != "" {
 		t.AddStyle(name, *value)
+	}
+	return t
+}
+
+// MaybeAddStyleString conditionally adds a CSS style property when the value is non-empty.
+// This avoids creating temporary string pointers when the caller already has a value string.
+func (t *HTMLTag) MaybeAddStyleString(name, value string) *HTMLTag {
+	if value != "" {
+		t.AddStyle(name, value)
 	}
 	return t
 }
@@ -200,6 +211,25 @@ func (t *HTMLTag) RenderSelfClosing(w io.StringWriter) error {
 		return err
 	}
 	if _, err := w.WriteString(" />"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderVoid renders an HTML void element without a self-closing slash.
+// This matches the output of the official MJML compiler which emits
+// `<img ...>` for img tags rather than `<img ... />` when minified.
+func (t *HTMLTag) RenderVoid(w io.StringWriter) error {
+	if _, err := w.WriteString("<"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(t.name); err != nil {
+		return err
+	}
+	if err := t.renderAttributes(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(">"); err != nil {
 		return err
 	}
 	return nil

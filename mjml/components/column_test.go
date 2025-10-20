@@ -24,12 +24,10 @@ import (
 // Width calculation: 100% / (siblings - rawSiblings) = auto width per column
 // Class format: mj-column-per-{width} where dots become dashes
 //
-// CRITICAL: Precision must match MRML's Rust f32 (32-bit float) behavior!
-// Go's default float64 produces different results for fractional percentages:
-//   - Go float64: 100/3 = 33.333333333333336 -> "mj-column-per-33-333333333333336"
-//   - Rust f32:   100/3 = 33.333332          -> "mj-column-per-33-333332"
-//
-// Solution: Convert to float32 and use %g formatting to match MRML exactly.
+// CRITICAL: Precision must match MJML's JS (double precision) behavior. The
+// compiler emits percentage widths using full IEEE754 precision and then trims
+// trailing zeros, so our implementation mirrors that logic to avoid rounding
+// differences (e.g. 100/3 => 33.333333333333336).
 func TestGetColumnClass(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -53,11 +51,11 @@ func TestGetColumnClass(t *testing.T) {
 			expectedClass: "mj-column-per-50",
 		},
 		{
-			name:          "3 columns - 33.333332%",
+			name:          "3 columns - 33.333333333333336%",
 			width:         "",
 			siblings:      3,
 			rawSiblings:   0,
-			expectedClass: "mj-column-per-33-333332",
+			expectedClass: "mj-column-per-33-333333333333336",
 		},
 		{
 			name:          "4 columns - 25%",
@@ -74,18 +72,18 @@ func TestGetColumnClass(t *testing.T) {
 			expectedClass: "mj-column-per-20",
 		},
 		{
-			name:          "6 columns - 16.666666%",
+			name:          "6 columns - 16.666666666666668%",
 			width:         "",
 			siblings:      6,
 			rawSiblings:   0,
-			expectedClass: "mj-column-per-16-666666",
+			expectedClass: "mj-column-per-16-666666666666668",
 		},
 		{
-			name:          "7 columns - 14.285714%",
+			name:          "7 columns - 14.285714285714286%",
 			width:         "",
 			siblings:      7,
 			rawSiblings:   0,
-			expectedClass: "mj-column-per-14-285714",
+			expectedClass: "mj-column-per-14-285714285714286",
 		},
 		{
 			name:          "8 columns - 12.5%",
@@ -95,11 +93,11 @@ func TestGetColumnClass(t *testing.T) {
 			expectedClass: "mj-column-per-12-5",
 		},
 		{
-			name:          "9 columns - 11.111111%",
+			name:          "9 columns - 11.111111111111111%",
 			width:         "",
 			siblings:      9,
 			rawSiblings:   0,
-			expectedClass: "mj-column-per-11-111111",
+			expectedClass: "mj-column-per-11-11111111111111",
 		},
 		{
 			name:          "10 columns - 10%",

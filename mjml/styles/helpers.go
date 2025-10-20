@@ -26,17 +26,17 @@ import (
 //
 //	tag := html.NewHTMLTag("div")
 //	ApplyBackgroundStyles(tag, ptrString("#f0f0f0"), ptrString("bg.jpg"), ptrString("no-repeat"), ptrString("cover"), ptrString("center"))
-func ApplyBackgroundStyles(tag *html.HTMLTag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition *string) *html.HTMLTag {
+func ApplyBackgroundStyles(tag *html.HTMLTag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition string) *html.HTMLTag {
 	// Apply both "background" and "background-color" for compatibility
 	// with email clients and to match MRML's output.
-	tag.MaybeAddStyle("background", bgcolor)
-	tag.MaybeAddStyle("background-color", bgcolor)
+	tag.MaybeAddStyleString("background", bgcolor)
+	tag.MaybeAddStyleString("background-color", bgcolor)
 
-	if bgImage != nil && *bgImage != "" {
-		tag.AddStyle("background-image", fmt.Sprintf("url('%s')", *bgImage))
-		tag.MaybeAddStyle("background-repeat", bgRepeat)
-		tag.MaybeAddStyle("background-size", bgSize)
-		tag.MaybeAddStyle("background-position", bgPosition)
+	if bgImage != "" {
+		tag.AddStyle("background-image", fmt.Sprintf("url('%s')", bgImage))
+		tag.MaybeAddStyleString("background-repeat", bgRepeat)
+		tag.MaybeAddStyleString("background-size", bgSize)
+		tag.MaybeAddStyleString("background-position", bgPosition)
 	}
 
 	return tag
@@ -56,13 +56,16 @@ func ApplyBackgroundStyles(tag *html.HTMLTag, bgcolor, bgImage, bgRepeat, bgSize
 //
 //	tag := html.NewHTMLTag("div")
 //	ApplyBorderStyles(tag, ptrString("1px solid #ccc"), ptrString("4px"), nil, nil, nil, nil)
-func ApplyBorderStyles(tag *html.HTMLTag, border, borderRadius, borderTop, borderRight, borderBottom, borderLeft *string) *html.HTMLTag {
-	tag.MaybeAddStyle("border", border)
-	tag.MaybeAddStyle("border-radius", borderRadius)
-	tag.MaybeAddStyle("border-top", borderTop)
-	tag.MaybeAddStyle("border-right", borderRight)
-	tag.MaybeAddStyle("border-bottom", borderBottom)
-	tag.MaybeAddStyle("border-left", borderLeft)
+func ApplyBorderStyles(
+	tag *html.HTMLTag,
+	border, borderRadius, borderTop, borderRight, borderBottom, borderLeft string,
+) *html.HTMLTag {
+	tag.MaybeAddStyleString("border", border)
+	tag.MaybeAddStyleString("border-radius", borderRadius)
+	tag.MaybeAddStyleString("border-top", borderTop)
+	tag.MaybeAddStyleString("border-right", borderRight)
+	tag.MaybeAddStyleString("border-bottom", borderBottom)
+	tag.MaybeAddStyleString("border-left", borderLeft)
 	return tag
 }
 
@@ -123,7 +126,10 @@ func ApplyMarginStyles(tag *html.HTMLTag, margin string) *html.HTMLTag {
 //
 //	tag := html.NewHTMLTag("span")
 //	ApplyFontStyles(tag, ptrString("Arial, sans-serif"), ptrString("14px"), ptrString("bold"), nil, ptrString("#333"), nil, nil, nil)
-func ApplyFontStyles(tag *html.HTMLTag, fontFamily, fontSize, fontWeight, fontStyle, color, lineHeight, textAlign, textDecoration *string) *html.HTMLTag {
+func ApplyFontStyles(
+	tag *html.HTMLTag,
+	fontFamily, fontSize, fontWeight, fontStyle, color, lineHeight, textAlign, textDecoration *string,
+) *html.HTMLTag {
 	tag.MaybeAddStyle("font-family", fontFamily)
 	tag.MaybeAddStyle("font-size", fontSize)
 	tag.MaybeAddStyle("font-weight", fontWeight)
@@ -164,44 +170,15 @@ func ApplyTextAlignStyles(tag *html.HTMLTag, align *string) *html.HTMLTag {
 //
 //	tag := html.NewHTMLTag("img")
 //	ApplyDimensionStyles(tag, ptrString("100%"), ptrString("auto"), nil, nil, nil, nil)
-func ApplyDimensionStyles(tag *html.HTMLTag, width, height, minWidth, maxWidth, minHeight, maxHeight *string) *html.HTMLTag {
+func ApplyDimensionStyles(
+	tag *html.HTMLTag,
+	width, height, minWidth, maxWidth, minHeight, maxHeight *string,
+) *html.HTMLTag {
 	tag.MaybeAddStyle("width", width)
 	tag.MaybeAddStyle("height", height)
 	tag.MaybeAddStyle("min-width", minWidth)
 	tag.MaybeAddStyle("max-width", maxWidth)
 	tag.MaybeAddStyle("min-height", minHeight)
 	tag.MaybeAddStyle("max-height", maxHeight)
-	return tag
-}
-
-// ApplyMSOBackgroundStyles applies both standard CSS background styles and MSO-compatible
-// background attributes to an HTML tag. This ensures proper background rendering in both
-// modern email clients and Microsoft Outlook.
-//
-// Outlook has limited CSS background support and often requires HTML bgcolor attributes
-// for reliable background color rendering.
-//
-// Parameters:
-//
-//	tag: the HTMLTag to modify
-//	bgcolor: background color (e.g., "#f0f0f0")
-//	bgImage: background image URL
-//	bgRepeat: background repeat value (e.g., "no-repeat")
-//	bgSize: background size value (e.g., "cover")
-//	bgPosition: background position value (e.g., "center center")
-//
-// Example:
-//
-//	tag := html.NewHTMLTag("table")
-//	ApplyMSOBackgroundStyles(tag, ptrString("#f0f0f0"), nil, nil, nil, nil) // adds both CSS and bgcolor attribute
-func ApplyMSOBackgroundStyles(tag *html.HTMLTag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition *string) *html.HTMLTag {
-	// Apply standard background styles
-	ApplyBackgroundStyles(tag, bgcolor, bgImage, bgRepeat, bgSize, bgPosition)
-
-	// Add MSO-specific bgcolor attribute if background color is set
-	if bgcolor != nil && *bgcolor != "" {
-		tag.MaybeAddAttribute("bgcolor", bgcolor)
-	}
-
 	return tag
 }

@@ -193,6 +193,20 @@ func ParseColor(value string) (*Color, error) {
 	return &Color{Value: value}, nil
 }
 
+// NormalizeColor expands shorthand hex color values (#rgb) to their full
+// six-character form (#rrggbb). Values that are already in full hex form or
+// use other CSS color syntaxes (e.g., rgba(), named colors) are returned
+// unchanged.
+func NormalizeColor(value string) string {
+	if len(value) == 4 && value[0] == '#' && isHexColor(value[1:]) {
+		r := value[1]
+		g := value[2]
+		b := value[3]
+		return fmt.Sprintf("#%c%c%c%c%c%c", r, r, g, g, b, b)
+	}
+	return value
+}
+
 // isHexColor checks if a string contains only valid hex color characters
 func isHexColor(s string) bool {
 	if len(s) != 3 && len(s) != 6 {
@@ -243,7 +257,11 @@ func (s Size) String() string {
 	if s.isPixel {
 		return fmt.Sprintf("%.0fpx", s.value)
 	}
-	return fmt.Sprintf("%g%%", float32(s.value))
+	formatted := strconv.FormatFloat(s.value, 'g', -1, 64)
+	if formatted == "" {
+		formatted = "0"
+	}
+	return formatted + "%"
 }
 
 // ParseSize parses a string value into a Size struct.

@@ -106,18 +106,35 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		childWidthPx = groupWidthPx / columnCount
 	}
 
+	// Determine Outlook-specific class name (css-class + "-outlook")
+	outlookClass := ""
+	if cssClass := c.GetCSSClass(); cssClass != "" {
+		outlookClass = cssClass + "-outlook"
+	}
+
+	// Only include vertical-align style in MSO wrapper when explicitly set
+	msoVerticalAlign := ""
+	if verticalAlign != defaultVerticalAlign {
+		msoVerticalAlign = verticalAlign
+	}
+
+	// MSO conditional table structure with dynamic bgcolor and wrapper metadata
+	if err := html.RenderMSOGroupTableOpen(w, groupWidthPx, backgroundColor, outlookClass, msoVerticalAlign); err != nil {
+		return err
+	}
+
 	// Root div wrapper (following MRML set_style_root_div)
 	// Note: Class order should match MRML output
 	rootDiv := html.NewHTMLTag("div")
 	c.AddDebugAttribute(rootDiv, "group")
+	c.SetClassAttribute(rootDiv, widthClass, "mj-outlook-group-fix")
 
-	rootDiv.AddAttribute("class", c.BuildClassAttribute(widthClass, "mj-outlook-group-fix")).
-		AddStyle("font-size", "0"). // Note: "0" not "0px" to match MRML
-		AddStyle("line-height", "0").
-		AddStyle("text-align", "left").
-		AddStyle("display", "inline-block").
-		AddStyle("width", "100%").
-		AddStyle("direction", direction)
+	rootDiv.AddStyle("font-size", "0"). // Note: "0" not "0px" to match MRML
+						AddStyle("line-height", "0").
+						AddStyle("text-align", "left").
+						AddStyle("display", "inline-block").
+						AddStyle("width", "100%").
+						AddStyle("direction", direction)
 
 	// Only add vertical-align if it's not the default value
 	if verticalAlign != defaultVerticalAlign {
@@ -132,18 +149,8 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO conditional table structure with dynamic bgcolor
-	msoTableTag := "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\""
-	if backgroundColor != "" {
-		msoTableTag += " bgcolor=\"" + backgroundColor + "\""
-	}
-	msoTableTag += "><tr>"
-
-	if err := html.RenderMSOConditional(w, msoTableTag); err != nil {
-		return err
-	}
-
 	// Render each column in the group
+	renderedColumns := 0
 	for _, child := range c.Children {
 		if child.IsRawElement() {
 			if err := child.Render(w); err != nil {
@@ -152,6 +159,9 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			continue
 		}
 		if columnComp, ok := child.(*MJColumnComponent); ok {
+			isFirstColumn := renderedColumns == 0
+			isLastColumn := renderedColumns == columnCount-1
+
 			// Set the column width based on group's width distribution
 			if columnComp.GetAttribute("width") == nil {
 				if strings.HasSuffix(groupWidth, "px") {
@@ -181,13 +191,14 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			msoWidth := getPixelWidthString(childWidthPx)
 			colVAlign := columnComp.GetAttributeWithDefault(columnComp, constants.MJMLVerticalAlign)
 
-			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth); err != nil {
+			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth, backgroundColor, isFirstColumn); err != nil {
 				return err
 			}
 
 			// Set group context for child rendering
 			childOpts := *c.RenderOpts // Copy the options
 			childOpts.InsideGroup = true
+			childOpts.GroupColumnCount = columnCount
 			columnComp.RenderOpts = &childOpts
 
 			// Render column content with padding support table wrapper
@@ -196,19 +207,20 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			}
 
 			// Close MSO conditional TD
-			if err := html.RenderMSOGroupTDClose(w); err != nil {
+			if err := html.RenderMSOGroupTDClose(w, isLastColumn); err != nil {
 				return err
 			}
+			renderedColumns++
 		}
 	}
 
 	// Close MSO conditional table
-	if err := html.RenderMSOGroupTableClose(w); err != nil {
+	// Close root div
+	if err := rootDiv.RenderClose(w); err != nil {
 		return err
 	}
 
-	// Close root div
-	if err := rootDiv.RenderClose(w); err != nil {
+	if err := html.RenderMSOGroupTableClose(w); err != nil {
 		return err
 	}
 

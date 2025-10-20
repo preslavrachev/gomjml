@@ -24,7 +24,7 @@ func TestSocialElementTwitterURL(t *testing.T) {
 		{
 			name:        "hashtag_placeholder",
 			mjml:        `<mj-social><mj-social-element name="twitter" href="#" src="test.png">Follow us</mj-social-element></mj-social>`,
-			expectedURL: `https://twitter.com/home?status=#`,
+			expectedURL: `https://twitter.com/intent/tweet?url=#`,
 			description: "Should expand # to default Twitter share URL",
 		},
 		{

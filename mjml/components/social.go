@@ -18,25 +18,144 @@ func stripPxSuffix(value string) string {
 	return strings.TrimSuffix(value, "px")
 }
 
-// platformDefaults defines the default background colors for social media platforms
-var platformDefaults = map[string]string{
-	"youtube":    "#EB3323",
-	"facebook":   "#3b5998",
-	"twitter":    "#55acee",
-	"x":          "#000000",
-	"google":     "#dc4e41",
-	"github":     "#000000",
-	"dribbble":   "#D95988",
-	"instagram":  "#3f729b",
-	"linkedin":   "#0077b5",
-	"pinterest":  "#bd081c",
-	"medium":     "#000000",
-	"tumblr":     "#344356",
-	"vimeo":      "#53B4E7",
-	"web":        "#4BADE9",
-	"snapchat":   "#FFFA54",
-	"soundcloud": "#EF7F31",
-	"xing":       "#296366",
+// socialNetworkDefaults describes the default MJML metadata for a social network.
+type socialNetworkDefaults struct {
+	backgroundColor        string
+	iconURL                string
+	shareURLTemplate       string
+	shareURLSkipSubstrings []string
+}
+
+// baseSocialNetworkDefaults matches MJML's default network definitions.
+var baseSocialNetworkDefaults = map[string]socialNetworkDefaults{
+	"facebook": {
+		backgroundColor:        "#3b5998",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/facebook.png",
+		shareURLTemplate:       "https://www.facebook.com/sharer/sharer.php?u=[[URL]]",
+		shareURLSkipSubstrings: []string{"facebook.com/sharer"},
+	},
+	"twitter": {
+		backgroundColor:        "#55acee",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter.png",
+		shareURLTemplate:       "https://twitter.com/intent/tweet?url=[[URL]]",
+		shareURLSkipSubstrings: []string{"twitter.com/", "x.com/"},
+	},
+	"x": {
+		backgroundColor:        "#000000",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter-x.png",
+		shareURLTemplate:       "https://twitter.com/intent/tweet?url=[[URL]]",
+		shareURLSkipSubstrings: []string{"twitter.com/", "x.com/"},
+	},
+	"google": {
+		backgroundColor:        "#dc4e41",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/google-plus.png",
+		shareURLTemplate:       "https://plus.google.com/share?url=[[URL]]",
+		shareURLSkipSubstrings: []string{"plus.google.com/share"},
+	},
+	"pinterest": {
+		backgroundColor:        "#bd081c",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/pinterest.png",
+		shareURLTemplate:       "https://pinterest.com/pin/create/button/?url=[[URL]]&media=&description=",
+		shareURLSkipSubstrings: []string{"pinterest.com/pin/create/button"},
+	},
+	"linkedin": {
+		backgroundColor:        "#0077b5",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png",
+		shareURLTemplate:       "https://www.linkedin.com/shareArticle?mini=true&url=[[URL]]&title=&summary=&source=",
+		shareURLSkipSubstrings: []string{"linkedin.com/shareArticle"},
+	},
+	"instagram": {
+		backgroundColor: "#3f729b",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/instagram.png",
+	},
+	"web": {
+		backgroundColor: "#4BADE9",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/web.png",
+	},
+	"snapchat": {
+		backgroundColor: "#FFFA54",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/snapchat.png",
+	},
+	"youtube": {
+		backgroundColor: "#EB3323",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/youtube.png",
+	},
+	"tumblr": {
+		backgroundColor:        "#344356",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/tumblr.png",
+		shareURLTemplate:       "https://www.tumblr.com/widgets/share/tool?canonicalUrl=[[URL]]",
+		shareURLSkipSubstrings: []string{"tumblr.com/widgets/share"},
+	},
+	"github": {
+		backgroundColor: "#000000",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/github.png",
+	},
+	"xing": {
+		backgroundColor:        "#296366",
+		iconURL:                "https://www.mailjet.com/images/theme/v1/icons/ico-social/xing.png",
+		shareURLTemplate:       "https://www.xing.com/app/user?op=share&url=[[URL]]",
+		shareURLSkipSubstrings: []string{"xing.com/app/user?op=share"},
+	},
+	"vimeo": {
+		backgroundColor: "#53B4E7",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/vimeo.png",
+	},
+	"medium": {
+		backgroundColor: "#000000",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/medium.png",
+	},
+	"soundcloud": {
+		backgroundColor: "#EF7F31",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/soundcloud.png",
+	},
+	"dribbble": {
+		backgroundColor: "#D95988",
+		iconURL:         "https://www.mailjet.com/images/theme/v1/icons/ico-social/dribbble.png",
+	},
+}
+
+const shareURLPlaceholder = "[[URL]]"
+
+// getSocialNetworkDefaults resolves MJML defaults for a given social element name.
+func getSocialNetworkDefaults(name string) (socialNetworkDefaults, bool) {
+	if name == "" {
+		return socialNetworkDefaults{}, false
+	}
+
+	if defaults, exists := baseSocialNetworkDefaults[name]; exists {
+		return defaults, true
+	}
+
+	if idx := strings.Index(name, "-"); idx != -1 {
+		baseName := name[:idx]
+		if defaults, exists := baseSocialNetworkDefaults[baseName]; exists {
+			// Copy the struct to avoid mutating the base definition.
+			resolved := defaults
+			if strings.HasSuffix(name, "-noshare") && resolved.shareURLTemplate != "" {
+				resolved.shareURLTemplate = shareURLPlaceholder
+			}
+			return resolved, true
+		}
+	}
+
+	return socialNetworkDefaults{}, false
+}
+
+// Attributes that mj-social-element is allowed to inherit from its parent.
+var socialElementInheritableAttributes = map[string]struct{}{
+	"color":           {},
+	"font-family":     {},
+	"font-size":       {},
+	"line-height":     {},
+	"text-decoration": {},
+	"border-radius":   {},
+	"icon-size":       {},
+	"font-weight":     {},
+	"font-style":      {},
+	"icon-height":     {},
+	"icon-padding":    {},
+	"inner-padding":   {},
+	"text-padding":    {},
 }
 
 // MJSocialComponent represents mj-social
@@ -93,9 +212,19 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.StringWriter) error {
-	// AIDEV-NOTE: Always track font-family for font injection detection
-	// This ensures Ubuntu fonts are detected even when social elements have no text content
-	c.getAttribute(constants.MJMLFontFamily)
+	hasTextContent := false
+	for _, child := range c.Children {
+		if elem, ok := child.(*MJSocialElementComponent); ok {
+			if strings.TrimSpace(elem.Node.Text) != "" || len(elem.Node.Children) > 0 {
+				hasTextContent = true
+				break
+			}
+		}
+	}
+
+	if hasTextContent {
+		c.getAttribute(constants.MJMLFontFamily)
+	}
 
 	padding := c.getAttribute(constants.MJMLPadding)
 	align := c.getAttribute(constants.MJMLAlign)
@@ -187,28 +316,60 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 		if msoAlign == "" {
 			msoAlign = "center"
 		}
-		msoTable := fmt.Sprintf(
-			"<!--[if mso | IE]><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" align=\"%s\"><tr><![endif]-->",
-			msoAlign,
-		)
-		if _, err := w.WriteString(msoTable); err != nil {
-			return err
-		}
 
-		// Render social elements
+		// Collect social elements first to coordinate MSO conditionals
+		socialElements := make([]*MJSocialElementComponent, 0, len(c.Children))
 		for _, child := range c.Children {
 			if socialElement, ok := child.(*MJSocialElementComponent); ok {
 				socialElement.SetContainerWidth(c.GetContainerWidth())
 				socialElement.InheritFromParent(c)
-				if err := socialElement.Render(w); err != nil {
+				socialElements = append(socialElements, socialElement)
+			}
+		}
+
+		if len(socialElements) > 0 {
+			msoTable := fmt.Sprintf(
+				"<!--[if mso | IE]><table align=\"%s\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><td><![endif]-->",
+				msoAlign,
+			)
+			if _, err := w.WriteString(msoTable); err != nil {
+				return err
+			}
+		} else {
+			msoTable := fmt.Sprintf(
+				"<!--[if mso | IE]><table align=\"%s\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" ><tr><![endif]-->",
+				msoAlign,
+			)
+			if _, err := w.WriteString(msoTable); err != nil {
+				return err
+			}
+		}
+
+		// Render social elements with coordinated MSO wrappers
+		for i, socialElement := range socialElements {
+			previousWrap := socialElement.SetMSOConditionalWrap(false)
+			if err := socialElement.Render(w); err != nil {
+				socialElement.SetMSOConditionalWrap(previousWrap)
+				return err
+			}
+			socialElement.SetMSOConditionalWrap(previousWrap)
+
+			if i < len(socialElements)-1 {
+				if _, err := w.WriteString("<!--[if mso | IE]></td><td><![endif]-->"); err != nil {
 					return err
 				}
 			}
 		}
 
 		// MSO conditional closing
-		if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
-			return err
+		if len(socialElements) > 0 {
+			if _, err := w.WriteString("<!--[if mso | IE]></td></tr></table><![endif]-->"); err != nil {
+				return err
+			}
+		} else {
+			if _, err := w.WriteString("<!--[if mso | IE]></tr></table><![endif]-->"); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -233,12 +394,14 @@ type MJSocialElementComponent struct {
 	*BaseComponent
 	parentSocial *MJSocialComponent // Reference to parent for attribute inheritance
 	verticalMode bool               // Whether this element should render in vertical mode
+	wrapMSO      bool               // Whether to wrap output with MSO conditionals
 }
 
 // NewMJSocialElementComponent creates a new mj-social-element component
 func NewMJSocialElementComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJSocialElementComponent {
 	return &MJSocialElementComponent{
 		BaseComponent: NewBaseComponent(node, opts),
+		wrapMSO:       true,
 	}
 }
 
@@ -273,54 +436,10 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	case constants.MJMLPadding:
 		return "4px"
 	case "src":
-		// Default social icons from MJML standard locations
-		// Get name directly from node to avoid circular dependency
-		nameAttr := c.Node.GetAttribute("name")
-
-		// Handle variants like "facebook-noshare" by extracting base platform name
-		baseName := nameAttr
-		if strings.Contains(nameAttr, "-") {
-			baseName = strings.Split(nameAttr, "-")[0]
+		if defaults, ok := getSocialNetworkDefaults(c.Node.GetAttribute("name")); ok {
+			return defaults.iconURL
 		}
-
-		switch baseName {
-		case "facebook":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/facebook.png"
-		case "twitter":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter.png"
-		case "x":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/twitter-x.png"
-		case "linkedin":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/linkedin.png"
-		case "google":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/google-plus.png"
-		case "github":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/github.png"
-		case "dribbble":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/dribbble.png"
-		case "instagram":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/instagram.png"
-		case "youtube":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/youtube.png"
-		case "pinterest":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/pinterest.png"
-		case "medium":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/medium.png"
-		case "tumblr":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/tumblr.png"
-		case "vimeo":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/vimeo.png"
-		case "web":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/web.png"
-		case "snapchat":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/snapchat.png"
-		case "soundcloud":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/soundcloud.png"
-		case "xing":
-			return "https://www.mailjet.com/images/theme/v1/icons/ico-social/xing.png"
-		default:
-			return ""
-		}
+		return ""
 	case constants.MJMLTarget:
 		return constants.TargetBlank
 	case constants.MJMLTextDecoration:
@@ -344,72 +463,67 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 		return value
 	}
 
-	// 2. Check parent mj-social for inheritable attributes
-	if c.parentSocial != nil {
-		inheritableAttrs := []string{
-			"color", "font-family", "font-size", "line-height",
-			"text-decoration", "border-radius", "icon-size",
-			"font-weight", "font-style", "icon-height", "icon-padding",
-			"inner-padding", "text-padding",
+	// 2. Check mj-class definitions for the element
+	if classValue := c.GetClassAttribute(name); classValue != "" {
+		if name == constants.MJMLFontFamily {
+			c.TrackFontFamily(classValue)
 		}
-		for _, attr := range inheritableAttrs {
-			if attr == name {
-				// First check parent's explicit attribute
-				if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
-					debug.DebugLogWithData(
-						"social-attr",
-						"parent-explicit",
-						"Using parent explicit attribute",
-						map[string]interface{}{
-							"attr":    name,
-							"value":   parentValue,
-							"element": c.Node.GetAttribute("name"),
-						},
-					)
-					// Track font families
-					if name == constants.MJMLFontFamily {
-						c.TrackFontFamily(parentValue)
-					}
-					return parentValue
+		return classValue
+	}
+
+	// 3. Check parent mj-social for inheritable attributes
+	if c.parentSocial != nil {
+		if _, inheritable := socialElementInheritableAttributes[name]; inheritable {
+			// First check parent's explicit attribute
+			if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
+				debug.DebugLogWithData(
+					"social-attr",
+					"parent-explicit",
+					"Using parent explicit attribute",
+					map[string]interface{}{
+						"attr":    name,
+						"value":   parentValue,
+						"element": c.Node.GetAttribute("name"),
+					},
+				)
+				if name == constants.MJMLFontFamily {
+					c.TrackFontFamily(parentValue)
 				}
-				// Then check parent's resolved attribute (includes global attributes)
-				if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
-					debug.DebugLogWithData(
-						"social-attr",
-						"parent-resolved",
-						"Using parent resolved attribute",
-						map[string]interface{}{
-							"attr":    name,
-							"value":   parentResolved,
-							"element": c.Node.GetAttribute("name"),
-						},
-					)
-					// Track font families
-					if name == constants.MJMLFontFamily {
-						c.TrackFontFamily(parentResolved)
-					}
-					return parentResolved
+				return parentValue
+			}
+			// Then check parent's resolved attribute (includes global attributes)
+			if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
+				debug.DebugLogWithData(
+					"social-attr",
+					"parent-resolved",
+					"Using parent resolved attribute",
+					map[string]interface{}{
+						"attr":    name,
+						"value":   parentResolved,
+						"element": c.Node.GetAttribute("name"),
+					},
+				)
+				if name == constants.MJMLFontFamily {
+					c.TrackFontFamily(parentResolved)
 				}
+				return parentResolved
 			}
 		}
 	}
 
-	// 3. Check platform-specific defaults (for background-color)
+	// 4. Check global attributes and component defaults
+	if resolved := c.GetAttributeWithDefault(c, name); resolved != "" {
+		return resolved
+	}
+
+	// 5. Check platform-specific defaults (for background-color)
 	if name == constants.MJMLBackgroundColor {
-		socialName := c.Node.GetAttribute("name")
-
-		// Handle variants like "facebook-noshare" by extracting base platform name
-		baseName := socialName
-		if strings.Contains(socialName, "-") {
-			baseName = strings.Split(socialName, "-")[0]
-		}
-
-		if bgColor, exists := platformDefaults[baseName]; exists {
-			return bgColor
+		if defaults, ok := getSocialNetworkDefaults(c.Node.GetAttribute("name")); ok {
+			return defaults.backgroundColor
 		}
 	}
 
-	// 4. Fall back to component defaults
+	// 6. Fall back to component defaults
 	return c.GetDefaultAttribute(name)
 }
 
@@ -421,6 +535,13 @@ func (c *MJSocialElementComponent) InheritFromParent(parent *MJSocialComponent) 
 // SetVerticalMode sets whether this element should render in vertical mode
 func (c *MJSocialElementComponent) SetVerticalMode(vertical bool) {
 	c.verticalMode = vertical
+}
+
+// SetMSOConditionalWrap enables or disables MSO wrapper output, returning the previous state.
+func (c *MJSocialElementComponent) SetMSOConditionalWrap(enabled bool) bool {
+	previous := c.wrapMSO
+	c.wrapMSO = enabled
+	return previous
 }
 
 // Render implements optimized Writer-based rendering for MJSocialElementComponent
@@ -438,12 +559,24 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	// Handle special sharing URL generation for known platforms
 	nameAttr := c.Node.GetAttribute("name")
 	if href != "" {
-		if nameAttr == "facebook" && !strings.Contains(href, "facebook.com/sharer") {
-			// Convert href to Facebook sharing URL if not already a sharing URL
-			href = "https://www.facebook.com/sharer/sharer.php?u=" + href
-		} else if (nameAttr == "twitter" || nameAttr == "x") && !strings.Contains(href, "twitter.com/home") && !strings.Contains(href, "twitter.com/") {
-			// Convert href to Twitter/X sharing URL if not already a sharing or profile URL
-			href = "https://twitter.com/home?status=" + href
+		if defaults, ok := getSocialNetworkDefaults(nameAttr); ok && defaults.shareURLTemplate != "" {
+			hrefLower := strings.ToLower(href)
+			skipShare := false
+			for _, pattern := range defaults.shareURLSkipSubstrings {
+				if strings.Contains(hrefLower, pattern) {
+					skipShare = true
+					break
+				}
+			}
+
+			if !skipShare {
+				template := defaults.shareURLTemplate
+				if strings.Contains(template, shareURLPlaceholder) {
+					href = strings.ReplaceAll(template, shareURLPlaceholder, href)
+				} else {
+					href = template
+				}
+			}
 		}
 	}
 	// Note: Only generate default URLs when href is explicitly provided (even if empty like "#")
@@ -505,16 +638,14 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		widthAttr := stripPxSuffix(iconSize)
 
 		img := html.NewHTMLTag("img")
-		if alt != "" {
-			img.AddAttribute("alt", alt)
-		}
+		img.AddAttribute("alt", alt)
 		img.AddAttribute("height", heightAttr).
 			AddAttribute("src", src).
 			AddAttribute("width", widthAttr).
 			AddStyle("border-radius", borderRadius).
 			AddStyle("display", "block")
 
-		if err := img.RenderSelfClosing(w); err != nil {
+		if err := img.RenderVoid(w); err != nil {
 			return err
 		}
 
@@ -572,8 +703,10 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	// Horizontal mode: MSO conditional for individual social element
-	if _, err := w.WriteString("<!--[if mso | IE]><td><![endif]-->"); err != nil {
-		return err
+	if c.wrapMSO {
+		if _, err := w.WriteString("<!--[if mso | IE]><td><![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	// Outer table (inline-table display) - inherit align from parent
@@ -679,11 +812,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	widthAttr := stripPxSuffix(iconSize)
 
 	img := html.NewHTMLTag("img")
-
-	// Add alt first to match MRML attribute order
-	if alt != "" {
-		img.AddAttribute("alt", alt)
-	}
+	img.AddAttribute("alt", alt)
 
 	img.AddAttribute("height", heightAttr).
 		AddAttribute("src", src).
@@ -705,14 +834,14 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 		if err := link.RenderOpen(w); err != nil {
 			return err
 		}
-		if err := img.RenderSelfClosing(w); err != nil {
+		if err := img.RenderVoid(w); err != nil {
 			return err
 		}
 		if err := link.RenderClose(w); err != nil {
 			return err
 		}
 	} else {
-		if err := img.RenderSelfClosing(w); err != nil {
+		if err := img.RenderVoid(w); err != nil {
 			return err
 		}
 	}
@@ -809,8 +938,10 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	// Close MSO conditional
-	if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
-		return err
+	if c.wrapMSO {
+		if _, err := w.WriteString("<!--[if mso | IE]></td><![endif]-->"); err != nil {
+			return err
+		}
 	}
 
 	return nil

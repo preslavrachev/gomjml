@@ -139,3 +139,46 @@ func TestMJTextInvalidXMLShouldFail(t *testing.T) {
 		t.Error("Expected parsing to fail for invalid XML, but it succeeded")
 	}
 }
+
+func TestNormalizeVoidHTMLTags(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Self-closing br drops slash",
+			input:    "Hello<br />World",
+			expected: "Hello<br>World",
+		},
+		{
+			name:     "Uppercase BR drops slash",
+			input:    "Hello<BR />World",
+			expected: "Hello<BR>World",
+		},
+		{
+			name:     "Other void tags remain self-closed",
+			input:    "Check <img src=\"test.jpg\"/> image",
+			expected: "Check <img src=\"test.jpg\" /> image",
+		},
+		{
+			name:     "Existing spacing preserved",
+			input:    "<meta name=\"viewport\" content=\"width=device-width\" />",
+			expected: "<meta name=\"viewport\" content=\"width=device-width\" />",
+		},
+		{
+			name:     "Spaces around br removed",
+			input:    "Austin, TX <br /> <span>-</span>",
+			expected: "Austin, TX<br><span>-</span>",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := normalizeVoidHTMLTags(tc.input)
+			if actual != tc.expected {
+				t.Errorf("normalizeVoidHTMLTags mismatch\nexpected: %q\nactual:   %q", tc.expected, actual)
+			}
+		})
+	}
+}

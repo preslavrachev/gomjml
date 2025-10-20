@@ -1,0 +1,57 @@
+<mjml>
+  <mj-body background-color="#eceff1" width="600px">
+    <mj-wrapper background-color="#263238" padding="0px">
+      <mj-section
+        full-width="full-width"
+        background-color="#263238"
+        padding="0px"
+      >
+        <mj-column padding="24px">
+          <mj-text
+            color="#ffffff"
+            font-size="22px"
+            align="center"
+            font-weight="bold"
+            >Dark wrapper header</mj-text
+          >
+        </mj-column>
+      </mj-section>
+      <mj-section background-color="#ffffff" border-radius="12px" padding="0px">
+        <mj-column padding="0">
+          <mj-text padding="24px 24px 12px" color="#37474f" font-weight="bold"
+            >Section with divider</mj-text
+          >
+          <mj-divider
+            border-color="#eceff1"
+            border-width="4px"
+            padding="0px 24px 16px"
+          ></mj-divider>
+          <mj-text padding="0px 24px 24px" color="#607d8b"
+            >This combo should keep the Outlook bgcolor fallback on the wrapper
+            table.</mj-text
+          >
+        </mj-column>
+      </mj-section>
+      <mj-section background-color="#ffffff" border-radius="12px" padding="0px">
+        <mj-group background-color="#ffffff">
+          <mj-column padding="0">
+            <mj-text padding="20px" color="#37474f" font-weight="bold"
+              >Left column</mj-text
+            >
+            <mj-text padding="0px 20px 20px" color="#607d8b"
+              >With group to prevent stacking.</mj-text
+            >
+          </mj-column>
+          <mj-column padding="0">
+            <mj-text padding="20px" color="#37474f" font-weight="bold"
+              >Right column</mj-text
+            >
+            <mj-text padding="0px 20px 20px" color="#607d8b"
+              >Triggers nested Outlook fallbacks.</mj-text
+            >
+          </mj-column>
+        </mj-group>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

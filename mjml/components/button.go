@@ -124,12 +124,6 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	tdTag := html.NewHTMLTag("td").
 		AddAttribute(constants.AttrAlign, align)
 
-	// Only add vertical-align attribute if not inside an mj-hero
-	// In mj-hero context, MRML doesn't include this attribute
-	if !c.RenderOpts.InsideHero {
-		tdTag.AddAttribute(constants.AttrVerticalAlign, verticalAlign)
-	}
-
 	if containerBackground != "" {
 		tdTag.AddStyle(constants.CSSBackground, containerBackground)
 	}
@@ -153,9 +147,7 @@ func (c *MJButtonComponent) Render(w io.StringWriter) error {
 	tdTag.AddStyle(constants.CSSWordBreak, "break-word")
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		tdTag.AddAttribute(constants.AttrClass, cssClass)
-	}
+	c.SetClassAttribute(tdTag)
 
 	if err := tdTag.RenderOpen(w); err != nil {
 		return err

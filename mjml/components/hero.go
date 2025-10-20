@@ -53,8 +53,8 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO table structure
-	msoTable := fmt.Sprintf(`<table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" width="%d" style="width:%s;"><tr><td style="line-height:0;font-size:0;mso-line-height-rule:exactly;">`, containerWidth, containerWidthPx)
+	// MSO table structure - match attribute ordering of MJML reference output
+	msoTable := fmt.Sprintf(`<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:%s;" width="%d" ><tr><td style="line-height:0;font-size:0;mso-line-height-rule:exactly;">`, containerWidthPx, containerWidth)
 	if _, err := w.WriteString(msoTable); err != nil {
 		return err
 	}
@@ -64,24 +64,20 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 	if backgroundWidth != "" && backgroundWidth != "0px" {
 		widthAttr = backgroundWidth
 	}
+	vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
+	if backgroundHeight != "" && backgroundHeight != "0px" {
+		vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
+	}
+
+	vmlImage := html.NewHTMLTag("v:image").
+		AddAttribute(constants.AttrStyle, vmlStyle)
 	if backgroundUrl != "" {
-		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
-		if backgroundHeight != "" && backgroundHeight != "0px" {
-			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
-		}
-		vmlImage := fmt.Sprintf(`<v:image src="%s" xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, backgroundUrl, vmlStyle)
-		if _, err := w.WriteString(vmlImage); err != nil {
-			return err
-		}
-	} else {
-		vmlStyle := fmt.Sprintf("border:0;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", widthAttr)
-		if backgroundHeight != "" && backgroundHeight != "0px" {
-			vmlStyle = fmt.Sprintf("border:0;height:%s;mso-position-horizontal:center;position:absolute;top:0;width:%s;z-index:-3;", backgroundHeight, widthAttr)
-		}
-		vmlImage := fmt.Sprintf(`<v:image xmlns:v="urn:schemas-microsoft-com:vml" style="%s" />`, vmlStyle)
-		if _, err := w.WriteString(vmlImage); err != nil {
-			return err
-		}
+		vmlImage.AddAttribute("src", backgroundUrl)
+	}
+	vmlImage.AddAttribute("xmlns:v", "urn:schemas-microsoft-com:vml")
+
+	if err := vmlImage.RenderSelfClosing(w); err != nil {
+		return err
 	}
 
 	if _, err := w.WriteString("<![endif]-->"); err != nil {
@@ -94,9 +90,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		AddStyle(constants.CSSMaxWidth, containerWidthPx)
 
 	// Add css-class if present
-	if cssClass := c.BuildClassAttribute(); cssClass != "" {
-		divTag.AddAttribute(constants.AttrClass, cssClass)
-	}
+	c.SetClassAttribute(divTag)
 
 	if err := divTag.RenderOpen(w); err != nil {
 		return err
@@ -167,7 +161,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	msoInnerTable := fmt.Sprintf(`<table border="0" cellpadding="0" cellspacing="0" width="%d" style="width:%s;"><tr><td><![endif]-->`, containerWidth, containerWidthPx)
+	msoInnerTable := fmt.Sprintf(`<table border="0" cellpadding="0" cellspacing="0" style="width:%s;" width="%d" ><tr><td style=""><![endif]-->`, containerWidthPx, containerWidth)
 	if _, err := w.WriteString(msoInnerTable); err != nil {
 		return err
 	}

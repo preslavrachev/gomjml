@@ -2,7 +2,10 @@ package components
 
 import (
 	"io"
+	"strings"
 
+	"github.com/preslavrachev/gomjml/mjml/constants"
+	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
@@ -70,51 +73,76 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 
 	// Build class attribute: just use the user's css-class if present
 	classAttr := c.BuildClassAttribute("")
+	bodyDiv := html.NewHTMLTag("div")
+	bodyDiv.AddAttribute("aria-roledescription", "email").
+		AddAttribute("role", "article")
 
-	if _, err := w.WriteString("<div"); err != nil {
-		return err
-	}
 	if langAttr != "" {
-		if _, err := w.WriteString(` lang="`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(langAttr); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`" dir="auto"`); err != nil {
-			return err
-		}
+		bodyDiv.AddAttribute("lang", langAttr).
+			AddAttribute("dir", constants.DirAuto)
 	}
+
+	if title := strings.TrimSpace(c.RenderOpts.Title); title != "" {
+		bodyDiv.AddAttribute(constants.AttrAriaLabel, title)
+	}
+
 	if classAttr != "" {
-		if _, err := w.WriteString(` class="`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(classAttr); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`"`); err != nil {
-			return err
-		}
+		bodyDiv.AddAttribute("class", classAttr)
+		c.ApplyInlineStyles(bodyDiv, classAttr)
 	}
+
 	if backgroundColor != nil && *backgroundColor != "" {
-		if _, err := w.WriteString(` style="background-color:`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(*backgroundColor); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`;"`); err != nil {
-			return err
-		}
+		bodyDiv.AddStyle("background-color", *backgroundColor)
 	}
-	if _, err := w.WriteString(">"); err != nil {
+
+	if err := bodyDiv.RenderOpen(w); err != nil {
 		return err
+	}
+
+	if c.RenderOpts != nil {
+		c.RenderOpts.PendingMSOSectionClose = false
+	}
+
+	// Track how many Outlook-sensitive blocks remain (mj-section and mj-wrapper)
+	// so conditional comments can be chained correctly across mixed content.
+	remainingBlocks := 0
+	for _, child := range c.Children {
+		switch child.(type) {
+		case *MJSectionComponent, *MJWrapperComponent:
+			remainingBlocks++
+		}
 	}
 
 	for _, child := range c.Children {
+		switch comp := child.(type) {
+		case *MJSectionComponent:
+			remainingBlocks--
+			if c.RenderOpts != nil {
+				c.RenderOpts.RemainingBodySections = remainingBlocks
+			}
+			if err := comp.Render(w); err != nil {
+				return err
+			}
+			continue
+		case *MJWrapperComponent:
+			remainingBlocks--
+			if c.RenderOpts != nil {
+				c.RenderOpts.RemainingBodySections = remainingBlocks
+			}
+			if err := comp.Render(w); err != nil {
+				return err
+			}
+			continue
+		}
+
 		if err := child.Render(w); err != nil {
 			return err
 		}
+	}
+
+	if c.RenderOpts != nil {
+		c.RenderOpts.PendingMSOSectionClose = false
+		c.RenderOpts.RemainingBodySections = 0
 	}
 
 	_, err := w.WriteString("</div>")

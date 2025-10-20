@@ -133,6 +133,15 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 			}
 		}
 
+		if inlineStyles := collectInlineClassStyles(head, opts); len(inlineStyles) > 0 {
+			if opts.InlineClassStyles == nil {
+				opts.InlineClassStyles = make(map[string][]options.InlineStyle, len(inlineStyles))
+			}
+			for className, declarations := range inlineStyles {
+				opts.InlineClassStyles[className] = append(opts.InlineClassStyles[className], declarations...)
+			}
+		}
+
 		comp.Head = head
 	}
 
@@ -157,7 +166,6 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 				// TODO: Evaluate if cloning the opts is the best option here.
 				wrapperChildOpts := *opts // Copy the options
 				wrapperChildOpts.InsideWrapper = true
-
 				for _, childNode := range comp.Node.Children {
 					if childComponent, err := CreateComponent(childNode, &wrapperChildOpts); err == nil {
 						comp.Children = append(comp.Children, childComponent)

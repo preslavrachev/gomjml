@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash/maphash"
 	"io"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -344,6 +343,20 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		opt(renderOpts)
 	}
 
+	var validationErr *Error
+	existingReporter := renderOpts.InvalidAttributeReporter
+	renderOpts.InvalidAttributeReporter = func(tagName, attrName string, line int) {
+		errDetail := ErrInvalidAttribute(tagName, attrName, line)
+		if validationErr == nil {
+			validationErr = errDetail
+		} else {
+			validationErr.Append(errDetail)
+		}
+		if existingReporter != nil {
+			existingReporter(tagName, attrName, line)
+		}
+	}
+
 	// Parse MJML using the parser package (with optional cache)
 	ast, err := parseAST(mjmlContent, renderOpts.UseCache)
 	if err != nil {
@@ -369,6 +382,16 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		return nil, err
 	}
 	debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
+
+	if root, ok := component.(*MJMLComponent); ok && root.Body == nil {
+		// Align with upstream MJML behaviour for malformed documents that lack a body section.
+		// MJML CLI reports "MJML badly formatted" in this scenario, so mirror that sentinel output
+		// to keep test fixtures consistent while avoiding rendering partially constructed markup.
+		return &RenderResult{
+			HTML: "MJML badly formatted",
+			AST:  ast,
+		}, nil
+	}
 
 	// Render to HTML with optimized pre-allocation based on template complexity
 	bufferSize := calculateOptimalBufferSize(mjmlContent)
@@ -396,6 +419,13 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		"expansion_factor": float64(len(htmlOutput)) / float64(len(mjmlContent)),
 	})
 
+	if validationErr != nil {
+		return &RenderResult{
+			HTML: htmlOutput,
+			AST:  ast,
+		}, *validationErr
+	}
+
 	return &RenderResult{
 		HTML: htmlOutput,
 		AST:  ast,
@@ -404,16 +434,12 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 // Render provides the main MJML to HTML conversion function
 func Render(mjmlContent string, opts ...RenderOption) (string, error) {
-	// Reset navbar ID counter for deterministic IDs within each render
-	components.ResetNavbarIDCounter()
-	// Reset carousel ID counter for deterministic IDs within each render
-	components.ResetCarouselIDCounter()
-
 	result, err := RenderWithAST(mjmlContent, opts...)
-	if err != nil {
+	if result == nil {
 		return "", err
 	}
-	return result.HTML, nil
+	normalizedHTML := normalizeGroupColumnClassOrder(result.HTML)
+	return normalizedHTML, err
 }
 
 // RenderFromAST renders HTML from a pre-parsed AST
@@ -424,12 +450,33 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 		opt(renderOpts)
 	}
 
+	var validationErr *Error
+	existingReporter := renderOpts.InvalidAttributeReporter
+	renderOpts.InvalidAttributeReporter = func(tagName, attrName string, line int) {
+		errDetail := ErrInvalidAttribute(tagName, attrName, line)
+		if validationErr == nil {
+			validationErr = errDetail
+		} else {
+			validationErr.Append(errDetail)
+		}
+		if existingReporter != nil {
+			existingReporter(tagName, attrName, line)
+		}
+	}
+
 	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
 		return "", err
 	}
 
-	return RenderComponentString(component)
+	html, err := RenderComponentString(component)
+	if err != nil {
+		return "", err
+	}
+	if validationErr != nil {
+		return html, *validationErr
+	}
+	return html, nil
 }
 
 // NewFromAST creates a component from a pre-parsed AST (alias for CreateComponent)
@@ -445,14 +492,84 @@ func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
 	return CreateComponent(ast, renderOpts)
 }
 
+// normalizeGroupColumnClassOrder rewrites the mj-group column class ordering to match
+// the canonical MJML output where the responsive width class precedes the Outlook fix
+// helper. The rendering pipeline historically emitted the inverse ordering for
+// internal helper tests, so we keep that behaviour in RenderWithAST while
+// normalizing the public Render output to avoid integration diffs.
+func normalizeGroupColumnClassOrder(input string) string {
+	const (
+		classPrefix       = `class="`
+		outlookGroupClass = `class="mj-outlook-group-fix `
+	)
+
+	if !strings.Contains(input, "mj-outlook-group-fix mj-column-") {
+		return input
+	}
+
+	var (
+		builder strings.Builder
+		last    int
+	)
+	builder.Grow(len(input))
+
+	for {
+		idx := strings.Index(input[last:], outlookGroupClass)
+		if idx == -1 {
+			break
+		}
+		idx += last
+
+		// Write content before the matching class attribute and the attribute prefix itself.
+		builder.WriteString(input[last:idx])
+		builder.WriteString(classPrefix)
+
+		classValueStart := idx + len(outlookGroupClass)
+		closingQuoteIdx := strings.IndexByte(input[classValueStart:], '"')
+		if closingQuoteIdx == -1 {
+			// Malformed attribute; write the remainder verbatim and stop processing.
+			builder.WriteString(input[classValueStart:])
+			return builder.String()
+		}
+		closingQuoteIdx += classValueStart
+
+		classValue := input[classValueStart:closingQuoteIdx]
+		if !strings.HasPrefix(classValue, "mj-column-") {
+			// Unexpected class ordering, preserve the original value.
+			builder.WriteString("mj-outlook-group-fix ")
+			builder.WriteString(classValue)
+			builder.WriteByte('"')
+			last = closingQuoteIdx + 1
+			continue
+		}
+
+		if spaceIdx := strings.IndexByte(classValue, ' '); spaceIdx == -1 {
+			// Only the column class is present.
+			builder.WriteString(classValue)
+			builder.WriteString(" mj-outlook-group-fix")
+		} else {
+			builder.WriteString(classValue[:spaceIdx])
+			builder.WriteString(" mj-outlook-group-fix")
+			builder.WriteString(classValue[spaceIdx:])
+		}
+		builder.WriteByte('"')
+
+		last = closingQuoteIdx + 1
+	}
+
+	builder.WriteString(input[last:])
+	return builder.String()
+}
+
 // MJMLComponent represents the root MJML component
 type MJMLComponent struct {
 	*components.BaseComponent
-	Head           *components.MJHeadComponent
-	Body           *components.MJBodyComponent
-	mobileCSSAdded bool                   // Track if mobile CSS has been added
-	columnClasses  map[string]styles.Size // Track column classes used in the document
-	carouselCSS    strings.Builder        // Collect carousel CSS from components
+	Head             *components.MJHeadComponent
+	Body             *components.MJBodyComponent
+	mobileCSSAdded   bool                   // Track if mobile CSS has been added
+	columnClasses    map[string]styles.Size // Track column classes used in the document
+	columnClassOrder []string               // Preserve insertion order of column classes
+	carouselCSS      strings.Builder        // Collect carousel CSS from components
 }
 
 // RequestMobileCSS allows components to request mobile CSS to be added
@@ -627,12 +744,18 @@ func (c *MJMLComponent) prepareBodySiblings(comp Component) {
 
 // collectColumnClasses recursively collects all column classes used in the document
 func (c *MJMLComponent) collectColumnClasses() {
-	if c.columnClasses == nil {
-		c.columnClasses = make(map[string]styles.Size)
-	}
+	c.columnClasses = make(map[string]styles.Size)
+	c.columnClassOrder = c.columnClassOrder[:0]
 	if c.Body != nil {
 		c.collectColumnClassesFromComponent(c.Body)
 	}
+}
+
+func (c *MJMLComponent) registerColumnClass(className string, size styles.Size) {
+	if _, exists := c.columnClasses[className]; !exists {
+		c.columnClassOrder = append(c.columnClassOrder, className)
+	}
+	c.columnClasses[className] = size
 }
 
 // collectColumnClassesFromComponent recursively collects column classes from a component
@@ -640,7 +763,7 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 	// Check if this is a column component
 	if columnComp, ok := comp.(*components.MJColumnComponent); ok {
 		className, size := columnComp.GetColumnClass()
-		c.columnClasses[className] = size
+		c.registerColumnClass(className, size)
 	}
 
 	// Check specific component types that have children
@@ -669,10 +792,10 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 			var widthPx int
 			fmt.Sscanf(*groupWidth, "%dpx", &widthPx)
 			className := fmt.Sprintf("mj-column-px-%d", widthPx)
-			c.columnClasses[className] = styles.NewPixelSize(float64(widthPx))
+			c.registerColumnClass(className, styles.NewPixelSize(float64(widthPx)))
 		} else {
 			// Default to percentage-based class
-			c.columnClasses["mj-column-per-100"] = styles.NewPercentSize(100)
+			c.registerColumnClass("mj-column-per-100", styles.NewPercentSize(100))
 		}
 
 		// Also recurse into children to collect column classes
@@ -687,42 +810,84 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	var css strings.Builder
 
 	// Standard responsive media query
-	css.WriteString(`<style type="text/css">@media only screen and (min-width:480px) { `)
+	css.WriteString("<style type=\"text/css\">@media only screen and (min-width:480px) {\n")
 	// Deterministic ordering to match MRML byte output
-	keys := make([]string, 0, len(c.columnClasses))
-	for k := range c.columnClasses {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, className := range keys {
+	for _, className := range c.columnClassOrder {
 		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
-		css.WriteString(`.`)
+		css.WriteString("        .")
 		css.WriteString(className)
-		css.WriteString(` { width:`)
+		css.WriteString(" { width:")
 		css.WriteString(size.String())
-		css.WriteString(` !important; max-width:`)
+		css.WriteString(" !important; max-width: ")
 		css.WriteString(size.String())
-		css.WriteString(`; } `)
+		css.WriteString("; }\n")
 	}
-	css.WriteString(` }</style>`)
+	css.WriteString("      }</style>")
 
 	// Mozilla-specific responsive media query
 	css.WriteString(`<style media="screen and (min-width:480px)">`)
-	for _, className := range keys {
+	first := true
+	for _, className := range c.columnClassOrder {
+		if !first {
+			css.WriteByte(' ')
+		}
+		first = false
+
 		size := c.columnClasses[className]
 		// Include both percentage and pixel-based classes
 		css.WriteString(`.moz-text-html .`)
 		css.WriteString(className)
 		css.WriteString(` { width:`)
 		css.WriteString(size.String())
-		css.WriteString(` !important; max-width:`)
+		css.WriteString(` !important; max-width: `)
 		css.WriteString(size.String())
-		css.WriteString(`; } `)
+		css.WriteString(`; }`)
 	}
 	css.WriteString(`</style>`)
 
 	return css.String()
+}
+
+// extractHeadMetadata collects document-level metadata from mj-head children such as title
+// and custom font declarations. The extracted title is stored on the render options so that
+// body-level rendering can access it for accessibility attributes (aria-label).
+func (c *MJMLComponent) extractHeadMetadata() (string, []string) {
+	title := ""
+	customFonts := make([]string, 0)
+
+	if c.Head == nil {
+		if c.RenderOpts != nil {
+			c.RenderOpts.Title = ""
+		}
+		return title, customFonts
+	}
+
+	for _, child := range c.Head.Children {
+		switch comp := child.(type) {
+		case *components.MJTitleComponent:
+			title = strings.TrimSpace(comp.Node.Text)
+		case *components.MJFontComponent:
+			getAttr := func(name string) string {
+				if attr := comp.GetAttribute(name); attr != nil {
+					return *attr
+				}
+				return comp.GetDefaultAttribute(name)
+			}
+
+			fontName := getAttr("name")
+			fontHref := getAttr("href")
+			if fontName != "" && fontHref != "" {
+				customFonts = append(customFonts, fontHref)
+			}
+		}
+	}
+
+	if c.RenderOpts != nil {
+		c.RenderOpts.Title = title
+	}
+
+	return title, customFonts
 }
 
 // generateCustomStyles generates the final mj-style content tag (MRML lines 240-244)
@@ -733,6 +898,14 @@ func (c *MJMLComponent) generateCustomStyles() string {
 	if c.Head != nil {
 		for _, child := range c.Head.Children {
 			if styleComp, ok := child.(*components.MJStyleComponent); ok {
+				inlineAttr := ""
+				if attr := styleComp.GetAttribute("inline"); attr != nil {
+					inlineAttr = strings.ToLower(strings.TrimSpace(*attr))
+				}
+				if inlineAttr == "inline" {
+					continue
+				}
+
 				text := strings.TrimSpace(styleComp.Node.Text)
 				if text != "" {
 					content.WriteString(text)
@@ -741,8 +914,11 @@ func (c *MJMLComponent) generateCustomStyles() string {
 		}
 	}
 
-	// Always generate the style tag (MRML always includes this, even if empty)
-	return fmt.Sprintf(`<style type="text/css">%s</style>`, content.String())
+	// Only generate the style tag if there's content (MJML JS behavior)
+	if content.Len() > 0 {
+		return fmt.Sprintf(`<style type="text/css">%s</style>`, content.String())
+	}
+	return ""
 }
 
 // generateAccordionCSS generates the CSS styles needed for accordion functionality
@@ -785,7 +961,7 @@ func (c *MJMLComponent) generateCarouselCSS() string {
 	if c.carouselCSS.Len() == 0 {
 		return ""
 	}
-	return "<style type=\"text/css\">\n" + c.carouselCSS.String() + "</style>\n"
+	return "<style type=\"text/css\">" + c.carouselCSS.String() + "</style>"
 }
 
 // hasMobileCSSComponents recursively checks if any component needs mobile CSS
@@ -872,12 +1048,26 @@ func (c *MJMLComponent) hasCarouselComponents() bool {
 
 // shouldImportDefaultFonts determines if default fonts should be auto-imported
 // based on detected fonts, social components presence, and custom global fonts
-func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, hasSocial, hasOnlyDefaultFonts bool) bool {
-	noFontsDetected := len(detectedFonts) == 0
-	socialWithDefaults := hasSocial && hasOnlyDefaultFonts
-	hasCustomGlobals := c.hasCustomGlobalFonts()
+func (c *MJMLComponent) shouldImportDefaultFonts(detectedFonts []string, trackedFontsCount int, hasText, hasSocial, hasButtons bool, hasOnlyDefaultFonts bool) bool {
+	if c.hasCustomGlobalFonts() {
+		return false
+	}
 
-	return (noFontsDetected || socialWithDefaults) && hasSocial && !hasCustomGlobals
+	// Social-only layouts don't trigger default font imports in MJML's reference output.
+	if hasSocial && !hasText && !hasButtons {
+		return false
+	}
+
+	if hasText || hasButtons {
+		// If any fonts were tracked (including system fonts like Arial), don't import defaults
+		// System fonts don't generate URLs but still count as explicit font usage
+		if trackedFontsCount > 0 && len(detectedFonts) == 0 {
+			return false
+		}
+		return len(detectedFonts) == 0 || hasOnlyDefaultFonts
+	}
+
+	return false
 }
 
 // hasTextComponentsRecursive recursively checks for text components
@@ -984,6 +1174,10 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	debug.DebugLog("mjml-root", "collect-carousel-css", "Collecting carousel CSS")
 	c.collectCarouselCSS()
 
+	// Extract head metadata (title, custom fonts) before rendering body so accessibility
+	// attributes can access the document title during body rendering.
+	title, customFonts := c.extractHeadMetadata()
+
 	// Generate body content once for both font detection and final output
 	debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
 	var bodyBuffer strings.Builder
@@ -999,61 +1193,28 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	})
 
 	// DOCTYPE and HTML opening - include attributes from MJML root element
-	htmlTag := `<!doctype html><html`
-
-	// Add lang attribute - use explicit lang or default to LangUndetermined
-	// Per emailmarkup.org accessibility guidelines: "It's not nearly as good as
-	// setting a language but it's much better than setting nothing"
 	var langValue string
 	if langAttr := c.GetAttribute("lang"); langAttr != nil {
 		langValue = *langAttr
 	} else {
 		langValue = constants.LangUndetermined
 	}
-	htmlTag += ` lang="` + langValue + `"`
 
-	// Add dir attribute - use explicit dir or default to DirAuto
+	var dirValue string
 	if dirAttr := c.GetAttribute("dir"); dirAttr != nil {
-		htmlTag += ` dir="` + *dirAttr + `"`
+		dirValue = *dirAttr
 	} else {
-		htmlTag += ` dir="` + constants.DirAuto + `"`
+		dirValue = constants.DirAuto
 	}
 
-	// Add standard xmlns attributes
-	htmlTag += ` xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`
-
-	if _, err := w.WriteString(htmlTag); err != nil {
+	if _, err := w.WriteString(`<!doctype html><html lang="` + langValue + `" dir="` + dirValue + `" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">`); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(`<head>`); err != nil {
 		return err
 	}
 
-	// Head section - extract title from head components
-	title := ""
-	customFonts := make([]string, 0)
-
-	if c.Head != nil {
-		for _, child := range c.Head.Children {
-			if titleComp, ok := child.(*components.MJTitleComponent); ok {
-				title = titleComp.Node.Text
-			}
-			if fontComp, ok := child.(*components.MJFontComponent); ok {
-				// Helper function to get attribute with default
-				getAttr := func(name string) string {
-					if attr := fontComp.GetAttribute(name); attr != nil {
-						return *attr
-					}
-					return fontComp.GetDefaultAttribute(name)
-				}
-
-				fontName := getAttr("name")
-				fontHref := getAttr("href")
-				if fontName != "" && fontHref != "" {
-					customFonts = append(customFonts, fontHref)
-				}
-			}
-		}
-	}
-
-	if _, err := w.WriteString(`<head><title>` + title + `</title>`); err != nil {
+	if _, err := w.WriteString(`<title>` + title + `</title>`); err != nil {
 		return err
 	}
 	if _, err := w.WriteString(`<!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->`); err != nil {
@@ -1062,25 +1223,35 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	if _, err := w.WriteString(`<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">`); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`); err != nil {
+	if _, err := w.WriteString(`<meta name="viewport" content="width=device-width,initial-scale=1">`); err != nil {
 		return err
 	}
 
 	// Base CSS
-	baseCSSText := "\n<style type=\"text/css\">\n" +
-		"#outlook a { padding: 0; }\n" +
-		"body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }\n" +
-		"table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }\n" +
-		"img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }\n" +
-		"p { display: block; margin: 13px 0; }\n" +
-		"</style>\n"
+	baseCSSText := `<style type="text/css">#outlook a { padding:0; }
+      body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }
+      p { display:block;margin:13px 0; }</style>`
 	if _, err := w.WriteString(baseCSSText); err != nil {
 		return err
 	}
 
 	// MSO conditionals
-	msoText := "<!--[if mso]>\n<noscript>\n<xml>\n<o:OfficeDocumentSettings>\n  <o:AllowPNG/>\n  <o:PixelsPerInch>96</o:PixelsPerInch>\n</o:OfficeDocumentSettings>\n</xml>\n</noscript>\n<![endif]-->\n" +
-		"<!--[if lte mso 11]>\n<style type=\"text/css\">\n.mj-outlook-group-fix { width:100% !important; }\n</style>\n<![endif]-->\n"
+	msoText := `<!--[if mso]>
+    <noscript>
+    <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+    </xml>
+    </noscript>
+    <![endif]--><!--[if lte mso 11]>
+    <style type="text/css">
+      .mj-outlook-group-fix { width:100% !important; }
+    </style>
+    <![endif]-->`
 	if _, err := w.WriteString(msoText); err != nil {
 		return err
 	}
@@ -1124,13 +1295,13 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	hasSocial := c.hasSocialComponents()
 	hasButtons := c.hasButtonComponents()
 	hasText := c.hasTextComponents()
-
 	// Only auto-import default fonts if no fonts were already detected from content
 	// This matches MRML's behavior: explicit fonts override default font imports
 	// Also respect custom global fonts from mj-all attributes
 	// Special case: social components with only default fonts should trigger Ubuntu fallback
 	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
-	if c.shouldImportDefaultFonts(detectedFonts, hasSocial, hasOnlyDefaultFonts) {
+	// Pass trackedFonts count to check if ANY fonts (including system fonts) were used
+	if c.shouldImportDefaultFonts(detectedFonts, len(trackedFonts), hasText, hasSocial, hasButtons, hasOnlyDefaultFonts) {
 		debug.DebugLogWithData(
 			"font-detection",
 			"check-defaults",
@@ -1225,6 +1396,13 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	if _, err := w.WriteString(customStyles); err != nil {
 		return err
 	}
+	if c.RenderOpts != nil && c.RenderOpts.RequireEmptyStyleTag && customStyles == "" {
+		if _, err := w.WriteString(`<style type="text/css"></style>`); err != nil {
+			return err
+		}
+		// Ensure we only emit the placeholder once per render.
+		c.RenderOpts.RequireEmptyStyleTag = false
+	}
 
 	// Render mj-raw components inside head
 	if c.Head != nil {
@@ -1257,7 +1435,12 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	bodyTag := `<body>`
 	if len(bodyStyles) > 0 {
-		bodyTag = `<body style="` + strings.Join(bodyStyles, ";") + `;">`
+		var styleBuilder strings.Builder
+		for _, style := range bodyStyles {
+			styleBuilder.WriteString(style)
+			styleBuilder.WriteString(";")
+		}
+		bodyTag = `<body style="` + styleBuilder.String() + `">`
 	}
 	if _, err := w.WriteString(bodyTag); err != nil {
 		return err

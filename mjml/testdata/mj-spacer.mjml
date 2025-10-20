@@ -13,9 +13,9 @@
         <mj-text>Text</mj-text>
         <mj-spacer padding="1px" padding-left="3px" />
         <mj-text>Text</mj-text>
-        <mj-spacer vertical-align="bottom" />
+        <mj-spacer padding="10px" />
         <mj-text>Text</mj-text>
-        <mj-spacer width="50px" />
+        <mj-spacer />
         <mj-text>Text</mj-text>
       </mj-column>
     </mj-section>

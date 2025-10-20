@@ -3,6 +3,7 @@ package components
 import (
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
@@ -127,6 +128,76 @@ func getChildAlign(child Component) string {
 	return ""
 }
 
+func (c *MJWrapperComponent) hasRenderableChildren() bool {
+	for _, child := range c.Children {
+		if child.IsRawElement() {
+			if raw, ok := child.(*MJRawComponent); ok {
+				if strings.TrimSpace(raw.Content) == "" {
+					continue
+				}
+			}
+			return true
+		}
+		return true
+	}
+	return false
+}
+
+// shouldUseOuterOnlyMSOWrapper reports whether the wrapper's Outlook fallback should
+// emit only the outer table, leaving the inner wrapper table to be handled by the
+// section itself. This mirrors MJML's behavior for wrappers that exclusively contain
+// full-width sections with background images—those sections open (and close) the
+// inner MSO table inside their VML markup to ensure the background renders correctly
+// in Outlook. Mixing such sections with standard sections would require both tables,
+// so we only take this path when every non-raw child consumes the inner wrapper
+// table.
+func (c *MJWrapperComponent) shouldUseOuterOnlyMSOWrapper() bool {
+	hasSection := false
+	anyConsumer := false
+	allConsumers := true
+
+	for _, child := range c.Children {
+		if child.IsRawElement() {
+			continue
+		}
+
+		section, ok := child.(*MJSectionComponent)
+		if !ok {
+			// Wrappers are only expected to contain sections (and raw nodes).
+			// If we encounter anything else, fall back to the standard
+			// wrapper table structure for safety.
+			return false
+		}
+
+		hasSection = true
+
+		fullWidth := section.GetAttributeWithDefault(section, "full-width")
+		backgroundURL := section.GetAttributeWithDefault(section, constants.MJMLBackgroundUrl)
+		consumesWrapperTable := fullWidth != "" && backgroundURL != ""
+
+		anyConsumer = anyConsumer || consumesWrapperTable
+		if !consumesWrapperTable {
+			allConsumers = false
+		}
+	}
+
+	return hasSection && anyConsumer && allConsumers
+}
+
+func (c *MJWrapperComponent) hasFullWidthSectionChild() bool {
+	for _, child := range c.Children {
+		if child.IsRawElement() {
+			continue
+		}
+		if section, ok := child.(*MJSectionComponent); ok {
+			if section.GetAttributeWithDefault(section, "full-width") != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (c *MJWrapperComponent) isFullWidth() bool {
 	// Full width only if explicitly set
 	return c.getAttribute("full-width") == "full-width"
@@ -146,6 +217,8 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
+	cssClass := c.getAttribute("css-class")
+	wrapperBgColor := c.getAttribute("background-color")
 
 	// Calculate effective content width by subtracting horizontal padding and border widths
 	effectiveWidth := GetDefaultBodyWidthPixels() - c.getBorderWidth()
@@ -160,6 +233,12 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		}
 	}
 
+	continueMSOComment := false
+	if c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose {
+		continueMSOComment = true
+		c.RenderOpts.PendingMSOSectionClose = false
+	}
+
 	// Outer full-width table (MRML pattern)
 	outerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
@@ -168,7 +247,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddAttribute("role", "presentation").
 		AddAttribute("align", "center")
 
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+	if cssClass != "" {
 		outerTable.AddAttribute("class", cssClass)
 	}
 
@@ -184,24 +263,27 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	// MSO conditional for inner container
-	msoTable := html.NewHTMLTag("table").
-		AddAttribute("border", "0").
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation")
+	msoTable := html.NewHTMLTag("table")
 
-	// Add bgcolor to MSO table if background-color is set
-	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
+	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width, bgcolor.
+	msoTable.AddAttribute("align", "center")
+	msoTable.AddAttribute("border", "0")
+	msoTable.AddAttribute("cellpadding", "0")
+	msoTable.AddAttribute("cellspacing", "0")
+
+	if cssClass != "" {
+		msoTable.AddAttribute("class", cssClass+"-outlook")
+	} else {
+		msoTable.AddAttribute("class", "")
 	}
 
-	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
-		AddStyle("width", GetDefaultBodyWidth())
+	msoTable.AddAttribute("role", "presentation")
+	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
+	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
 
-	// Add css-class support for MSO table (MRML adds -outlook suffix)
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
-		msoTable.AddAttribute("class", cssClass+"-outlook")
+	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
+	if wrapperBgColor != "" {
+		msoTable.AddAttribute(constants.AttrBgcolor, wrapperBgColor)
 	}
 
 	msoTd := html.NewHTMLTag("td").
@@ -209,8 +291,15 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
-		return err
+	if continueMSOComment {
+		if err := html.RenderMSOTableOpenContinuation(w, msoTable, msoTd); err != nil {
+			return err
+		}
+		continueMSOComment = false
+	} else {
+		if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
+			return err
+		}
 	}
 
 	// Inner constrained div (standard MRML pattern)
@@ -284,23 +373,90 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 	// MSO conditional for wrapper content
 	firstAlign := ""
+	firstBgColor := ""
 	for _, ch := range c.Children {
-		if !ch.IsRawElement() {
-			firstAlign = getChildAlign(ch)
-			break
+		if ch.IsRawElement() {
+			continue
 		}
+		firstAlign = getChildAlign(ch)
+		if section, ok := ch.(*MJSectionComponent); ok {
+			firstBgColor = section.GetAttributeWithDefault(section, "background-color")
+		}
+		break
 	}
 
-	if err := html.RenderMSOWrapperTableOpen(w, effectiveWidth, firstAlign); err != nil {
-		return err
+	splitMSOWrapper := c.hasFullWidthSectionChild()
+	msoBgColor := firstBgColor
+	if msoBgColor == "" && splitMSOWrapper {
+		msoBgColor = c.getAttribute("background-color")
+	}
+
+	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
+	hasRenderableChildren := c.hasRenderableChildren()
+	msoWrapperOpened := false
+	delegatedWrapperBackground := false
+	wrapperWidth := c.GetEffectiveWidth()
+	forceWrapperTableSections := delegatedWrapperBackground && wrapperBgColor != ""
+	forceWrapperTableRaw := forceWrapperTableSections || !delegatedWrapperBackground
+
+	if !hasRenderableChildren {
+		if continueMSOComment {
+			if err := html.RenderMSOEmptyWrapperPlaceholderContinuation(w); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
+				return err
+			}
+		}
+	} else if useOuterOnlyMSO {
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, wrapperWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
+		}
+		msoWrapperOpened = true
+	} else if splitMSOWrapper && msoBgColor != "" {
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, wrapperWidth, firstAlign, ""); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, ""); err != nil {
+				return err
+			}
+		}
+		msoWrapperOpened = true
+		delegatedWrapperBackground = true
+	} else {
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperTableOpenContinuation(w, wrapperWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperTableOpenWithWidths(w, wrapperWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
+		}
+		msoWrapperOpened = true
 	}
 
 	// Render children with standard body width
 	// Add MSO section transitions between section children (like MRML does)
+	wrapperMSOClosedByChild := false
+
 	for i, child := range c.Children {
 		if child.IsRawElement() {
 			// Inject raw content inside the MSO transition block so Outlook maintains table structure
-			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), "", func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", "", false, forceWrapperTableRaw, func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -310,20 +466,65 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 
 		// Add MSO section transition between successive sections
 		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
+			nextBgColor := ""
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				nextBgColor = sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+				if nextBgColor == "" && delegatedWrapperBackground {
+					if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+						nextBgColor = wrapperBgColor
+					}
+				}
+			}
+			closeWrapper := true
+			if prevSection, ok := c.Children[i-1].(*MJSectionComponent); ok {
+				if prevSection.GetAttributeWithDefault(prevSection, "full-width") != "" {
+					closeWrapper = false
+				}
+			}
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections); err != nil {
 				return err
 			}
 		}
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
+
+		if delegatedWrapperBackground {
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+					sectionBg := sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+					if sectionBg == "" {
+						sectionBg = wrapperBgColor
+					}
+					if sectionBg != "" {
+						alignForSection := getChildAlign(sectionComp)
+						sectionComp.SetWrapperMSOBackground(sectionBg, alignForSection)
+					}
+				}
+			}
+		}
 		if err := child.Render(w); err != nil {
 			return err
 		}
+		if consumer, ok := child.(interface{ ConsumedWrapperMSOTable() bool }); ok && consumer.ConsumedWrapperMSOTable() {
+			wrapperMSOClosedByChild = true
+		}
 	}
 
-	if err := html.RenderMSOWrapperTableClose(w); err != nil {
-		return err
+	if wrapperMSOClosedByChild {
+		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+			return err
+		}
+	} else if msoWrapperOpened {
+		if useOuterOnlyMSO {
+			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+				return err
+			}
+		} else {
+			if err := html.RenderMSOWrapperTableClose(w); err != nil {
+				return err
+			}
+		}
 	}
 
 	if err := innerTd.RenderClose(w); err != nil {
@@ -361,27 +562,45 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	padding := c.getAttribute("padding")
 	textAlign := c.getAttribute("text-align")
 	direction := c.getAttribute("direction")
+	cssClass := c.getAttribute("css-class")
+	borderRadius := c.getAttribute("border-radius")
+	wrapperBgColor := c.getAttribute("background-color")
 	effectiveWidth := c.getEffectiveWidth()
 
-	// MSO conditional table wrapper (should use full default body width, not effective width)
-	msoTable := html.NewHTMLTag("table").
-		AddAttribute("border", "0").
-		AddAttribute("cellpadding", "0").
-		AddAttribute("cellspacing", "0").
-		AddAttribute("role", "presentation")
-
-	// Add bgcolor to MSO table if background-color is set
-	if bgColor := c.getAttribute("background-color"); bgColor != "" {
-		msoTable.AddAttribute(constants.AttrBgcolor, bgColor)
+	hasBorder := false
+	if c.getAttribute("border") != "" || c.getAttribute("border-left") != "" || c.getAttribute("border-right") != "" ||
+		c.getAttribute("border-top") != "" || c.getAttribute("border-bottom") != "" {
+		hasBorder = true
 	}
 
-	msoTable.AddAttribute("align", "center").
-		AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels())).
-		AddStyle("width", GetDefaultBodyWidth())
+	continueMSOComment := false
+	if c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose {
+		continueMSOComment = true
+		c.RenderOpts.PendingMSOSectionClose = false
+	}
 
-	// Add css-class support for MSO table (MRML adds -outlook suffix)
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
+	// MSO conditional table wrapper (should use full default body width, not effective width)
+	msoTable := html.NewHTMLTag("table")
+
+	// Attribute order matches MJML output: align, border, cellpadding, cellspacing, class, role, style, width, bgcolor.
+	msoTable.AddAttribute("align", "center")
+	msoTable.AddAttribute("border", "0")
+	msoTable.AddAttribute("cellpadding", "0")
+	msoTable.AddAttribute("cellspacing", "0")
+
+	if cssClass != "" {
 		msoTable.AddAttribute("class", cssClass+"-outlook")
+	} else {
+		msoTable.AddAttribute("class", "")
+	}
+
+	msoTable.AddAttribute("role", "presentation")
+	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
+	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
+
+	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
+	if wrapperBgColor != "" {
+		msoTable.AddAttribute(constants.AttrBgcolor, wrapperBgColor)
 	}
 
 	msoTd := html.NewHTMLTag("td").
@@ -389,8 +608,15 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
-		return err
+	if continueMSOComment {
+		if err := html.RenderMSOTableOpenContinuation(w, msoTable, msoTd); err != nil {
+			return err
+		}
+		continueMSOComment = false
+	} else {
+		if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
+			return err
+		}
 	}
 
 	// Main wrapper div (match MRML property order: background first, then margin, border-radius, max-width)
@@ -400,25 +626,27 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	// Apply background styles first to match MRML order
 	c.ApplyBackgroundStyles(wrapperDiv, c)
 
+	// Add css-class support for wrapper div
+	if cssClass != "" {
+		wrapperDiv.AddAttribute("class", cssClass)
+		c.ApplyInlineStyles(wrapperDiv, cssClass)
+	}
+
 	wrapperDiv.AddStyle("margin", "0px auto")
 
-	// Add css-class support for wrapper div
-	if cssClass := c.getAttribute("css-class"); cssClass != "" {
-		wrapperDiv.AddAttribute("class", cssClass)
-	}
-
-	// Add border-radius before max-width to match MRML order
-	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
-		wrapperDiv.AddStyle("border-radius", borderRadius)
-	}
-
+	// Order styles to match MJML output: margin -> max-width -> border-radius -> overflow
 	wrapperDiv.AddStyle("max-width", GetDefaultBodyWidth())
+
+	if borderRadius != "" {
+		wrapperDiv.AddStyle("border-radius", borderRadius)
+		wrapperDiv.AddStyle("overflow", "hidden")
+	}
 
 	if err := wrapperDiv.RenderOpen(w); err != nil {
 		return err
 	}
 
-	// Inner table (match MRML order: background first, then width, border-radius)
+	// Inner table (match MJML order: background first, then width and border handling)
 	innerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
 		AddAttribute("cellpadding", "0").
@@ -430,10 +658,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	c.ApplyBackgroundStyles(innerTable, c)
 
 	innerTable.AddStyle("width", "100%")
-
-	// Add border-radius after width to match MRML order
-	if borderRadius := c.getAttribute("border-radius"); borderRadius != "" {
-		innerTable.AddStyle("border-radius", borderRadius)
+	if hasBorder || borderRadius != "" {
+		innerTable.AddStyle(constants.CSSBorderCollapse, constants.BorderCollapseSeparate)
 	}
 
 	if err := innerTable.RenderOpen(w); err != nil {
@@ -464,6 +690,10 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		mainTd.AddStyle("border-top", borderTop)
 	}
 
+	if borderRadius != "" {
+		mainTd.AddStyle("border-radius", borderRadius)
+	}
+
 	mainTd.AddStyle("direction", direction).
 		AddStyle("font-size", "0px").
 		AddStyle("padding", padding)
@@ -489,24 +719,92 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	}
 
 	firstAlign := ""
+	firstBgColor := ""
 	for _, ch := range c.Children {
-		if !ch.IsRawElement() {
-			firstAlign = getChildAlign(ch)
-			break
+		if ch.IsRawElement() {
+			continue
 		}
+		firstAlign = getChildAlign(ch)
+		if section, ok := ch.(*MJSectionComponent); ok {
+			firstBgColor = section.GetAttributeWithDefault(section, "background-color")
+		}
+		break
+	}
+
+	splitMSOWrapper := c.hasFullWidthSectionChild()
+	msoBgColor := firstBgColor
+	if msoBgColor == "" && splitMSOWrapper {
+		msoBgColor = c.getAttribute("background-color")
 	}
 
 	// For basic wrapper, we need a specific MSO conditional pattern
-	// that matches MRML's output more closely - use original body width for wrapper MSO
-	if err := html.RenderMSOWrapperTableOpen(w, GetDefaultBodyWidthPixels(), firstAlign); err != nil {
-		return err
+	// that matches MRML's output more closely - use the outer container width
+	outerWidth := c.GetEffectiveWidth()
+	useOuterOnlyMSO := c.shouldUseOuterOnlyMSOWrapper()
+	hasRenderableChildren := c.hasRenderableChildren()
+	msoWrapperOpened := false
+	delegatedWrapperBackground := false
+	if !hasRenderableChildren {
+		if continueMSOComment {
+			if err := html.RenderMSOEmptyWrapperPlaceholderContinuation(w); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
+				return err
+			}
+		}
+	} else if useOuterOnlyMSO {
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, outerWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
+		}
+		msoWrapperOpened = true
+	} else if splitMSOWrapper && msoBgColor != "" {
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, outerWidth, firstAlign, ""); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, ""); err != nil {
+				return err
+			}
+		}
+		msoWrapperOpened = true
+		delegatedWrapperBackground = true
+	} else {
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperTableOpenContinuation(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
+		}
+		msoWrapperOpened = true
 	}
 
 	// Render children - pass the effective width (600px - border width)
-	// Add MSO section transitions between section children (like MRML does)
+	// Add MSO section transitions between section children (like MJML does)
+
+	forceWrapperTableSections := delegatedWrapperBackground && wrapperBgColor != ""
+	forceWrapperTableRaw := forceWrapperTableSections || !delegatedWrapperBackground
+
+	wrapperMSOClosedByChild := false
+
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), "", func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, effectiveWidth, "", "", false, forceWrapperTableRaw, func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -516,20 +814,65 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 
 		// Add MSO section transition between sections (but not before the first section)
 		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), getChildAlign(child)); err != nil {
+			nextBgColor := ""
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				nextBgColor = sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+				if nextBgColor == "" && delegatedWrapperBackground {
+					if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+						nextBgColor = wrapperBgColor
+					}
+				}
+			}
+			closeWrapper := true
+			if prevSection, ok := c.Children[i-1].(*MJSectionComponent); ok {
+				if prevSection.GetAttributeWithDefault(prevSection, "full-width") != "" {
+					closeWrapper = false
+				}
+			}
+			if err := html.RenderMSOSectionTransition(w, outerWidth, effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections); err != nil {
 				return err
 			}
 		}
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
+
+		if delegatedWrapperBackground {
+			if sectionComp, ok := child.(*MJSectionComponent); ok {
+				if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
+					sectionBg := sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+					if sectionBg == "" {
+						sectionBg = wrapperBgColor
+					}
+					if sectionBg != "" {
+						alignForSection := getChildAlign(sectionComp)
+						sectionComp.SetWrapperMSOBackground(sectionBg, alignForSection)
+					}
+				}
+			}
+		}
 		if err := child.Render(w); err != nil {
 			return err
 		}
+		if consumer, ok := child.(interface{ ConsumedWrapperMSOTable() bool }); ok && consumer.ConsumedWrapperMSOTable() {
+			wrapperMSOClosedByChild = true
+		}
 	}
 
-	if err := html.RenderMSOWrapperTableClose(w); err != nil {
-		return err
+	if wrapperMSOClosedByChild {
+		if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+			return err
+		}
+	} else if msoWrapperOpened {
+		if useOuterOnlyMSO {
+			if err := html.RenderMSOConditional(w, "</td></tr></table>"); err != nil {
+				return err
+			}
+		} else {
+			if err := html.RenderMSOWrapperTableClose(w); err != nil {
+				return err
+			}
+		}
 	}
 
 	if err := mainTd.RenderClose(w); err != nil {
