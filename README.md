@@ -1,10 +1,11 @@
 # gomjml - Native Go MJML Compiler
 
-A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation has been inspired by and tested against [MRML](https://github.com/jdrouet/mrml), the Rust implementation of MJML. See some [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations. 
+A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation targets **full compliance with the official MJML specification**, producing output that matches the MJML JavaScript reference implementation. See [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations.
 
 ![status](https://img.shields.io/badge/status-in_active_development-blueviolet)
 ![Tests](https://github.com/preslavrachev/gomjml/actions/workflows/test.yml/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/preslavrachev/gomjml)
+![Version](https://img.shields.io/badge/version-v0.10.0-blue)
 
 > **Full Disclosure**: This project has been created in cooperation with [Claude Code](https://www.anthropic.com/claude-code). I wouldn't have been able to achieve such a feat without Claude's help in turning my bizarre requirements into Go code. Still, it wasn't all smooth sailing. While Claude was able to generate a plausible MVP relatively quickly, bringing it something even remotely usable took a lot more human guidance, going back and forth, throwing away a bunch of code and starting over. There's lots I have learned in the process, and I will soon write a series of blog posts addressing my experience.
 >
@@ -12,13 +13,13 @@ A native Go implementation of the MJML email framework, providing fast compilati
 
 ## 🚀 Features
 
-- **Complete MJML Implementation**: 100% feature-complete with all 26 MJML components implemented and tested against MRML (the Rust implementation of MJML). A well-structured Go library with clean package separation
+- **Complete MJML Specification Compliance**: Feature-complete with all 26 MJML components aligned with the official MJML.io specification. A well-structured Go library with clean package separation
 - **Enhanced Email Compatibility**: Generates HTML that works reliably across all email clients with robust Microsoft Outlook support and VML background rendering for legacy versions
 - **Fast Performance**: Native Go performance, comparable to Rust MRML implementation
 - **Optional AST Caching**: Opt-in template caching for speedup on repeated renders
 - **Complete Component System**: Support for essential MJML components with proper inheritance
 - **CLI & Library**: Use as command-line tool or importable Go package
-- **Tested Against MRML**: Integration tests validate output compatibility with reference implementation
+- **MJML Reference Testing**: Integration tests validate output compatibility with official MJML implementation
 
 ## 📦 Installation
 
@@ -333,7 +334,7 @@ go/
 │   ├── component.go        # Component factory and interfaces
 │   ├── render.go          # Main rendering logic and MJMLComponent
 │   ├── mjml_test.go       # Library unit tests
-│   ├── integration_test.go # MRML comparison tests
+│   ├── integration_test.go # MJML comparison tests
 │   │
 │   ├── components/        # Individual component implementations
 │   │   ├── base.go        # Shared Component interface and BaseComponent
@@ -372,21 +373,9 @@ MJML Input → XML Parser → AST → Component Tree → HTML Output
 4. **Responsive Design**: Mobile-first CSS with media queries
 5. **Testing Strategy**: Direct library testing without subprocess dependencies
 
-## 🧪 Testing & MRML Compatibility
+## 🧪 Testing & MJML Specification Compliance
 
-### What is MRML?
-
-[MRML](https://github.com/jdrouet/mrml) is a Rust implementation of the MJML email framework that provides a fast, native alternative to the original JavaScript implementation. This Go implementation uses MRML as its reference for testing compatibility and correctness.
-
-**Why did I choose MRML as a reference, rather than the default MJML compiler?**
-- **Performance**: Native Rust performance comparable to our Go implementation
-- **Compatibility**: Produces the same MJML-compliant HTML output as the JavaScript version
-- **Reliability**: Well-tested, production-ready implementation
-- **Accessibility**: Already installed and working in our development environment
-
-### Test Suite
-
-The comprehensive test suite validates output against MRML:
+The comprehensive test suite validates output against the MJML specification:
 
 ```bash
 # Run all tests via CLI
@@ -469,7 +458,7 @@ Generated HTML works across all major email clients:
 
 ## 🔗 Related Projects
 
-- **[MJML](https://mjml.io/)** - Original JavaScript implementation and framework specification
-- **[MRML](https://github.com/jdrouet/mrml)** - Rust implementation used as reference for testing
+- **[MJML](https://mjml.io/)** - Original JavaScript implementation and framework specification (our reference)
+- **[MRML](https://github.com/jdrouet/mrml)** - Rust implementation (used as reference in previous releases)
 - **[MJML Documentation](https://documentation.mjml.io/)** - Official MJML component specification
 - **[MJML Try It Live](https://mjml.io/try-it-live)** - Online MJML editor and tester
