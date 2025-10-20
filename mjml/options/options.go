@@ -53,7 +53,7 @@ type RenderOpts struct {
 	InlineClassStyles        map[string][]InlineStyle // CSS declarations to inline for css-class selectors
 	SkipInlineStylesInHead   bool                     // Whether to omit inline mj-style rules from the head output
 	PendingMSOSectionClose   bool                     // Indicates an Outlook conditional comment is still open for section chaining
-	RemainingBodySections    int                      // Number of mj-section siblings remaining after the current one
+        RemainingBodySections    int                      // Remaining Outlook-sensitive blocks (mj-section/mj-wrapper) after the current one
 	RequireEmptyStyleTag     bool                     // Whether the head output should include an empty style tag for Outlook parity
 	InvalidAttributeReporter func(tagName, attrName string, line int)
 }

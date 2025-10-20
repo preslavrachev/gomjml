@@ -233,6 +233,12 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		}
 	}
 
+	continueMSOComment := false
+	if c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose {
+		continueMSOComment = true
+		c.RenderOpts.PendingMSOSectionClose = false
+	}
+
 	// Outer full-width table (MRML pattern)
 	outerTable := html.NewHTMLTag("table").
 		AddAttribute("border", "0").
@@ -285,8 +291,15 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
-		return err
+	if continueMSOComment {
+		if err := html.RenderMSOTableOpenContinuation(w, msoTable, msoTd); err != nil {
+			return err
+		}
+		continueMSOComment = false
+	} else {
+		if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
+			return err
+		}
 	}
 
 	// Inner constrained div (standard MRML pattern)
@@ -387,23 +400,51 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	forceWrapperTableRaw := forceWrapperTableSections || !delegatedWrapperBackground
 
 	if !hasRenderableChildren {
-		if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOEmptyWrapperPlaceholderContinuation(w); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
+				return err
+			}
 		}
 	} else if useOuterOnlyMSO {
-		if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, msoBgColor); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, wrapperWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
 		}
 		msoWrapperOpened = true
 	} else if splitMSOWrapper && msoBgColor != "" {
-		if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, ""); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, wrapperWidth, firstAlign, ""); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, wrapperWidth, firstAlign, ""); err != nil {
+				return err
+			}
 		}
 		msoWrapperOpened = true
 		delegatedWrapperBackground = true
 	} else {
-		if err := html.RenderMSOWrapperTableOpenWithWidths(w, wrapperWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperTableOpenContinuation(w, wrapperWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperTableOpenWithWidths(w, wrapperWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
 		}
 		msoWrapperOpened = true
 	}
@@ -532,6 +573,12 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		hasBorder = true
 	}
 
+	continueMSOComment := false
+	if c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose {
+		continueMSOComment = true
+		c.RenderOpts.PendingMSOSectionClose = false
+	}
+
 	// MSO conditional table wrapper (should use full default body width, not effective width)
 	msoTable := html.NewHTMLTag("table")
 
@@ -561,8 +608,15 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		AddStyle("font-size", "0px").
 		AddStyle("mso-line-height-rule", "exactly")
 
-	if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
-		return err
+	if continueMSOComment {
+		if err := html.RenderMSOTableOpenContinuation(w, msoTable, msoTd); err != nil {
+			return err
+		}
+		continueMSOComment = false
+	} else {
+		if err := html.RenderMSOTableOpenConditional(w, msoTable, msoTd); err != nil {
+			return err
+		}
 	}
 
 	// Main wrapper div (match MRML property order: background first, then margin, border-radius, max-width)
@@ -691,23 +745,51 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	msoWrapperOpened := false
 	delegatedWrapperBackground := false
 	if !hasRenderableChildren {
-		if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOEmptyWrapperPlaceholderContinuation(w); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOEmptyWrapperPlaceholder(w); err != nil {
+				return err
+			}
 		}
 	} else if useOuterOnlyMSO {
-		if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, msoBgColor); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, outerWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, msoBgColor); err != nil {
+				return err
+			}
 		}
 		msoWrapperOpened = true
 	} else if splitMSOWrapper && msoBgColor != "" {
-		if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, ""); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperOuterOpenContinuation(w, outerWidth, firstAlign, ""); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperOuterOpen(w, outerWidth, firstAlign, ""); err != nil {
+				return err
+			}
 		}
 		msoWrapperOpened = true
 		delegatedWrapperBackground = true
 	} else {
-		if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
-			return err
+		if continueMSOComment {
+			if err := html.RenderMSOWrapperTableOpenContinuation(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
+			continueMSOComment = false
+		} else {
+			if err := html.RenderMSOWrapperTableOpenWithWidths(w, outerWidth, effectiveWidth, firstAlign, firstBgColor); err != nil {
+				return err
+			}
 		}
 		msoWrapperOpened = true
 	}

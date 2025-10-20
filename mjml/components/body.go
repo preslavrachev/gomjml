@@ -103,22 +103,33 @@ func (c *MJBodyComponent) Render(w io.StringWriter) error {
 		c.RenderOpts.PendingMSOSectionClose = false
 	}
 
-	// Track how many mj-section siblings remain so Outlook conditional comments can
-	// be chained only when intermediate markup doesn't require closing them.
-	remainingSections := 0
+	// Track how many Outlook-sensitive blocks remain (mj-section and mj-wrapper)
+	// so conditional comments can be chained correctly across mixed content.
+	remainingBlocks := 0
 	for _, child := range c.Children {
-		if _, ok := child.(*MJSectionComponent); ok {
-			remainingSections++
+		switch child.(type) {
+		case *MJSectionComponent, *MJWrapperComponent:
+			remainingBlocks++
 		}
 	}
 
 	for _, child := range c.Children {
-		if section, ok := child.(*MJSectionComponent); ok {
-			remainingSections--
+		switch comp := child.(type) {
+		case *MJSectionComponent:
+			remainingBlocks--
 			if c.RenderOpts != nil {
-				c.RenderOpts.RemainingBodySections = remainingSections
+				c.RenderOpts.RemainingBodySections = remainingBlocks
 			}
-			if err := section.Render(w); err != nil {
+			if err := comp.Render(w); err != nil {
+				return err
+			}
+			continue
+		case *MJWrapperComponent:
+			remainingBlocks--
+			if c.RenderOpts != nil {
+				c.RenderOpts.RemainingBodySections = remainingBlocks
+			}
+			if err := comp.Render(w); err != nil {
 				return err
 			}
 			continue

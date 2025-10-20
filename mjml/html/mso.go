@@ -380,6 +380,36 @@ func RenderMSOTableOpenConditional(w io.StringWriter, table, td *HTMLTag) error 
 	return nil
 }
 
+// RenderMSOTableOpenContinuation continues an existing MSO conditional comment by
+// emitting the table structure without writing a new opening comment marker.
+// This is used when the previous component leaves the Outlook conditional open
+// for chained markup.
+func RenderMSOTableOpenContinuation(w io.StringWriter, table, td *HTMLTag) error {
+	var tableOpen strings.Builder
+	if err := table.RenderOpen(&tableOpen); err != nil {
+		return err
+	}
+	openStr := tableOpen.String()
+	if strings.HasSuffix(openStr, ">") {
+		if len(openStr) == 1 || openStr[len(openStr)-2] != ' ' {
+			openStr = openStr[:len(openStr)-1] + " >"
+		}
+	}
+	if _, err := w.WriteString(openStr); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<tr>"); err != nil {
+		return err
+	}
+	if err := td.RenderOpen(w); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("<![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RenderMSOTableCloseConditional renders MSO table close with conditional comments directly to Writer
 func RenderMSOTableCloseConditional(w io.StringWriter, td, table *HTMLTag) error {
 	if _, err := w.WriteString("<!--[if mso | IE]>"); err != nil {
@@ -486,6 +516,58 @@ func RenderMSOWrapperTableOpenWithWidths(w io.StringWriter, outerWidthPx int, in
 	return nil
 }
 
+// RenderMSOWrapperTableOpenContinuation mirrors RenderMSOWrapperTableOpenWithWidths
+// but assumes the MSO conditional comment is already open from a previous block.
+func RenderMSOWrapperTableOpenContinuation(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string) error {
+	if _, err := w.WriteString("<table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td class=\"\""); err != nil {
+		return err
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(outerWidthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px\" ><table align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" role=\"presentation\" style=\"width:"); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("\""); err != nil {
+		return err
+	}
+	if bgColor != "" {
+		if _, err := w.WriteString(" " + constants.AttrBgcolor + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(bgColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" ><tr><td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\"><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RenderMSOEmptyWrapperPlaceholder emits the minimal Outlook wrapper structure MJML
 // uses when a wrapper contains no renderable children. The empty table keeps
 // Outlook's table layout intact without introducing extra rows or columns.
@@ -494,11 +576,58 @@ func RenderMSOEmptyWrapperPlaceholder(w io.StringWriter) error {
 	return err
 }
 
+// RenderMSOEmptyWrapperPlaceholderContinuation continues an existing MSO comment
+// chain by emitting the wrapper placeholder without opening a new conditional.
+func RenderMSOEmptyWrapperPlaceholderContinuation(w io.StringWriter) error {
+	_, err := w.WriteString("<table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"></table><![endif]-->")
+	return err
+}
+
 // RenderMSOWrapperOuterOpen renders only the outer Outlook table wrapper, leaving the
 // inner wrapper table to be handled by child components. This matches MJML's output
 // when sections with full-width background images are rendered inside an mj-wrapper.
 func RenderMSOWrapperOuterOpen(w io.StringWriter, outerWidthPx int, align string, bgColor string) error {
 	if _, err := w.WriteString("<!--[if mso | IE]><table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td class=\"\""); err != nil {
+		return err
+	}
+	if align != "" {
+		if _, err := w.WriteString(" " + constants.AttrAlign + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(align + "\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(" " + constants.AttrWidth + "=\""); err != nil {
+		return err
+	}
+	if _, err := w.WriteString(strconv.Itoa(outerWidthPx)); err != nil {
+		return err
+	}
+	if _, err := w.WriteString("px\""); err != nil {
+		return err
+	}
+	if bgColor != "" {
+		if _, err := w.WriteString(" " + constants.AttrBgcolor + "=\""); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(bgColor); err != nil {
+			return err
+		}
+		if _, err := w.WriteString("\""); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString("><![endif]-->"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RenderMSOWrapperOuterOpenContinuation mirrors RenderMSOWrapperOuterOpen but skips
+// writing a new MSO opening comment, allowing chained Outlook markup.
+func RenderMSOWrapperOuterOpenContinuation(w io.StringWriter, outerWidthPx int, align string, bgColor string) error {
+	if _, err := w.WriteString("<table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td class=\"\""); err != nil {
 		return err
 	}
 	if align != "" {
