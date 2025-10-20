@@ -146,18 +146,11 @@ func (bc *BaseComponent) IsRawElement() bool {
 func (bc *BaseComponent) GetAttribute(name string) *string {
 	// 1. Check element attributes
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		normalized := normalizeAttributeValue(name, value)
-		if normalized != value {
-			bc.Attrs[name] = normalized
-			value = normalized
-		}
 		return &value
 	}
 
 	// 2. Check mj-class definitions
 	if classValue := bc.getClassAttribute(name); classValue != "" {
-		normalized := normalizeAttributeValue(name, classValue)
-		classValue = normalized
 		return &classValue
 	}
 
@@ -167,8 +160,7 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 	// 4. Check component defaults
 	if defaultVal := bc.GetDefaultAttribute(name); defaultVal != "" {
 		normalized := normalizeAttributeValue(name, defaultVal)
-		defaultVal = normalized
-		return &defaultVal
+		return &normalized
 	}
 
 	return nil
@@ -178,16 +170,12 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
 	// 1. Element attributes
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		normalized := normalizeAttributeValue(name, value)
-		if normalized != value {
-			bc.Attrs[name] = normalized
-		}
-		return normalized
+		return value
 	}
 
 	// 2. mj-class definitions
 	if classValue := bc.getClassAttribute(name); classValue != "" {
-		return normalizeAttributeValue(name, classValue)
+		return classValue
 	}
 
 	// 3. Global attributes
@@ -214,12 +202,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"attr_value": value,
 			})
 		}
-		normalized := normalizeAttributeValue(name, value)
-		if normalized != value {
-			bc.Attrs[name] = normalized
-			value = normalized
-		}
-		// Track font families
+
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(value)
 		}
@@ -235,10 +218,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 				"classes":    bc.Attrs["mj-class"],
 			})
 		}
-		normalized := normalizeAttributeValue(name, classValue)
-		if normalized != classValue {
-			classValue = normalized
-		}
+
 		if name == constants.MJMLFontFamily {
 			bc.TrackFontFamily(classValue)
 		}
