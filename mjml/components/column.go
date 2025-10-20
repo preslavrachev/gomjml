@@ -211,19 +211,13 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 		} else {
 			// Apply border styles without border-radius so we can
 			// set the inner radius separately
-			toPtr := func(s string) *string {
-				if s == "" {
-					return nil
-				}
-				return &s
-			}
 			styles.ApplyBorderStyles(innerTable,
-				toPtr(c.GetAttributeFast(c, constants.MJMLBorder)),
-				nil,
-				toPtr(c.GetAttributeFast(c, "border-top")),
-				toPtr(c.GetAttributeFast(c, "border-right")),
-				toPtr(c.GetAttributeFast(c, "border-bottom")),
-				toPtr(c.GetAttributeFast(c, "border-left")),
+				c.GetAttributeFast(c, constants.MJMLBorder),
+				"",
+				c.GetAttributeFast(c, "border-top"),
+				c.GetAttributeFast(c, "border-right"),
+				c.GetAttributeFast(c, "border-bottom"),
+				c.GetAttributeFast(c, "border-left"),
 			)
 			innerTable.AddStyle("border-radius", innerBR)
 		}
@@ -239,19 +233,13 @@ func (c *MJColumnComponent) renderColumnWithStylesToWriter(w io.StringWriter, in
 		borderBottom := c.GetAttributeFast(c, "border-bottom")
 		borderLeft := c.GetAttributeFast(c, "border-left")
 		if border == "none" || borderTop == "none" || borderRight == "none" || borderBottom == "none" || borderLeft == "none" {
-			toPtr := func(s string) *string {
-				if s == "" {
-					return nil
-				}
-				return &s
-			}
 			styles.ApplyBorderStyles(innerTable,
-				toPtr(border),
-				nil,
-				toPtr(borderTop),
-				toPtr(borderRight),
-				toPtr(borderBottom),
-				toPtr(borderLeft),
+				border,
+				"",
+				borderTop,
+				borderRight,
+				borderBottom,
+				borderLeft,
 			)
 		}
 	}

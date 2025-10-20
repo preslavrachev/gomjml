@@ -453,20 +453,13 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	// TD with padding and text alignment
 	tdTag := html.NewHTMLTag("td")
 
-	toPtr := func(s string) *string {
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-
 	styles.ApplyBorderStyles(tdTag,
-		toPtr(border),
-		toPtr(borderRadius),
-		toPtr(borderTop),
-		toPtr(borderRight),
-		toPtr(borderBottom),
-		toPtr(borderLeft),
+		border,
+		borderRadius,
+		borderTop,
+		borderRight,
+		borderBottom,
+		borderLeft,
 	)
 
 	tdTag.AddStyle(constants.CSSDirection, direction).

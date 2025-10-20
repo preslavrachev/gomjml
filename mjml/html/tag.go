@@ -75,9 +75,20 @@ func (t *HTMLTag) AddStyle(name, value string) *HTMLTag {
 //
 //	var bgcolor *string = getBackgroundColor() // might be nil
 //	tag.MaybeAddStyle("background-color", bgcolor)
+//
+// TODO:  AIDEV-TODO: Consider replacing with MaybeAddStyleString for simplicity.
 func (t *HTMLTag) MaybeAddStyle(name string, value *string) *HTMLTag {
 	if value != nil && *value != "" {
 		t.AddStyle(name, *value)
+	}
+	return t
+}
+
+// MaybeAddStyleString conditionally adds a CSS style property when the value is non-empty.
+// This avoids creating temporary string pointers when the caller already has a value string.
+func (t *HTMLTag) MaybeAddStyleString(name, value string) *HTMLTag {
+	if value != "" {
+		t.AddStyle(name, value)
 	}
 	return t
 }

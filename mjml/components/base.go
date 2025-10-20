@@ -407,13 +407,6 @@ func getPixelWidthString(widthPx int) string {
 
 // ApplyBackgroundStyles applies background-related CSS styles to an HTML tag
 func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
-	toPtr := func(s string) *string {
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-
 	bgcolor := bc.GetAttributeFast(comp, "background-color")
 	bgImage := bc.GetAttributeFast(comp, "background-image")
 	if bgImage == "" {
@@ -433,22 +426,15 @@ func (bc *BaseComponent) ApplyBackgroundStyles(tag *html.HTMLTag, comp Component
 	}
 
 	return styles.ApplyBackgroundStyles(tag,
-		toPtr(bgcolor),
-		toPtr(bgImage),
-		toPtr(bgRepeat),
-		toPtr(bgSize),
-		toPtr(bgPosition))
+		bgcolor,
+		bgImage,
+		bgRepeat,
+		bgSize,
+		bgPosition)
 }
 
 // ApplyBorderStyles applies border-related CSS styles to an HTML tag
 func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag, comp Component) *html.HTMLTag {
-	toPtr := func(s string) *string {
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-
 	border := bc.GetAttributeFast(comp, constants.MJMLBorder)
 	borderRadius := bc.GetAttributeFast(comp, constants.MJMLBorderRadius)
 	borderTop := bc.GetAttributeFast(comp, "border-top")
@@ -457,12 +443,12 @@ func (bc *BaseComponent) ApplyBorderStyles(tag *html.HTMLTag, comp Component) *h
 	borderLeft := bc.GetAttributeFast(comp, "border-left")
 
 	return styles.ApplyBorderStyles(tag,
-		toPtr(border),
-		toPtr(borderRadius),
-		toPtr(borderTop),
-		toPtr(borderRight),
-		toPtr(borderBottom),
-		toPtr(borderLeft))
+		border,
+		borderRadius,
+		borderTop,
+		borderRight,
+		borderBottom,
+		borderLeft)
 }
 
 // ApplyPaddingStyles applies padding CSS styles to an HTML tag
