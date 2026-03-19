@@ -128,6 +128,23 @@ func getChildAlign(child Component) string {
 	return ""
 }
 
+func getWrapperSectionBackground(section *MJSectionComponent, wrapperGap string) string {
+	if section == nil {
+		return ""
+	}
+	if wrapperGap != "" && section.GetAttributeWithDefault(section, "full-width") == "" {
+		return ""
+	}
+	return section.GetAttributeWithDefault(section, "background-color")
+}
+
+func getWrapperSectionGap(gap string, sectionIndex int) string {
+	if gap == "" || sectionIndex == 0 {
+		return ""
+	}
+	return gap
+}
+
 func (c *MJWrapperComponent) hasRenderableChildren() bool {
 	for _, child := range c.Children {
 		if child.IsRawElement() {
@@ -219,6 +236,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	direction := c.getAttribute("direction")
 	cssClass := c.getAttribute("css-class")
 	wrapperBgColor := c.getAttribute("background-color")
+	wrapperGap := c.getAttribute("gap")
 
 	// Calculate effective content width by subtracting horizontal padding and border widths
 	effectiveWidth := GetDefaultBodyWidthPixels() - c.getBorderWidth()
@@ -380,7 +398,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		}
 		firstAlign = getChildAlign(ch)
 		if section, ok := ch.(*MJSectionComponent); ok {
-			firstBgColor = section.GetAttributeWithDefault(section, "background-color")
+			firstBgColor = getWrapperSectionBackground(section, wrapperGap)
 		}
 		break
 	}
@@ -452,11 +470,12 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	// Render children with standard body width
 	// Add MSO section transitions between section children (like MRML does)
 	wrapperMSOClosedByChild := false
+	sectionIndex := 0
 
 	for i, child := range c.Children {
 		if child.IsRawElement() {
 			// Inject raw content inside the MSO transition block so Outlook maintains table structure
-			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", "", false, forceWrapperTableRaw, func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", "", false, forceWrapperTableRaw, "", func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -464,11 +483,16 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 			continue
 		}
 
+		currentSectionIndex := sectionIndex
+		if child.GetTagName() == "mj-section" {
+			currentSectionIndex = sectionIndex
+		}
+
 		// Add MSO section transition between successive sections
 		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
 			nextBgColor := ""
 			if sectionComp, ok := child.(*MJSectionComponent); ok {
-				nextBgColor = sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+				nextBgColor = getWrapperSectionBackground(sectionComp, wrapperGap)
 				if nextBgColor == "" && delegatedWrapperBackground {
 					if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
 						nextBgColor = wrapperBgColor
@@ -481,13 +505,17 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 					closeWrapper = false
 				}
 			}
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections); err != nil {
+			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections, getWrapperSectionGap(wrapperGap, currentSectionIndex)); err != nil {
 				return err
 			}
 		}
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
+
+		if sectionComp, ok := child.(*MJSectionComponent); ok {
+			sectionComp.SetWrapperGap(wrapperGap, currentSectionIndex > 0)
+		}
 
 		if delegatedWrapperBackground {
 			if sectionComp, ok := child.(*MJSectionComponent); ok {
@@ -505,6 +533,9 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 		}
 		if err := child.Render(w); err != nil {
 			return err
+		}
+		if child.GetTagName() == "mj-section" {
+			sectionIndex++
 		}
 		if consumer, ok := child.(interface{ ConsumedWrapperMSOTable() bool }); ok && consumer.ConsumedWrapperMSOTable() {
 			wrapperMSOClosedByChild = true
@@ -565,6 +596,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	cssClass := c.getAttribute("css-class")
 	borderRadius := c.getAttribute("border-radius")
 	wrapperBgColor := c.getAttribute("background-color")
+	wrapperGap := c.getAttribute("gap")
 	effectiveWidth := c.getEffectiveWidth()
 
 	hasBorder := false
@@ -726,7 +758,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		}
 		firstAlign = getChildAlign(ch)
 		if section, ok := ch.(*MJSectionComponent); ok {
-			firstBgColor = section.GetAttributeWithDefault(section, "background-color")
+			firstBgColor = getWrapperSectionBackground(section, wrapperGap)
 		}
 		break
 	}
@@ -801,10 +833,11 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	forceWrapperTableRaw := forceWrapperTableSections || !delegatedWrapperBackground
 
 	wrapperMSOClosedByChild := false
+	sectionIndex := 0
 
 	for i, child := range c.Children {
 		if child.IsRawElement() {
-			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, effectiveWidth, "", "", false, forceWrapperTableRaw, func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, outerWidth, effectiveWidth, "", "", false, forceWrapperTableRaw, "", func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -812,11 +845,16 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 			continue
 		}
 
+		currentSectionIndex := sectionIndex
+		if child.GetTagName() == "mj-section" {
+			currentSectionIndex = sectionIndex
+		}
+
 		// Add MSO section transition between sections (but not before the first section)
 		if i > 0 && child.GetTagName() == "mj-section" && !c.Children[i-1].IsRawElement() {
 			nextBgColor := ""
 			if sectionComp, ok := child.(*MJSectionComponent); ok {
-				nextBgColor = sectionComp.GetAttributeWithDefault(sectionComp, "background-color")
+				nextBgColor = getWrapperSectionBackground(sectionComp, wrapperGap)
 				if nextBgColor == "" && delegatedWrapperBackground {
 					if sectionComp.GetAttributeWithDefault(sectionComp, "full-width") != "" && sectionComp.GetAttributeWithDefault(sectionComp, constants.MJMLBackgroundUrl) == "" {
 						nextBgColor = wrapperBgColor
@@ -829,13 +867,17 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 					closeWrapper = false
 				}
 			}
-			if err := html.RenderMSOSectionTransition(w, outerWidth, effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections); err != nil {
+			if err := html.RenderMSOSectionTransition(w, outerWidth, effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections, getWrapperSectionGap(wrapperGap, currentSectionIndex)); err != nil {
 				return err
 			}
 		}
 
 		// AIDEV-NOTE: width-flow-parent-to-child; pass reduced width to child (accounts for wrapper padding)
 		child.SetContainerWidth(effectiveWidth)
+
+		if sectionComp, ok := child.(*MJSectionComponent); ok {
+			sectionComp.SetWrapperGap(wrapperGap, currentSectionIndex > 0)
+		}
 
 		if delegatedWrapperBackground {
 			if sectionComp, ok := child.(*MJSectionComponent); ok {
@@ -853,6 +895,9 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 		}
 		if err := child.Render(w); err != nil {
 			return err
+		}
+		if child.GetTagName() == "mj-section" {
+			sectionIndex++
 		}
 		if consumer, ok := child.(interface{ ConsumedWrapperMSOTable() bool }); ok && consumer.ConsumedWrapperMSOTable() {
 			wrapperMSOClosedByChild = true

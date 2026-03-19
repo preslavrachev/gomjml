@@ -170,6 +170,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-wrapper"},
 		{name: "mj-wrapper-border"},
 		{name: "mj-wrapper-border-radius"},
+		{name: "mj-wrapper-gap"},
 		{name: "mj-wrapper-multiple-sections"},
 		{name: "mj-wrapper-other"},
 		{name: "mj-wrapper-padding"},

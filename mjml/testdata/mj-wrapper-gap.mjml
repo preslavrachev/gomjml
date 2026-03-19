@@ -1,0 +1,21 @@
+<mjml>
+  <mj-body>
+    <mj-wrapper gap="30px" background-color="#f0f0f0" padding="20px">
+      <mj-section background-color="white">
+        <mj-column>
+          <mj-text>Header Section</mj-text>
+        </mj-column>
+      </mj-section>
+      <mj-section background-color="white">
+        <mj-column>
+          <mj-text>Main Content</mj-text>
+        </mj-column>
+      </mj-section>
+      <mj-section background-color="white">
+        <mj-column>
+          <mj-text>Footer Section</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

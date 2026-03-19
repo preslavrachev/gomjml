@@ -18,6 +18,8 @@ type MJSectionComponent struct {
 	wrapperMSOClosed          bool
 	wrapperMSOBackgroundColor string
 	wrapperMSOAlign           string
+	wrapperGap                string
+	applyWrapperGap           bool
 }
 
 // NewMJSectionComponent creates a new mj-section component
@@ -32,6 +34,12 @@ func NewMJSectionComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJS
 func (c *MJSectionComponent) SetWrapperMSOBackground(bgColor, align string) {
 	c.wrapperMSOBackgroundColor = bgColor
 	c.wrapperMSOAlign = align
+}
+
+// SetWrapperGap configures section spacing provided by a parent mj-wrapper.
+func (c *MJSectionComponent) SetWrapperGap(gap string, apply bool) {
+	c.wrapperGap = gap
+	c.applyWrapperGap = apply && gap != ""
 }
 
 func (c *MJSectionComponent) GetTagName() string {
@@ -390,7 +398,11 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	sectionDiv.AddStyle("margin", "0px auto").
 		AddStyle("max-width", strconv.Itoa(c.GetContainerWidth())+"px")
 
-		// Add border-radius if specified
+	if c.applyWrapperGap {
+		sectionDiv.AddStyle(constants.CSSMarginTop, c.wrapperGap)
+	}
+
+	// Add border-radius if specified
 	if borderRadius != "" {
 		sectionDiv.AddStyle(constants.CSSBorderRadius, borderRadius).
 			AddStyle("overflow", "hidden")
@@ -834,6 +846,8 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 
 	c.wrapperMSOBackgroundColor = ""
 	c.wrapperMSOAlign = ""
+	c.wrapperGap = ""
+	c.applyWrapperGap = false
 
 	// Close MSO table structure
 	if hasBackgroundImage && !isFullWidth {

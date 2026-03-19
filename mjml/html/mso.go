@@ -672,8 +672,8 @@ func RenderMSOWrapperTableClose(w io.StringWriter) error {
 // RenderMSOSectionTransition renders MSO conditional comment that bridges between sections in a wrapper.
 // This generates the pattern: <!--[if mso | IE]></td></tr><tr><td width="600px"><![endif]-->
 // widthPx should typically be the body width (600 by default).
-func RenderMSOSectionTransition(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool, forceWrapperTable bool) error {
-	return RenderMSOSectionTransitionWithContent(w, outerWidthPx, innerWidthPx, align, bgColor, closeWrapper, forceWrapperTable, nil)
+func RenderMSOSectionTransition(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool, forceWrapperTable bool, paddingTop string) error {
+	return RenderMSOSectionTransitionWithContent(w, outerWidthPx, innerWidthPx, align, bgColor, closeWrapper, forceWrapperTable, paddingTop, nil)
 }
 
 // RenderMSOSectionTransitionWithContent renders an MSO section transition that can inject
@@ -681,9 +681,9 @@ func RenderMSOSectionTransition(w io.StringWriter, outerWidthPx int, innerWidthP
 //
 // It produces the sequence: <!--[if mso | IE]></td></tr>{content}<tr><td width="XXXpx"><![endif]-->
 // where {content} is rendered via the provided callback while the conditional comment is still open.
-func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool, forceWrapperTable bool, renderContent func(io.StringWriter) error) error {
+func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool, forceWrapperTable bool, paddingTop string, renderContent func(io.StringWriter) error) error {
 	if renderContent == nil {
-		return renderMSOSectionTransitionNoContent(w, outerWidthPx, innerWidthPx, align, bgColor, closeWrapper, forceWrapperTable)
+		return renderMSOSectionTransitionNoContent(w, outerWidthPx, innerWidthPx, align, bgColor, closeWrapper, forceWrapperTable, paddingTop)
 	}
 
 	if closeWrapper || forceWrapperTable {
@@ -695,7 +695,7 @@ func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, 
 			return err
 		}
 
-		return renderMSOSectionTransitionReopen(w, outerWidthPx, innerWidthPx, align, bgColor)
+		return renderMSOSectionTransitionReopen(w, outerWidthPx, innerWidthPx, align, bgColor, paddingTop)
 	}
 
 	if _, err := w.WriteString("<!--[if mso | IE]></td></tr><![endif]-->"); err != nil {
@@ -729,7 +729,7 @@ func RenderMSOSectionTransitionWithContent(w io.StringWriter, outerWidthPx int, 
 	return nil
 }
 
-func renderMSOSectionTransitionNoContent(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool, forceWrapperTable bool) error {
+func renderMSOSectionTransitionNoContent(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, closeWrapper bool, forceWrapperTable bool, paddingTop string) error {
 	if innerWidthPx <= 0 {
 		innerWidthPx = outerWidthPx
 	}
@@ -784,8 +784,20 @@ func renderMSOSectionTransitionNoContent(w io.StringWriter, outerWidthPx int, in
 	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
-		return err
+	if paddingTop != "" {
+		if _, err := w.WriteString("px;" + constants.CSSPaddingTop + ":"); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(paddingTop); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(";\" " + constants.AttrWidth + "=\""); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
+			return err
+		}
 	}
 	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
 		return err
@@ -811,7 +823,7 @@ func renderMSOSectionTransitionNoContent(w io.StringWriter, outerWidthPx int, in
 	return nil
 }
 
-func renderMSOSectionTransitionReopen(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string) error {
+func renderMSOSectionTransitionReopen(w io.StringWriter, outerWidthPx int, innerWidthPx int, align string, bgColor string, paddingTop string) error {
 	if innerWidthPx <= 0 {
 		innerWidthPx = outerWidthPx
 	}
@@ -838,8 +850,20 @@ func renderMSOSectionTransitionReopen(w io.StringWriter, outerWidthPx int, inner
 	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
-		return err
+	if paddingTop != "" {
+		if _, err := w.WriteString("px;" + constants.CSSPaddingTop + ":"); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(paddingTop); err != nil {
+			return err
+		}
+		if _, err := w.WriteString(";\" " + constants.AttrWidth + "=\""); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.WriteString("px;\" " + constants.AttrWidth + "=\""); err != nil {
+			return err
+		}
 	}
 	if _, err := w.WriteString(strconv.Itoa(innerWidthPx)); err != nil {
 		return err
