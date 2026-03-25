@@ -102,7 +102,9 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 	case "mj-raw":
 		return components.NewMJRawComponent(node, opts), nil
 	default:
-		debug.DebugLogError("component", "create-error", "Unknown component type", fmt.Errorf("unknown component: %s", tagName))
+		if debug.Enabled() {
+			debug.DebugLogError("component", "create-error", "Unknown component type", fmt.Errorf("unknown component: %s", tagName))
+		}
 		return nil, fmt.Errorf("unknown component: %s", tagName)
 	}
 }

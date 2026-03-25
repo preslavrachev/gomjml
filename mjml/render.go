@@ -210,13 +210,19 @@ func hashTemplate(s string) uint64 {
 // parseAST handles MJML parsing with optional caching.
 func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 	if !useCache {
-		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+		if debug.Enabled() {
+			debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+		}
 		node, err := ParseMJML(mjmlContent)
 		if err != nil {
-			debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+			if debug.Enabled() {
+				debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+			}
 			return nil, err
 		}
-		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+		if debug.Enabled() {
+			debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+		}
 		return node, nil
 	}
 
@@ -225,20 +231,28 @@ func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
 	if cached, found := astCache.Load(hash); found {
 		entry := cached.(*cachedAST)
 		if time.Now().Before(entry.expires) {
-			debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
+			if debug.Enabled() {
+				debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
+			}
 			return entry.node, nil
 		}
 		astCache.Delete(hash)
 	}
 
 	node, err := singleflightDo(hash, func() (*MJMLNode, error) {
-		debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+		if debug.Enabled() {
+			debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
+		}
 		node, err := ParseMJML(mjmlContent)
 		if err != nil {
-			debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+			if debug.Enabled() {
+				debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
+			}
 			return nil, err
 		}
-		debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+		if debug.Enabled() {
+			debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
+		}
 
 		// Read TTL with proper synchronization for cache storage
 		cacheConfigMutex.RLock()
@@ -330,10 +344,13 @@ type RenderResult struct {
 // RenderWithAST provides the internal MJML to HTML conversion function that returns both HTML and AST
 func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, error) {
 	startTime := time.Now()
-	debug.DebugLogWithData("mjml", "render-start", "Starting MJML rendering", map[string]interface{}{
-		"content_length": len(mjmlContent),
-		"has_debug":      len(opts) > 0,
-	})
+	debugEnabled := debug.Enabled()
+	if debugEnabled {
+		debug.DebugLogWithData("mjml", "render-start", "Starting MJML rendering", map[string]interface{}{
+			"content_length": len(mjmlContent),
+			"has_debug":      len(opts) > 0,
+		})
+	}
 
 	// Apply render options
 	renderOpts := &RenderOpts{
@@ -375,13 +392,19 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	globals.SetGlobalAttributes(globalAttrs)
 
 	// Create component tree
-	debug.DebugLog("mjml", "component-tree-start", "Creating component tree from AST")
+	if debugEnabled {
+		debug.DebugLog("mjml", "component-tree-start", "Creating component tree from AST")
+	}
 	component, err := CreateComponent(ast, renderOpts)
 	if err != nil {
-		debug.DebugLogError("mjml", "component-tree-error", "Failed to create component tree", err)
+		if debugEnabled {
+			debug.DebugLogError("mjml", "component-tree-error", "Failed to create component tree", err)
+		}
 		return nil, err
 	}
-	debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
+	if debugEnabled {
+		debug.DebugLog("mjml", "component-tree-complete", "Component tree created successfully")
+	}
 
 	if root, ok := component.(*MJMLComponent); ok && root.Body == nil {
 		// Align with upstream MJML behaviour for malformed documents that lack a body section.
@@ -395,16 +418,20 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 	// Render to HTML with optimized pre-allocation based on template complexity
 	bufferSize := calculateOptimalBufferSize(mjmlContent)
-	debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
-		"buffer_size": bufferSize,
-	})
+	if debugEnabled {
+		debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
+			"buffer_size": bufferSize,
+		})
+	}
 	var html strings.Builder
 	html.Grow(bufferSize) // Pre-allocate with complexity-aware sizing
 
 	renderStart := time.Now()
 	err = component.Render(&html)
 	if err != nil {
-		debug.DebugLogError("mjml", "render-html-error", "Failed to render HTML", err)
+		if debugEnabled {
+			debug.DebugLogError("mjml", "render-html-error", "Failed to render HTML", err)
+		}
 		return nil, err
 	}
 	renderDuration := time.Since(renderStart).Milliseconds()
@@ -412,12 +439,14 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	htmlOutput := html.String()
 	totalDuration := time.Since(startTime).Milliseconds()
 
-	debug.DebugLogWithData("mjml", "render-complete", "MJML rendering completed", map[string]interface{}{
-		"output_length":    len(htmlOutput),
-		"render_time_ms":   renderDuration,
-		"total_time_ms":    totalDuration,
-		"expansion_factor": float64(len(htmlOutput)) / float64(len(mjmlContent)),
-	})
+	if debugEnabled {
+		debug.DebugLogWithData("mjml", "render-complete", "MJML rendering completed", map[string]interface{}{
+			"output_length":    len(htmlOutput),
+			"render_time_ms":   renderDuration,
+			"total_time_ms":    totalDuration,
+			"expansion_factor": float64(len(htmlOutput)) / float64(len(mjmlContent)),
+		})
+	}
 
 	if validationErr != nil {
 		return &RenderResult{
@@ -1155,23 +1184,34 @@ func (c *MJMLComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJMLComponent
 func (c *MJMLComponent) Render(w io.StringWriter) error {
-	debug.DebugLog("mjml-root", "render-start", "Starting root MJML component rendering")
+	debugEnabled := debug.Enabled()
+	if debugEnabled {
+		debug.DebugLog("mjml-root", "render-start", "Starting root MJML component rendering")
+	}
 
 	// First, prepare the body to establish sibling relationships without full rendering
-	debug.DebugLog("mjml-root", "prepare-siblings", "Preparing body sibling relationships")
+	if debugEnabled {
+		debug.DebugLog("mjml-root", "prepare-siblings", "Preparing body sibling relationships")
+	}
 	if c.Body != nil {
 		c.prepareBodySiblings(c.Body)
 	}
 
 	// Now collect column classes after sibling relationships are established
-	debug.DebugLog("mjml-root", "collect-column-classes", "Collecting column classes for responsive CSS")
+	if debugEnabled {
+		debug.DebugLog("mjml-root", "collect-column-classes", "Collecting column classes for responsive CSS")
+	}
 	c.collectColumnClasses()
-	debug.DebugLogWithData("mjml-root", "column-classes-collected", "Column classes collected", map[string]interface{}{
-		"class_count": len(c.columnClasses),
-	})
+	if debugEnabled {
+		debug.DebugLogWithData("mjml-root", "column-classes-collected", "Column classes collected", map[string]interface{}{
+			"class_count": len(c.columnClasses),
+		})
+	}
 
 	// Collect carousel CSS from all carousel components
-	debug.DebugLog("mjml-root", "collect-carousel-css", "Collecting carousel CSS")
+	if debugEnabled {
+		debug.DebugLog("mjml-root", "collect-carousel-css", "Collecting carousel CSS")
+	}
 	c.collectCarouselCSS()
 
 	// Extract head metadata (title, custom fonts) before rendering body so accessibility
@@ -1179,18 +1219,24 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	title, customFonts := c.extractHeadMetadata()
 
 	// Generate body content once for both font detection and final output
-	debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
+	if debugEnabled {
+		debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
+	}
 	var bodyBuffer strings.Builder
 	if c.Body != nil {
 		if err := c.Body.Render(&bodyBuffer); err != nil {
-			debug.DebugLogError("mjml-root", "render-body-error", "Failed to render body", err)
+			if debugEnabled {
+				debug.DebugLogError("mjml-root", "render-body-error", "Failed to render body", err)
+			}
 			return err
 		}
 	}
 	bodyContent := bodyBuffer.String()
-	debug.DebugLogWithData("mjml-root", "render-complete", "Body rendering completed", map[string]interface{}{
-		"body_length": len(bodyContent),
-	})
+	if debugEnabled {
+		debug.DebugLogWithData("mjml-root", "render-complete", "Body rendering completed", map[string]interface{}{
+			"body_length": len(bodyContent),
+		})
+	}
 
 	// DOCTYPE and HTML opening - include attributes from MJML root element
 	var langValue string
@@ -1265,16 +1311,18 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// Get fonts tracked during component rendering
 	trackedFonts := c.RenderOpts.FontTracker.GetFonts()
 	detectedFonts := fonts.ConvertFontFamiliesToURLs(trackedFonts)
-	debug.DebugLogWithData(
-		"font-detection",
-		"component-tracking",
-		"Fonts tracked from components",
-		map[string]interface{}{
-			"tracked_count": len(trackedFonts),
-			"url_count":     len(detectedFonts),
-			"fonts":         strings.Join(trackedFonts, ","),
-		},
-	)
+	if debugEnabled {
+		debug.DebugLogWithData(
+			"font-detection",
+			"component-tracking",
+			"Fonts tracked from components",
+			map[string]interface{}{
+				"tracked_count": len(trackedFonts),
+				"url_count":     len(detectedFonts),
+				"fonts":         strings.Join(trackedFonts, ","),
+			},
+		)
+	}
 
 	for _, detectedFont := range detectedFonts {
 		// Only add if not already in custom fonts from mj-font
@@ -1302,19 +1350,23 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
 	// Pass trackedFonts count to check if ANY fonts (including system fonts) were used
 	if c.shouldImportDefaultFonts(detectedFonts, len(trackedFonts), hasText, hasSocial, hasButtons, hasOnlyDefaultFonts) {
-		debug.DebugLogWithData(
-			"font-detection",
-			"check-defaults",
-			"No content fonts detected, checking defaults",
-			map[string]interface{}{
-				"has_social": hasSocial,
-			},
-		)
+		if debugEnabled {
+			debug.DebugLogWithData(
+				"font-detection",
+				"check-defaults",
+				"No content fonts detected, checking defaults",
+				map[string]interface{}{
+					"has_social": hasSocial,
+				},
+			)
+		}
 		defaultFonts := fonts.DetectDefaultFonts(hasText, hasSocial, hasButtons)
-		debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]interface{}{
-			"count": len(defaultFonts),
-			"fonts": strings.Join(defaultFonts, ","),
-		})
+		if debugEnabled {
+			debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]interface{}{
+				"count": len(defaultFonts),
+				"fonts": strings.Join(defaultFonts, ","),
+			})
+		}
 		for _, defaultFont := range defaultFonts {
 			// Only add if not already in existing fonts
 			alreadyExists := false
@@ -1329,17 +1381,21 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 			}
 		}
 	} else {
-		debug.DebugLogWithData("font-detection", "skip-defaults", "Skipping default fonts", map[string]interface{}{
-			"detected_count": len(detectedFonts),
-			"has_social":     hasSocial,
-		})
+		if debugEnabled {
+			debug.DebugLogWithData("font-detection", "skip-defaults", "Skipping default fonts", map[string]interface{}{
+				"detected_count": len(detectedFonts),
+				"has_social":     hasSocial,
+			})
+		}
 	}
 
 	// Generate font import HTML
-	debug.DebugLogWithData("font-detection", "final-list", "Final fonts to import", map[string]interface{}{
-		"total_count": len(allFontsToImport),
-		"fonts":       strings.Join(allFontsToImport, ","),
-	})
+	if debugEnabled {
+		debug.DebugLogWithData("font-detection", "final-list", "Final fonts to import", map[string]interface{}{
+			"total_count": len(allFontsToImport),
+			"fonts":       strings.Join(allFontsToImport, ","),
+		})
+	}
 	if len(allFontsToImport) > 0 {
 		fontImportsHTML := fonts.BuildFontsTags(allFontsToImport)
 		if _, err := w.WriteString(fontImportsHTML); err != nil {

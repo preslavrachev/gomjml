@@ -476,16 +476,18 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 		if _, inheritable := socialElementInheritableAttributes[name]; inheritable {
 			// First check parent's explicit attribute
 			if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
-				debug.DebugLogWithData(
-					"social-attr",
-					"parent-explicit",
-					"Using parent explicit attribute",
-					map[string]interface{}{
-						"attr":    name,
-						"value":   parentValue,
-						"element": c.Node.GetAttribute("name"),
-					},
-				)
+				if debug.Enabled() {
+					debug.DebugLogWithData(
+						"social-attr",
+						"parent-explicit",
+						"Using parent explicit attribute",
+						map[string]interface{}{
+							"attr":    name,
+							"value":   parentValue,
+							"element": c.Node.GetAttribute("name"),
+						},
+					)
+				}
 				if name == constants.MJMLFontFamily {
 					c.TrackFontFamily(parentValue)
 				}
@@ -493,16 +495,18 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 			}
 			// Then check parent's resolved attribute (includes global attributes)
 			if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
-				debug.DebugLogWithData(
-					"social-attr",
-					"parent-resolved",
-					"Using parent resolved attribute",
-					map[string]interface{}{
-						"attr":    name,
-						"value":   parentResolved,
-						"element": c.Node.GetAttribute("name"),
-					},
-				)
+				if debug.Enabled() {
+					debug.DebugLogWithData(
+						"social-attr",
+						"parent-resolved",
+						"Using parent resolved attribute",
+						map[string]interface{}{
+							"attr":    name,
+							"value":   parentResolved,
+							"element": c.Node.GetAttribute("name"),
+						},
+					)
+				}
 				if name == constants.MJMLFontFamily {
 					c.TrackFontFamily(parentResolved)
 				}
@@ -862,18 +866,20 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	// Render text content if present - INSIDE the same <tr>
 	// Use GetMixedContent to preserve HTML tags like <b>, <i>, etc. within text
 	textContent := c.Node.GetMixedContent()
-	debug.DebugLogWithData(
-		"social-element",
-		"content-selection",
-		"Selected text content source",
-		map[string]interface{}{
-			"element_name":   c.Node.GetAttribute("name"),
-			"plain_text":     c.Node.Text,
-			"mixed_content":  textContent,
-			"has_children":   len(c.Node.Children) > 0,
-			"content_length": len(textContent),
-		},
-	)
+	if debug.Enabled() {
+		debug.DebugLogWithData(
+			"social-element",
+			"content-selection",
+			"Selected text content source",
+			map[string]interface{}{
+				"element_name":   c.Node.GetAttribute("name"),
+				"plain_text":     c.Node.Text,
+				"mixed_content":  textContent,
+				"has_children":   len(c.Node.Children) > 0,
+				"content_length": len(textContent),
+			},
+		)
+	}
 	if textContent != "" {
 		// Text cell with padding and styling
 		textTd := html.NewHTMLTag("td").
