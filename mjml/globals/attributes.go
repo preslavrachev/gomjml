@@ -1,6 +1,8 @@
 package globals
 
 import (
+	"sync/atomic"
+
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -116,34 +118,48 @@ func (ga *GlobalAttributes) GetClassAttributes(className string) map[string]stri
 	return nil
 }
 
-// Global instance (will be set during rendering)
-var instance *GlobalAttributes
+// Global instance (will be set during rendering). Stored via
+// atomic.Pointer so concurrent mjml.Render calls — each of which does
+// SetGlobalAttributes at the start of its pipeline and reads the value
+// from downstream render goroutines — don't race on the raw package
+// variable. NOTE: the final mitigation is to thread *GlobalAttributes
+// through the render context instead of using a package-level
+// singleton; this keeps the public API stable while making concurrent
+// Render calls data-race free.
+var instance atomic.Pointer[GlobalAttributes]
 
-// SetGlobalAttributes sets the global attributes instance
+// SetGlobalAttributes sets the global attributes instance.
 func SetGlobalAttributes(ga *GlobalAttributes) {
-	instance = ga
+	instance.Store(ga)
+}
+
+func loadInstance() *GlobalAttributes {
+	return instance.Load()
 }
 
 // GetGlobalAttribute is a package-level function to access global attributes
 func GetGlobalAttribute(componentName, attrName string) string {
-	if instance == nil {
+	ga := loadInstance()
+	if ga == nil {
 		return ""
 	}
-	return instance.GetGlobalAttribute(componentName, attrName)
+	return ga.GetGlobalAttribute(componentName, attrName)
 }
 
 // GetClassAttribute is a package-level function to access mj-class definitions
 func GetClassAttribute(className, attrName string) string {
-	if instance == nil {
+	ga := loadInstance()
+	if ga == nil {
 		return ""
 	}
-	return instance.GetClassAttribute(className, attrName)
+	return ga.GetClassAttribute(className, attrName)
 }
 
 // GetClassAttributes is a package-level function to access full mj-class attribute maps
 func GetClassAttributes(className string) map[string]string {
-	if instance == nil {
+	ga := loadInstance()
+	if ga == nil {
 		return nil
 	}
-	return instance.GetClassAttributes(className)
+	return ga.GetClassAttributes(className)
 }
