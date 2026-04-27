@@ -1,7 +1,11 @@
 // Package options contains render options for MJML components
 package options
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/preslavrachev/gomjml/mjml/globals"
+)
 
 // FontTracker tracks font families used by components during rendering
 type FontTracker struct {
@@ -56,6 +60,7 @@ type RenderOpts struct {
 	RemainingBodySections    int                      // Remaining Outlook-sensitive blocks (mj-section/mj-wrapper) after the current one
 	RequireEmptyStyleTag     bool                     // Whether the head output should include an empty style tag for Outlook parity
 	InvalidAttributeReporter func(tagName, attrName string, line int)
+	GlobalAttributes         *globals.GlobalAttributes // Per-render global attributes (mj-all, mj-class, component defaults)
 }
 
 // InlineStyle represents a CSS declaration parsed from an inline mj-style rule.

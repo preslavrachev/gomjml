@@ -388,8 +388,8 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 		globalAttrs.ProcessAttributesFromHead(headNode)
 	}
 
-	// Set the global attributes instance
-	globals.SetGlobalAttributes(globalAttrs)
+	// Store global attributes on the render options (per-render, no global state)
+	renderOpts.GlobalAttributes = globalAttrs
 
 	// Create component tree
 	if debugEnabled {
@@ -672,13 +672,18 @@ func (c *MJMLComponent) collectCarouselCSSFromComponent(comp Component) {
 // hasCustomGlobalFonts checks if global attributes specify custom fonts
 func (c *MJMLComponent) hasCustomGlobalFonts() bool {
 	// Check if global attributes have specified font-family
-	globalFontFamily := globals.GetGlobalAttribute("mj-all", "font-family")
+	ga := c.RenderOpts.GlobalAttributes
+	globalFontFamily := ""
+	textFontFamily := ""
+	if ga != nil {
+		globalFontFamily = ga.GetGlobalAttribute("mj-all", "font-family")
+		textFontFamily = ga.GetGlobalAttribute("mj-text", "font-family")
+	}
 	if globalFontFamily != "" && globalFontFamily != fonts.DefaultFontStack {
 		return true
 	}
 
 	// Check if any text components have global font-family defined
-	textFontFamily := globals.GetGlobalAttribute("mj-text", "font-family")
 	if textFontFamily != "" && textFontFamily != fonts.DefaultFontStack {
 		return true
 	}

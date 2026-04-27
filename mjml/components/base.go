@@ -8,7 +8,6 @@ import (
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/debug"
-	"github.com/preslavrachev/gomjml/mjml/globals"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
@@ -83,7 +82,10 @@ func NewBaseComponent(node *parser.MJMLNode, opts *options.RenderOpts) *BaseComp
 			classAttrs = make(map[string]string)
 			cssClassParts := make([]string, 0, len(classNames)) // pre-allocate with capacity
 			for _, className := range classNames {
-				if ca := globals.GetClassAttributes(className); ca != nil {
+				if opts.GlobalAttributes == nil {
+					continue
+				}
+				if ca := opts.GlobalAttributes.GetClassAttributes(className); ca != nil {
 					for k, v := range ca {
 						if k == "css-class" {
 							cssClassParts = append(cssClassParts, v)
@@ -179,8 +181,10 @@ func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
 	}
 
 	// 3. Global attributes
-	if globalValue := globals.GetGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-		return normalizeAttributeValue(name, globalValue)
+	if bc.RenderOpts != nil && bc.RenderOpts.GlobalAttributes != nil {
+		if globalValue := bc.RenderOpts.GlobalAttributes.GetGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
+			return normalizeAttributeValue(name, globalValue)
+		}
 	}
 
 	// 4. Component defaults
@@ -261,8 +265,10 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 
 // getGlobalAttribute gets a global attribute value from the global store
 func (bc *BaseComponent) getGlobalAttribute(componentName, attrName string) string {
-	// Access global attributes via globals package
-	return globals.GetGlobalAttribute(componentName, attrName)
+	if bc.RenderOpts == nil || bc.RenderOpts.GlobalAttributes == nil {
+		return ""
+	}
+	return bc.RenderOpts.GlobalAttributes.GetGlobalAttribute(componentName, attrName)
 }
 
 // getClassAttribute retrieves an attribute value from mj-class definitions if present

@@ -115,35 +115,3 @@ func (ga *GlobalAttributes) GetClassAttributes(className string) map[string]stri
 	}
 	return nil
 }
-
-// Global instance (will be set during rendering)
-var instance *GlobalAttributes
-
-// SetGlobalAttributes sets the global attributes instance
-func SetGlobalAttributes(ga *GlobalAttributes) {
-	instance = ga
-}
-
-// GetGlobalAttribute is a package-level function to access global attributes
-func GetGlobalAttribute(componentName, attrName string) string {
-	if instance == nil {
-		return ""
-	}
-	return instance.GetGlobalAttribute(componentName, attrName)
-}
-
-// GetClassAttribute is a package-level function to access mj-class definitions
-func GetClassAttribute(className, attrName string) string {
-	if instance == nil {
-		return ""
-	}
-	return instance.GetClassAttribute(className, attrName)
-}
-
-// GetClassAttributes is a package-level function to access full mj-class attribute maps
-func GetClassAttributes(className string) map[string]string {
-	if instance == nil {
-		return nil
-	}
-	return instance.GetClassAttributes(className)
-}
