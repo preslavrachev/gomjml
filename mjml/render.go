@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -297,7 +298,7 @@ func startASTCacheCleanup() {
 			select {
 			case <-ticker.C:
 				now := time.Now()
-				astCache.Range(func(key, value interface{}) bool {
+				astCache.Range(func(key, value any) bool {
 					entry := value.(*cachedAST)
 					if now.After(entry.expires) {
 						astCache.Delete(key)
@@ -346,7 +347,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	startTime := time.Now()
 	debugEnabled := debug.Enabled()
 	if debugEnabled {
-		debug.DebugLogWithData("mjml", "render-start", "Starting MJML rendering", map[string]interface{}{
+		debug.DebugLogWithData("mjml", "render-start", "Starting MJML rendering", map[string]any{
 			"content_length": len(mjmlContent),
 			"has_debug":      len(opts) > 0,
 		})
@@ -419,7 +420,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	// Render to HTML with optimized pre-allocation based on template complexity
 	bufferSize := calculateOptimalBufferSize(mjmlContent)
 	if debugEnabled {
-		debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]interface{}{
+		debug.DebugLogWithData("mjml", "render-html-start", "Starting HTML rendering", map[string]any{
 			"buffer_size": bufferSize,
 		})
 	}
@@ -440,7 +441,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	totalDuration := time.Since(startTime).Milliseconds()
 
 	if debugEnabled {
-		debug.DebugLogWithData("mjml", "render-complete", "MJML rendering completed", map[string]interface{}{
+		debug.DebugLogWithData("mjml", "render-complete", "MJML rendering completed", map[string]any{
 			"output_length":    len(htmlOutput),
 			"render_time_ms":   renderDuration,
 			"total_time_ms":    totalDuration,
@@ -1208,7 +1209,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	}
 	c.collectColumnClasses()
 	if debugEnabled {
-		debug.DebugLogWithData("mjml-root", "column-classes-collected", "Column classes collected", map[string]interface{}{
+		debug.DebugLogWithData("mjml-root", "column-classes-collected", "Column classes collected", map[string]any{
 			"class_count": len(c.columnClasses),
 		})
 	}
@@ -1238,7 +1239,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	}
 	bodyContent := bodyBuffer.String()
 	if debugEnabled {
-		debug.DebugLogWithData("mjml-root", "render-complete", "Body rendering completed", map[string]interface{}{
+		debug.DebugLogWithData("mjml-root", "render-complete", "Body rendering completed", map[string]any{
 			"body_length": len(bodyContent),
 		})
 	}
@@ -1321,7 +1322,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 			"font-detection",
 			"component-tracking",
 			"Fonts tracked from components",
-			map[string]interface{}{
+			map[string]any{
 				"tracked_count": len(trackedFonts),
 				"url_count":     len(detectedFonts),
 				"fonts":         strings.Join(trackedFonts, ","),
@@ -1331,13 +1332,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	for _, detectedFont := range detectedFonts {
 		// Only add if not already in custom fonts from mj-font
-		alreadyExists := false
-		for _, customFont := range customFonts {
-			if customFont == detectedFont {
-				alreadyExists = true
-				break
-			}
-		}
+		alreadyExists := slices.Contains(customFonts, detectedFont)
 		if !alreadyExists {
 			allFontsToImport = append(allFontsToImport, detectedFont)
 		}
@@ -1360,34 +1355,28 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 				"font-detection",
 				"check-defaults",
 				"No content fonts detected, checking defaults",
-				map[string]interface{}{
+				map[string]any{
 					"has_social": hasSocial,
 				},
 			)
 		}
 		defaultFonts := fonts.DetectDefaultFonts(hasText, hasSocial, hasButtons)
 		if debugEnabled {
-			debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]interface{}{
+			debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]any{
 				"count": len(defaultFonts),
 				"fonts": strings.Join(defaultFonts, ","),
 			})
 		}
 		for _, defaultFont := range defaultFonts {
 			// Only add if not already in existing fonts
-			alreadyExists := false
-			for _, existingFont := range allFontsToImport {
-				if existingFont == defaultFont {
-					alreadyExists = true
-					break
-				}
-			}
+			alreadyExists := slices.Contains(allFontsToImport, defaultFont)
 			if !alreadyExists {
 				allFontsToImport = append(allFontsToImport, defaultFont)
 			}
 		}
 	} else {
 		if debugEnabled {
-			debug.DebugLogWithData("font-detection", "skip-defaults", "Skipping default fonts", map[string]interface{}{
+			debug.DebugLogWithData("font-detection", "skip-defaults", "Skipping default fonts", map[string]any{
 				"detected_count": len(detectedFonts),
 				"has_social":     hasSocial,
 			})
@@ -1396,7 +1385,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	// Generate font import HTML
 	if debugEnabled {
-		debug.DebugLogWithData("font-detection", "final-list", "Final fonts to import", map[string]interface{}{
+		debug.DebugLogWithData("font-detection", "final-list", "Final fonts to import", map[string]any{
 			"total_count": len(allFontsToImport),
 			"fonts":       strings.Join(allFontsToImport, ","),
 		})

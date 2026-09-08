@@ -3,6 +3,7 @@ package components
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
@@ -55,9 +56,7 @@ func AllowedCSSAttributes(tagName string) map[string]string {
 	}
 
 	copyAttrs := make(map[string]string, len(attrs))
-	for k, v := range attrs {
-		copyAttrs[k] = v
-	}
+	maps.Copy(copyAttrs, attrs)
 	return copyAttrs
 }
 

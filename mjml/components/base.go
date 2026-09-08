@@ -201,7 +201,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 	// 1. Check element attributes first
 	if value, exists := bc.Attrs[name]; exists && value != "" {
 		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]interface{}{
+			debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]any{
 				"attr_name":  name,
 				"attr_value": value,
 			})
@@ -216,7 +216,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 	// 2. Check mj-class definitions
 	if classValue := bc.getClassAttribute(name); classValue != "" {
 		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-class", "Using mj-class attribute", map[string]interface{}{
+			debug.DebugLogWithData(comp.GetTagName(), "attr-class", "Using mj-class attribute", map[string]any{
 				"attr_name":  name,
 				"attr_value": classValue,
 				"classes":    bc.Attrs["mj-class"],
@@ -232,7 +232,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 	// 3. Check global attributes if available (we'll get this via external function)
 	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
 		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]interface{}{
+			debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]any{
 				"attr_name":  name,
 				"attr_value": globalValue,
 			})
@@ -248,7 +248,7 @@ func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) st
 	defaultValue := comp.GetDefaultAttribute(name)
 	if defaultValue != "" {
 		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]interface{}{
+			debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]any{
 				"attr_name":  name,
 				"attr_value": defaultValue,
 			})
@@ -625,7 +625,7 @@ func (bc *BaseComponent) ApplyInlineStyles(tag *html.HTMLTag, classAttr string) 
 		return
 	}
 
-	for _, className := range strings.Fields(classAttr) {
+	for className := range strings.FieldsSeq(classAttr) {
 		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
 			for _, decl := range declarations {
 				tag.AddStyle(decl.Property, decl.Value)
@@ -642,7 +642,7 @@ func (bc *BaseComponent) BuildInlineStyleString(classAttr string) string {
 	}
 
 	var builder strings.Builder
-	for _, className := range strings.Fields(classAttr) {
+	for className := range strings.FieldsSeq(classAttr) {
 		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
 			for _, decl := range declarations {
 				builder.WriteString(decl.Property)

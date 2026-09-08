@@ -12,7 +12,7 @@ func genRandomHexString(length int) string {
 	var sb strings.Builder
 	sb.Grow(length)
 
-	for i := 0; i < length; i++ {
+	for range length {
 		sb.WriteByte("0123456789abcdef"[rand.Intn(16)])
 	}
 

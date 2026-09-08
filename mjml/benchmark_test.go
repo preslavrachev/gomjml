@@ -24,7 +24,7 @@ func generateMJMLTemplate(sections int) string {
 `)
 
 	// Generate dynamic sections with columns and content
-	for i := 0; i < sections; i++ {
+	for i := range sections {
 		builder.WriteString(fmt.Sprintf(`    <mj-section background-color="#ffffff" padding="20px">
       <mj-column width="50%%">
         <mj-text font-size="16px" color="#333333" font-family="Roboto, Arial, sans-serif">

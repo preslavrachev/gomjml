@@ -32,7 +32,7 @@ func TestConcurrentRender_GlobalAttributesRace(t *testing.T) {
 	colors := []string{"red", "blue", "green", "purple", "orange", "teal", "navy", "maroon"}
 	const iterations = 20
 
-	for iter := 0; iter < iterations; iter++ {
+	for iter := range iterations {
 		var wg sync.WaitGroup
 		type result struct {
 			color string

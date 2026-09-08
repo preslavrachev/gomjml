@@ -119,14 +119,6 @@ func TestGroupChildrenWidthCalculation(t *testing.T) {
 	}
 }
 
-// Helper function for Go versions that don't have built-in min
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // extractColumnClassesFromAST extracts the CSS class names that will be generated for columns in groups
 func extractColumnClassesFromAST(ast *MJMLNode) []string {
 	var classes []string
@@ -189,8 +181,8 @@ func extractCSSClasses(html string) []string {
 	var classes []string
 
 	// Look for class="..." patterns and extract mj-column-per-* classes
-	lines := strings.Split(html, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(html, "\n")
+	for line := range lines {
 		if strings.Contains(line, "class=") && strings.Contains(line, "mj-column-per-") {
 			// Extract the class attribute value
 			start := strings.Index(line, `class="`)
@@ -200,7 +192,7 @@ func extractCSSClasses(html string) []string {
 				if end != -1 {
 					classAttr := line[start : start+end]
 					// Split by spaces and find mj-column-per-* classes
-					for _, class := range strings.Fields(classAttr) {
+					for class := range strings.FieldsSeq(classAttr) {
 						if strings.HasPrefix(class, "mj-column-per-") {
 							classes = append(classes, class)
 						}

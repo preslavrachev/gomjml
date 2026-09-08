@@ -126,8 +126,8 @@ func computeVMLPosition(posX, posY, _ string, repeat string) (originX, originY, 
 			baseVal = 1
 		default:
 			// percent (e.g. 30%) => 0.3
-			if strings.HasSuffix(v, "%") {
-				p := strings.TrimSuffix(v, "%")
+			if before, ok := strings.CutSuffix(v, "%"); ok {
+				p := before
 				if f, err := strconv.ParseFloat(p, 64); err == nil {
 					baseVal = f / 100.0
 				} else {

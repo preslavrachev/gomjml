@@ -125,12 +125,9 @@ func (ll *lineLookup) Line(offset int64) int {
 		return idx + 1
 	}
 
-	idx := sort.Search(len(ll.lineOffsets), func(i int) bool {
+	idx := max(sort.Search(len(ll.lineOffsets), func(i int) bool {
 		return ll.lineOffsets[i] > int(offset)
-	}) - 1
-	if idx < 0 {
-		idx = 0
-	}
+	})-1, 0)
 	ll.lastIndex = idx
 	ll.lastOffset = offset
 	return idx + 1

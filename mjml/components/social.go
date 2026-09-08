@@ -126,8 +126,8 @@ func getSocialNetworkDefaults(name string) (socialNetworkDefaults, bool) {
 		return defaults, true
 	}
 
-	if idx := strings.Index(name, "-"); idx != -1 {
-		baseName := name[:idx]
+	if before, _, ok := strings.Cut(name, "-"); ok {
+		baseName := before
 		if defaults, exists := baseSocialNetworkDefaults[baseName]; exists {
 			// Copy the struct to avoid mutating the base definition.
 			resolved := defaults
@@ -481,7 +481,7 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 						"social-attr",
 						"parent-explicit",
 						"Using parent explicit attribute",
-						map[string]interface{}{
+						map[string]any{
 							"attr":    name,
 							"value":   parentValue,
 							"element": c.Node.GetAttribute("name"),
@@ -500,7 +500,7 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 						"social-attr",
 						"parent-resolved",
 						"Using parent resolved attribute",
-						map[string]interface{}{
+						map[string]any{
 							"attr":    name,
 							"value":   parentResolved,
 							"element": c.Node.GetAttribute("name"),
@@ -871,7 +871,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 			"social-element",
 			"content-selection",
 			"Selected text content source",
-			map[string]interface{}{
+			map[string]any{
 				"element_name":   c.Node.GetAttribute("name"),
 				"plain_text":     c.Node.Text,
 				"mixed_content":  textContent,

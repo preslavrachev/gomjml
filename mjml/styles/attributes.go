@@ -279,8 +279,8 @@ func ParseSize(value string) (Size, error) {
 	}
 
 	// Check for percentage
-	if strings.HasSuffix(value, "%") {
-		numStr := strings.TrimSuffix(value, "%")
+	if before, ok := strings.CutSuffix(value, "%"); ok {
+		numStr := before
 		val, err := strconv.ParseFloat(numStr, 64)
 		if err != nil {
 			return Size{}, fmt.Errorf("invalid percentage value: %s", value)

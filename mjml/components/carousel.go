@@ -240,7 +240,7 @@ func (c *MJCarouselComponent) buildCarouselCSS(carouselID string, imageCount int
 	css.WriteString("    }\n\n")
 
 	hideSelectors := make([]string, imageCount)
-	for i := 0; i < imageCount; i++ {
+	for i := range imageCount {
 		hideSelectors[i] = fmt.Sprintf(
 			".mj-carousel-%s-radio:checked %s+ .mj-carousel-content .mj-carousel-image",
 			carouselID,
@@ -250,7 +250,7 @@ func (c *MJCarouselComponent) buildCarouselCSS(carouselID string, imageCount int
 	writeSelectorBlock(hideSelectors, ",", "      display: none !important;")
 
 	showSelectors := make([]string, imageCount)
-	for i := 0; i < imageCount; i++ {
+	for i := range imageCount {
 		showSelectors[i] = fmt.Sprintf(
 			".mj-carousel-%s-radio-%d:checked %s+ .mj-carousel-content .mj-carousel-image-%d",
 			carouselID,
@@ -263,7 +263,7 @@ func (c *MJCarouselComponent) buildCarouselCSS(carouselID string, imageCount int
 
 	nextSelectors := make([]string, imageCount)
 	previousSelectors := make([]string, imageCount)
-	for i := 0; i < imageCount; i++ {
+	for i := range imageCount {
 		padding := repeat(imageCount - i - 1)
 
 		nextSelectors[i] = fmt.Sprintf(
@@ -294,7 +294,7 @@ func (c *MJCarouselComponent) buildCarouselCSS(carouselID string, imageCount int
 	css.WriteString("    }\n\n")
 
 	thumbSelectors := make([]string, imageCount)
-	for i := 0; i < imageCount; i++ {
+	for i := range imageCount {
 		thumbSelectors[i] = fmt.Sprintf(
 			".mj-carousel-%s-radio-%d:checked %s+ .mj-carousel-content .mj-carousel-%s-thumbnail-%d",
 			carouselID,
@@ -329,7 +329,7 @@ func (c *MJCarouselComponent) buildCarouselCSS(carouselID string, imageCount int
 	css.WriteString(fmt.Sprintf("    .mj-carousel-thumbnail:hover {\n      border-color: %s !important;\n    }\n\n", tbHoverBorderColor))
 
 	showThumbSelectors := make([]string, imageCount)
-	for i := 0; i < imageCount; i++ {
+	for i := range imageCount {
 		showThumbSelectors[i] = fmt.Sprintf(
 			".mj-carousel-%s-thumbnail-%d:hover %s+ .mj-carousel-main .mj-carousel-image-%d",
 			carouselID,

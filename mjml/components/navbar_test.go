@@ -84,7 +84,7 @@ func TestNavbarIDGeneration(t *testing.T) {
 		opts := &options.RenderOpts{}
 
 		// Exhaust all test IDs
-		for i := 0; i < len(navbarTestIDs); i++ {
+		for range navbarTestIDs {
 			c := NewMJNavbarComponent(node, opts)
 			c.generateCheckboxID()
 		}

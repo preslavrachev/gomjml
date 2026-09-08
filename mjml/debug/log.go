@@ -11,13 +11,13 @@ func Enabled() bool { return false }
 
 // DebugLog logs a debug message with component, phase, and formatted message.
 // In production builds, this function is a no-op and gets inlined/optimized away.
-func DebugLog(component, phase, message string, args ...interface{}) {
+func DebugLog(component, phase, message string, args ...any) {
 	// No-op in production build
 }
 
 // DebugLogWithData logs a debug message with structured data.
 // In production builds, this function is a no-op and gets inlined/optimized away.
-func DebugLogWithData(component, phase, message string, data map[string]interface{}) {
+func DebugLogWithData(component, phase, message string, data map[string]any) {
 	// No-op in production build
 }
 

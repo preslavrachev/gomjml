@@ -49,8 +49,8 @@ func parseStyleProperties(style string) map[string]string {
 	}
 
 	// Split by semicolon and parse each property
-	declarations := strings.Split(style, ";")
-	for _, decl := range declarations {
+	declarations := strings.SplitSeq(style, ";")
+	for decl := range declarations {
 		decl = strings.TrimSpace(decl)
 		if decl == "" {
 			continue
@@ -239,7 +239,7 @@ func CompareStylesPrecise(expected, actual string) StyleComparisonResult {
 	}
 
 	maxLen := max(len(expectedElements), len(actualElements))
-	for i := 0; i < maxLen; i++ {
+	for i := range maxLen {
 		var expected, actual *ElementInfo
 		if i < len(expectedElements) {
 			expected = &expectedElements[i]

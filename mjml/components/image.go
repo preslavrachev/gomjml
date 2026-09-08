@@ -68,14 +68,14 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 
 	// Parse width to remove 'px' suffix for img width attribute
 	imgWidth := width
-	if strings.HasSuffix(width, "px") {
-		imgWidth = strings.TrimSuffix(width, "px")
+	if before, ok := strings.CutSuffix(width, "px"); ok {
+		imgWidth = before
 	}
 
 	// Parse height to remove 'px' suffix for img height attribute
 	imgHeight := height
-	if strings.HasSuffix(height, "px") {
-		imgHeight = strings.TrimSuffix(height, "px")
+	if before, ok := strings.CutSuffix(height, "px"); ok {
+		imgHeight = before
 	}
 
 	// Create TR element

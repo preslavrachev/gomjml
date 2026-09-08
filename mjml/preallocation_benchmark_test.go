@@ -23,8 +23,8 @@ func estimateNestingDepth(mjmlContent string) int {
 	maxDepth := 0
 	currentDepth := 0
 
-	lines := strings.Split(mjmlContent, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(mjmlContent, "\n")
+	for line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "<mj-") && !strings.Contains(trimmed, "/>") && !strings.HasPrefix(trimmed, "</") {
 			currentDepth++

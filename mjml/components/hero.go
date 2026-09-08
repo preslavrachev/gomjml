@@ -327,10 +327,7 @@ func (c *MJHeroComponent) calculateEffectiveHeight(height, padding string) strin
 	}
 
 	// Calculate effective height = original height - top padding - bottom padding
-	effectiveHeightVal := heightVal - topPadding - bottomPadding
-	if effectiveHeightVal < 0 {
-		effectiveHeightVal = 0
-	}
+	effectiveHeightVal := max(heightVal-topPadding-bottomPadding, 0)
 
 	return fmt.Sprintf("%dpx", effectiveHeightVal)
 }

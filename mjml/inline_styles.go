@@ -122,12 +122,12 @@ func parseInlineDeclarations(declarationsPart string) []options.InlineStyle {
 		if trimmed == "" {
 			continue
 		}
-		colon := strings.Index(trimmed, ":")
-		if colon == -1 {
+		before, after, ok := strings.Cut(trimmed, ":")
+		if !ok {
 			continue
 		}
-		property := strings.TrimSpace(trimmed[:colon])
-		value := strings.TrimSpace(trimmed[colon+1:])
+		property := strings.TrimSpace(before)
+		value := strings.TrimSpace(after)
 		if property == "" || value == "" {
 			continue
 		}

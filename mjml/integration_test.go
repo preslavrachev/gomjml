@@ -3,8 +3,10 @@ package mjml
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -584,8 +586,8 @@ func parseStyleProperties(style string) map[string]string {
 	}
 
 	// Split by semicolon and parse each property
-	declarations := strings.Split(style, ";")
-	for _, decl := range declarations {
+	declarations := strings.SplitSeq(style, ";")
+	for decl := range declarations {
 		decl = strings.TrimSpace(decl)
 		if decl == "" {
 			continue
@@ -996,9 +998,7 @@ func compareAllStyleAttributes(expectedDoc, actualDoc *goquery.Document) string 
 		for _, el := range expectedList {
 			if style, exists := el.Attr("style"); exists {
 				tagProps := parseStyleProperties(style)
-				for prop, value := range tagProps {
-					expectedProps[prop] = value
-				}
+				maps.Copy(expectedProps, tagProps)
 			}
 		}
 
@@ -1006,9 +1006,7 @@ func compareAllStyleAttributes(expectedDoc, actualDoc *goquery.Document) string 
 		for _, el := range actualList {
 			if style, exists := el.Attr("style"); exists {
 				tagProps := parseStyleProperties(style)
-				for prop, value := range tagProps {
-					actualProps[prop] = value
-				}
+				maps.Copy(actualProps, tagProps)
 			}
 		}
 
@@ -1146,9 +1144,7 @@ func normalizeCSSContent(css string) string {
 
 	// Convert to slice of runes, sort, and convert back
 	runes := []rune(normalized)
-	sort.Slice(runes, func(i, j int) bool {
-		return runes[i] < runes[j]
-	})
+	slices.Sort(runes)
 
 	return string(runes)
 }

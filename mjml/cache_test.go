@@ -9,7 +9,7 @@ import (
 
 // helper to clear cache and stop cleanup between tests
 func resetASTCache() {
-	astCache.Range(func(key, _ interface{}) bool {
+	astCache.Range(func(key, _ any) bool {
 		astCache.Delete(key)
 		return true
 	})
@@ -42,7 +42,7 @@ func TestCachingDisabledByDefault(t *testing.T) {
 	}
 
 	entries := 0
-	astCache.Range(func(_, _ interface{}) bool { entries++; return true })
+	astCache.Range(func(_, _ any) bool { entries++; return true })
 	if entries != 0 {
 		t.Fatalf("expected cache to remain empty, got %d entries", entries)
 	}
@@ -79,7 +79,7 @@ func TestCachingStoresAndReusesAST(t *testing.T) {
 	}
 
 	entries := 0
-	astCache.Range(func(_, _ interface{}) bool { entries++; return true })
+	astCache.Range(func(_, _ any) bool { entries++; return true })
 	if entries != 1 {
 		t.Fatalf("expected 1 cache entry, got %d", entries)
 	}
@@ -175,7 +175,7 @@ func TestCacheConcurrentParsingSingleParse(t *testing.T) {
 	start := make(chan struct{})
 	n := 5
 	wg.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer wg.Done()
 			<-start
@@ -241,7 +241,7 @@ func TestCacheSeparateTemplates(t *testing.T) {
 	}
 
 	entries := 0
-	astCache.Range(func(_, _ interface{}) bool { entries++; return true })
+	astCache.Range(func(_, _ any) bool { entries++; return true })
 	if entries != 2 {
 		t.Fatalf("expected 2 cache entries, got %d", entries)
 	}
