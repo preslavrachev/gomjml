@@ -209,6 +209,14 @@ func (c *MJAccordionTextComponent) GetTagName() string {
 	return "mj-accordion-text"
 }
 
+// explicitFontFamily returns the font-family attribute only when set directly
+// on the mj-accordion-text element, without falling back to mj-class, global
+// attributes, or component defaults. It performs no tracking so it can be
+// reused by both rendering and a future render-metadata pass.
+func (c *MJAccordionTextComponent) explicitFontFamily() string {
+	return c.Node.GetAttribute(constants.MJMLFontFamily)
+}
+
 func (c *MJAccordionTextComponent) GetDefaultAttribute(name string) string {
 	switch name {
 	case constants.MJMLFontSize:
@@ -248,6 +256,14 @@ func (c *MJAccordionTitleComponent) Render(w io.StringWriter) error {
 
 func (c *MJAccordionTitleComponent) GetTagName() string {
 	return "mj-accordion-title"
+}
+
+// explicitFontFamily returns the font-family attribute only when set directly
+// on the mj-accordion-title element, without falling back to mj-class,
+// global attributes, or component defaults. It performs no tracking so it can
+// be reused by both rendering and a future render-metadata pass.
+func (c *MJAccordionTitleComponent) explicitFontFamily() string {
+	return c.Node.GetAttribute(constants.MJMLFontFamily)
 }
 
 func (c *MJAccordionTitleComponent) GetDefaultAttribute(name string) string {
@@ -391,7 +407,7 @@ func (c *MJAccordionElementComponent) renderTitle(w io.StringWriter, titleCompon
 	fontSize := titleComponent.GetAttributeWithDefault(titleComponent, constants.MJMLFontSize)
 	// Only get font-family if explicitly set on title element
 	fontFamily := ""
-	if value := titleComponent.Node.GetAttribute(constants.MJMLFontFamily); value != "" {
+	if value := titleComponent.explicitFontFamily(); value != "" {
 		fontFamily = value
 		titleComponent.TrackFontFamily(value)
 	}
@@ -570,7 +586,7 @@ func (c *MJAccordionElementComponent) renderContent(w io.StringWriter, textCompo
 	fontSize := textComponent.GetAttributeWithDefault(textComponent, constants.MJMLFontSize)
 	// Only get font-family if explicitly set on text element
 	fontFamily := ""
-	if value := textComponent.Node.GetAttribute(constants.MJMLFontFamily); value != "" {
+	if value := textComponent.explicitFontFamily(); value != "" {
 		fontFamily = value
 		textComponent.TrackFontFamily(value)
 	}
