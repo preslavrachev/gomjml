@@ -2,6 +2,7 @@ package fonts
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -10,13 +11,50 @@ const (
 	DefaultFontStack = "Ubuntu, Helvetica, Arial, sans-serif"
 )
 
-// GoogleFontsMapping maps font family names to their Google Fonts URLs
+// GoogleFontsMapping maps font family names to their Google Fonts URLs. It is
+// the single authoritative source for both names and URLs: callers may add,
+// remove, or override entries and GetGoogleFontURL/ConvertFontFamiliesToURLs
+// will observe the change.
 var GoogleFontsMapping = map[string]string{
 	"Ubuntu":     "https://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700",
 	"Open Sans":  "https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,700",
 	"Roboto":     "https://fonts.googleapis.com/css?family=Roboto:300,400,500,700",
 	"Lato":       "https://fonts.googleapis.com/css?family=Lato:300,400,500,700",
 	"Montserrat": "https://fonts.googleapis.com/css?family=Montserrat:300,400,500,700",
+}
+
+// googleFontCanonicalOrder mirrors MJML 4.15.3's font detection order (Open
+// Sans, Lato, Roboto, Ubuntu), with Montserrat kept after the canonical
+// entries since it is not part of upstream's scanned set. Font lookups use
+// this order, falling back to sorted order for any names added to
+// GoogleFontsMapping beyond these, so import order stays deterministic
+// without depending on Go map iteration.
+var googleFontCanonicalOrder = []string{"Open Sans", "Lato", "Roboto", "Ubuntu", "Montserrat"}
+
+// fontLookupOrder returns the names in GoogleFontsMapping to check, in
+// deterministic order: the canonical MJML order first (skipping any name
+// removed from the map), followed by any additional map entries in sorted
+// order. This keeps GoogleFontsMapping the single source of truth for both
+// which fonts exist and the order they are matched in.
+func fontLookupOrder() []string {
+	order := make([]string, 0, len(GoogleFontsMapping))
+	seen := make(map[string]bool, len(googleFontCanonicalOrder))
+	for _, name := range googleFontCanonicalOrder {
+		if _, ok := GoogleFontsMapping[name]; ok {
+			order = append(order, name)
+			seen[name] = true
+		}
+	}
+
+	var extra []string
+	for name := range GoogleFontsMapping {
+		if !seen[name] {
+			extra = append(extra, name)
+		}
+	}
+	sort.Strings(extra)
+
+	return append(order, extra...)
 }
 
 // DetectDefaultFonts checks if components use default fonts that need importing
@@ -36,36 +74,42 @@ func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonCompone
 	return fontsToImport
 }
 
-// GetGoogleFontURL checks if a font family corresponds to a Google Font and returns its URL
+// GetGoogleFontURL checks if a font family corresponds to a Google Font and returns its URL.
+// When a font family string matches multiple mapping entries (e.g. a stack
+// listing two Google fonts), fontLookupOrder's stable order decides the
+// winner rather than Go's random map iteration order.
 func GetGoogleFontURL(fontFamily string) string {
-	// Clean up the font family string - remove quotes and extra whitespace
-	fontFamily = strings.Trim(fontFamily, `"' `)
-
-	// Check each Google Font mapping
-	for fontName, url := range GoogleFontsMapping {
-		// Case-insensitive check and see if the font family contains this font name
-		if strings.Contains(strings.ToLower(fontFamily), strings.ToLower(fontName)) {
-			return url
+	cleaned := strings.ToLower(strings.Trim(fontFamily, `"' `))
+	for _, name := range fontLookupOrder() {
+		if strings.Contains(cleaned, strings.ToLower(name)) {
+			return GoogleFontsMapping[name]
 		}
 	}
-
 	return ""
 }
 
-// ConvertFontFamiliesToURLs converts a slice of font families to Google Font URLs
+// ConvertFontFamiliesToURLs converts a set of font families to their Google
+// Font URLs, deduplicated and ordered by fontLookupOrder rather than by the
+// order families were encountered. Deduplication is by URL, not by name, so
+// two names mapped to the same URL (e.g. a mutable-mapping alias) still emit
+// only one entry; empty URLs are skipped.
 func ConvertFontFamiliesToURLs(fontFamilies []string) []string {
 	var urls []string
-	seen := make(map[string]bool)
-
-	for _, fontFamily := range fontFamilies {
-		if url := GetGoogleFontURL(fontFamily); url != "" {
-			if !seen[url] {
+	seenURLs := make(map[string]bool)
+	for _, name := range fontLookupOrder() {
+		url := GoogleFontsMapping[name]
+		if url == "" || seenURLs[url] {
+			continue
+		}
+		for _, fontFamily := range fontFamilies {
+			cleaned := strings.ToLower(strings.Trim(fontFamily, `"' `))
+			if strings.Contains(cleaned, strings.ToLower(name)) {
 				urls = append(urls, url)
-				seen[url] = true
+				seenURLs[url] = true
+				break
 			}
 		}
 	}
-
 	return urls
 }
 

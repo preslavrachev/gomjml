@@ -228,9 +228,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 	if len(c.Children) == 1 {
 		if col, ok := c.Children[0].(*MJColumnComponent); ok && col.requiresSingleColumnSplit() {
 			singleColumnSplit = true
-			if col.RenderOpts != nil {
-				col.RenderOpts.RequireEmptyStyleTag = true
-			}
 		}
 	}
 
@@ -706,9 +703,6 @@ func (c *MJSectionComponent) Render(w io.StringWriter) error {
 				}
 
 				if columnComp.requiresSingleColumnSplit() {
-					if columnComp.RenderOpts != nil {
-						columnComp.RenderOpts.RequireEmptyStyleTag = true
-					}
 					if _, err := w.WriteString(`<!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation"><tr><![endif]-->`); err != nil {
 						return err
 					}
