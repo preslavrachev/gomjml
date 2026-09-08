@@ -256,6 +256,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		}},
 		// // MJ-TABLE tests
 		{name: "mj-table"},
+		{name: "mj-table-global-attributes"},
 		{name: "mj-table-other"},
 		{name: "mj-table-table"},
 		{name: "mj-table-text"},

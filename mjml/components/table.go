@@ -26,6 +26,7 @@ func (c *MJTableComponent) Render(w io.StringWriter) error {
 	// Get attributes
 	align := c.GetAttributeWithDefault(c, constants.MJMLAlign)
 	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
+	containerBg := c.GetAttributeFast(c, constants.MJMLContainerBackgroundColor)
 
 	// Create TR element
 	if _, err := w.WriteString("<tr>"); err != nil {
@@ -40,8 +41,8 @@ func (c *MJTableComponent) Render(w io.StringWriter) error {
 		AddStyle(constants.CSSWordBreak, "break-word")
 
 	// Add container background color if specified
-	if bgColor := c.GetAttribute(constants.MJMLContainerBackgroundColor); bgColor != nil {
-		tdTag.AddStyle(constants.CSSBackground, *bgColor)
+	if containerBg != "" {
+		tdTag.AddStyle(constants.CSSBackground, containerBg)
 	}
 
 	// Add css-class if present
@@ -66,14 +67,9 @@ func (c *MJTableComponent) Render(w io.StringWriter) error {
 	}
 
 	// Create table element with styles
-	borderValue := c.GetAttributeWithDefault(c, constants.MJMLBorder)
-	htmlBorderValue := "0" // HTML border attribute should always be "0"
-	if borderValue != "none" {
-		htmlBorderValue = "0" // Even with CSS border, HTML border should be "0"
-	}
-
 	tableTag := html.NewHTMLTag("table").
-		AddAttribute(constants.AttrBorder, htmlBorderValue).
+		// HTML border attribute should always be "0", even with CSS border
+		AddAttribute(constants.AttrBorder, "0").
 		AddAttribute(constants.AttrCellPadding, c.GetAttributeWithDefault(c, "cellpadding")).
 		AddAttribute(constants.AttrCellSpacing, c.GetAttributeWithDefault(c, "cellspacing")).
 		AddAttribute(constants.AttrWidth, c.GetAttributeWithDefault(c, constants.MJMLWidth)).
@@ -83,7 +79,7 @@ func (c *MJTableComponent) Render(w io.StringWriter) error {
 		AddStyle(constants.CSSLineHeight, c.GetAttributeWithDefault(c, constants.MJMLLineHeight)).
 		AddStyle(constants.CSSTableLayout, c.GetAttributeWithDefault(c, "table-layout")).
 		AddStyle(constants.CSSWidth, c.GetAttributeWithDefault(c, constants.MJMLWidth)).
-		AddStyle(constants.CSSBorder, borderValue) // Use the actual border value for CSS
+		AddStyle(constants.CSSBorder, c.GetAttributeWithDefault(c, constants.MJMLBorder)) // Use the actual border value for CSS
 
 	if err := tableTag.RenderOpen(w); err != nil {
 		return err

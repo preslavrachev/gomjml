@@ -1,0 +1,23 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-table container-background-color="red" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-table>
+          <tr>
+            <th>Year</th>
+            <th>Language</th>
+          </tr>
+          <tr>
+            <td>1995</td>
+            <td>PHP</td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
