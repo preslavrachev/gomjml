@@ -136,13 +136,11 @@ func collectSocialElementFont(c *MJSocialElementComponent, mode string, meta *Re
 		return
 	}
 
-	var textContent string
 	if mode == "vertical" {
-		textContent = c.Node.Text
-	} else {
-		textContent = c.Node.GetMixedContent()
-	}
-	if textContent == "" {
+		if c.Node.Text == "" {
+			return
+		}
+	} else if !c.Node.HasRenderableMixedContent() {
 		return
 	}
 
