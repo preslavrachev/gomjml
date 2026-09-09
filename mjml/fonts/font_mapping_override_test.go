@@ -25,6 +25,29 @@ func TestGetGoogleFontURLUsesMappingOverride(t *testing.T) {
 	}
 }
 
+// TestGetGoogleFontURLUsesAddedMappingEntry verifies that GetGoogleFontURL
+// resolves a font family added to GoogleFontsMapping at runtime, exercising
+// its non-canonical branch directly rather than relying on coverage via
+// ConvertFontFamiliesToURLs alone.
+func TestGetGoogleFontURLUsesAddedMappingEntry(t *testing.T) {
+	//GIVEN: a new font family added to GoogleFontsMapping that isn't one of the built-in entries.
+	const name = "Comic Neue"
+	const url = "https://fonts.example.com/comic-neue.css"
+	if _, exists := GoogleFontsMapping[name]; exists {
+		t.Fatalf("test fixture %q unexpectedly already present in GoogleFontsMapping", name)
+	}
+	t.Cleanup(func() { delete(GoogleFontsMapping, name) })
+	GoogleFontsMapping[name] = url
+
+	//WHEN: GetGoogleFontURL resolves a font family containing the added name.
+	got := GetGoogleFontURL("Comic Neue, cursive")
+
+	//THEN: it returns the added entry's URL.
+	if got != url {
+		t.Errorf("GetGoogleFontURL() = %q, want added entry URL %q", got, url)
+	}
+}
+
 // TestConvertFontFamiliesToURLsUsesAddedMappingEntry verifies that
 // ConvertFontFamiliesToURLs picks up a font family added to GoogleFontsMapping
 // at runtime, confirming the map remains the single source of truth for both

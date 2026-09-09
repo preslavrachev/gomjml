@@ -23,38 +23,43 @@ var GoogleFontsMapping = map[string]string{
 	"Montserrat": "https://fonts.googleapis.com/css?family=Montserrat:300,400,500,700",
 }
 
-// googleFontCanonicalOrder mirrors MJML 4.15.3's font detection order (Open
-// Sans, Lato, Roboto, Ubuntu), with Montserrat kept after the canonical
-// entries since it is not part of upstream's scanned set. Font lookups use
-// this order, falling back to sorted order for any names added to
-// GoogleFontsMapping beyond these, so import order stays deterministic
-// without depending on Go map iteration.
-var googleFontCanonicalOrder = []string{"Open Sans", "Lato", "Roboto", "Ubuntu", "Montserrat"}
+// canonicalFonts mirrors MJML 4.15.3's font detection order (Open Sans,
+// Lato, Roboto, Ubuntu), with Montserrat kept after the canonical entries
+// since it is not part of upstream's scanned set. Names and their lowercase
+// forms are fixed at package init so lookups never re-derive them.
+var canonicalFonts = [...]struct {
+	name  string
+	lower string
+}{
+	{"Open Sans", "open sans"},
+	{"Lato", "lato"},
+	{"Roboto", "roboto"},
+	{"Ubuntu", "ubuntu"},
+	{"Montserrat", "montserrat"},
+}
 
-// fontLookupOrder returns the names in GoogleFontsMapping to check, in
-// deterministic order: the canonical MJML order first (skipping any name
-// removed from the map), followed by any additional map entries in sorted
-// order. This keeps GoogleFontsMapping the single source of truth for both
-// which fonts exist and the order they are matched in.
-func fontLookupOrder() []string {
-	order := make([]string, 0, len(GoogleFontsMapping))
-	seen := make(map[string]bool, len(googleFontCanonicalOrder))
-	for _, name := range googleFontCanonicalOrder {
-		if _, ok := GoogleFontsMapping[name]; ok {
-			order = append(order, name)
-			seen[name] = true
+// isCanonicalName reports whether name is one of canonicalFonts. Scanning
+// the fixed 5-entry array is cheaper than maintaining a seen-set.
+func isCanonicalName(name string) bool {
+	for _, f := range canonicalFonts {
+		if f.name == name {
+			return true
 		}
 	}
+	return false
+}
 
-	var extra []string
+// sortedExtraNames returns the GoogleFontsMapping keys that aren't part of
+// canonicalFonts, in sorted order. Called only when such entries exist.
+func sortedExtraNames(canonicalCount int) []string {
+	extra := make([]string, 0, len(GoogleFontsMapping)-canonicalCount)
 	for name := range GoogleFontsMapping {
-		if !seen[name] {
+		if !isCanonicalName(name) {
 			extra = append(extra, name)
 		}
 	}
 	sort.Strings(extra)
-
-	return append(order, extra...)
+	return extra
 }
 
 // DetectDefaultFonts checks if components use default fonts that need importing
@@ -76,11 +81,30 @@ func DetectDefaultFonts(hasTextComponents, hasSocialComponents, hasButtonCompone
 
 // GetGoogleFontURL checks if a font family corresponds to a Google Font and returns its URL.
 // When a font family string matches multiple mapping entries (e.g. a stack
-// listing two Google fonts), fontLookupOrder's stable order decides the
-// winner rather than Go's random map iteration order.
+// listing two Google fonts), the canonical MJML order decides the winner,
+// followed by any non-canonical GoogleFontsMapping entries in sorted order,
+// rather than Go's random map iteration order. The canonical-only case (no
+// custom entries in GoogleFontsMapping) makes no ordering allocations; the
+// cleaned-string copy below still allocates.
 func GetGoogleFontURL(fontFamily string) string {
 	cleaned := strings.ToLower(strings.Trim(fontFamily, `"' `))
-	for _, name := range fontLookupOrder() {
+
+	canonicalCount := 0
+	for _, f := range canonicalFonts {
+		url, ok := GoogleFontsMapping[f.name]
+		if !ok {
+			continue
+		}
+		canonicalCount++
+		if strings.Contains(cleaned, f.lower) {
+			return url
+		}
+	}
+
+	if len(GoogleFontsMapping) == canonicalCount {
+		return ""
+	}
+	for _, name := range sortedExtraNames(canonicalCount) {
 		if strings.Contains(cleaned, strings.ToLower(name)) {
 			return GoogleFontsMapping[name]
 		}
@@ -89,21 +113,52 @@ func GetGoogleFontURL(fontFamily string) string {
 }
 
 // ConvertFontFamiliesToURLs converts a set of font families to their Google
-// Font URLs, deduplicated and ordered by fontLookupOrder rather than by the
-// order families were encountered. Deduplication is by URL, not by name, so
-// two names mapped to the same URL (e.g. a mutable-mapping alias) still emit
-// only one entry; empty URLs are skipped.
+// Font URLs, deduplicated and ordered by canonical MJML order first, then
+// any non-canonical GoogleFontsMapping entries in sorted order - rather than
+// by the order families were encountered. Deduplication is by URL, not by
+// name, so two names mapped to the same URL (e.g. a mutable-mapping alias)
+// still emit only one entry; empty URLs are skipped.
 func ConvertFontFamiliesToURLs(fontFamilies []string) []string {
+	cleanedFamilies := make([]string, len(fontFamilies))
+	for i, fontFamily := range fontFamilies {
+		cleanedFamilies[i] = strings.ToLower(strings.Trim(fontFamily, `"' `))
+	}
+
 	var urls []string
 	seenURLs := make(map[string]bool)
-	for _, name := range fontLookupOrder() {
+	canonicalCount := 0
+
+	for _, f := range canonicalFonts {
+		url, ok := GoogleFontsMapping[f.name]
+		if !ok {
+			continue
+		}
+		canonicalCount++
+		if url == "" || seenURLs[url] {
+			continue
+		}
+		for _, cleaned := range cleanedFamilies {
+			if strings.Contains(cleaned, f.lower) {
+				urls = append(urls, url)
+				seenURLs[url] = true
+				break
+			}
+		}
+	}
+
+	if len(GoogleFontsMapping) == canonicalCount {
+		return urls
+	}
+	// Duplicated rather than factored into a shared closure: a closure over
+	// urls/seenURLs/cleanedFamilies would allocate, defeating the point.
+	for _, name := range sortedExtraNames(canonicalCount) {
 		url := GoogleFontsMapping[name]
 		if url == "" || seenURLs[url] {
 			continue
 		}
-		for _, fontFamily := range fontFamilies {
-			cleaned := strings.ToLower(strings.Trim(fontFamily, `"' `))
-			if strings.Contains(cleaned, strings.ToLower(name)) {
+		lower := strings.ToLower(name)
+		for _, cleaned := range cleanedFamilies {
+			if strings.Contains(cleaned, lower) {
 				urls = append(urls, url)
 				seenURLs[url] = true
 				break
