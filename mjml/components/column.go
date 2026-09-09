@@ -169,15 +169,17 @@ func (c *MJColumnComponent) renderColumnToWriter(w io.StringWriter) error {
 // emit the Outlook table and td wrappers as separate conditional comment
 // blocks. This matches the MJML output when components inside the column need
 // their own alignment handling (for example, mj-text align="right").
+//
+// This is a pure predicate with no tracking side effects, so it can be reused
+// by both rendering and a future render-metadata pass. Callers that rely on
+// the empty-style-tag placeholder must set RenderOpts.RequireEmptyStyleTag
+// themselves when this returns true.
 func (c *MJColumnComponent) requiresSingleColumnSplit() bool {
 	for _, child := range c.Children {
 		switch comp := child.(type) {
 		case *MJTextComponent:
 			align := comp.GetAttributeFast(comp, constants.MJMLAlign)
 			if align == constants.AlignRight {
-				if c.RenderOpts != nil {
-					c.RenderOpts.RequireEmptyStyleTag = true
-				}
 				return true
 			}
 		}

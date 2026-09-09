@@ -149,6 +149,51 @@ func TestMJMLNode_GetTextContent(t *testing.T) {
 	}
 }
 
+// TestMJMLNode_HasRenderableMixedContent checks that the cheap presence
+// check agrees with what GetMixedContent would actually produce: empty or
+// whitespace-only content reports false, while any real text or nested
+// element reports true.
+func TestMJMLNode_HasRenderableMixedContent(t *testing.T) {
+	//GIVEN: mj-text nodes covering empty, whitespace-only, text-only, and
+	//child-only content.
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{"empty", `<mjml><mj-body><mj-text></mj-text></mj-body></mjml>`, false},
+		{"whitespace only", `<mjml><mj-body><mj-text>   </mj-text></mj-body></mjml>`, false},
+		{"plain text", `<mjml><mj-body><mj-text>Hello</mj-text></mj-body></mjml>`, true},
+		{"child element only", `<mjml><mj-body><mj-text><b></b></mj-text></mj-body></mjml>`, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//WHEN: the node is parsed and asked whether it has renderable
+			//mixed content.
+			node, err := ParseMJML(tt.input)
+			if err != nil {
+				t.Fatalf("ParseMJML() error = %v", err)
+			}
+			textNode := node.FindFirstChild("mj-body").FindFirstChild("mj-text")
+			if textNode == nil {
+				t.Fatal("Could not find mj-text node")
+			}
+
+			got := textNode.HasRenderableMixedContent()
+
+			//THEN: the result matches whether GetMixedContent would have
+			//returned non-empty content.
+			if got != tt.want {
+				t.Errorf("HasRenderableMixedContent() = %v, want %v", got, tt.want)
+			}
+			if want := textNode.GetMixedContent() != ""; got != want {
+				t.Errorf("HasRenderableMixedContent() = %v disagrees with GetMixedContent() != \"\" = %v", got, want)
+			}
+		})
+	}
+}
+
 func TestMJMLRaw_SingleVoidElement(t *testing.T) {
 	mjml := `<mjml>
 <mj-body>

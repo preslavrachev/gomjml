@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
-	"github.com/preslavrachev/gomjml/mjml/debug"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
 	"github.com/preslavrachev/gomjml/mjml/styles"
@@ -168,97 +167,50 @@ func (bc *BaseComponent) GetAttribute(name string) *string {
 	return nil
 }
 
-// GetAttributeFast gets an attribute value without debug logging using full resolution order
+// GetAttributeFast gets an attribute value using the full resolution order.
+// It shares ResolveAttribute's resolution core rather than maintaining a
+// second, parallel precedence implementation; it never tracks font families,
+// matching its previous behavior.
 func (bc *BaseComponent) GetAttributeFast(comp Component, name string) string {
-	// 1. Element attributes
-	if value, exists := bc.Attrs[name]; exists && value != "" {
-		return value
-	}
-
-	// 2. mj-class definitions
-	if classValue := bc.getClassAttribute(name); classValue != "" {
-		return classValue
-	}
-
-	// 3. Global attributes
-	if bc.RenderOpts != nil && bc.RenderOpts.GlobalAttributes != nil {
-		if globalValue := bc.RenderOpts.GlobalAttributes.GetGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-			return normalizeAttributeValue(name, globalValue)
-		}
-	}
-
-	// 4. Component defaults
-	if defaultVal := comp.GetDefaultAttribute(name); defaultVal != "" {
-		return normalizeAttributeValue(name, defaultVal)
-	}
-
-	return ""
+	return bc.ResolveAttribute(comp, name)
 }
 
 // GetAttributeWithDefault gets an attribute with component-specific defaults
 // This method properly calls the overridden GetDefaultAttribute method on the concrete component
 func (bc *BaseComponent) GetAttributeWithDefault(comp Component, name string) string {
+	value := bc.ResolveAttribute(comp, name)
+	// Font families resolved through this path are tracked centrally so metadata
+	// collection can reuse ResolveAttribute without duplicating this rule.
+	if name == constants.MJMLFontFamily && value != "" {
+		bc.TrackFontFamily(value)
+	}
+	return value
+}
+
+// ResolveAttribute resolves an attribute using the full precedence chain
+// (element, mj-class, global, component default) without any tracking side
+// effects. It exists so rendering and a future render-metadata pass can share
+// the exact same resolution logic.
+func (bc *BaseComponent) ResolveAttribute(comp Component, name string) string {
 	// 1. Check element attributes first
 	if value, exists := bc.Attrs[name]; exists && value != "" {
-		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-element", "Using element attribute", map[string]any{
-				"attr_name":  name,
-				"attr_value": value,
-			})
-		}
-
-		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(value)
-		}
 		return value
 	}
 
 	// 2. Check mj-class definitions
 	if classValue := bc.getClassAttribute(name); classValue != "" {
-		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-class", "Using mj-class attribute", map[string]any{
-				"attr_name":  name,
-				"attr_value": classValue,
-				"classes":    bc.Attrs["mj-class"],
-			})
-		}
-
-		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(classValue)
-		}
 		return classValue
 	}
 
 	// 3. Check global attributes if available (we'll get this via external function)
 	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
-		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-global", "Using global attribute", map[string]any{
-				"attr_name":  name,
-				"attr_value": globalValue,
-			})
-		}
-		normalized := normalizeAttributeValue(name, globalValue)
-		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(normalized)
-		}
-		return normalized
+		return normalizeAttributeValue(name, globalValue)
 	}
 
 	// 4. Check component defaults via interface method (properly calls overridden method)
 	defaultValue := comp.GetDefaultAttribute(name)
 	if defaultValue != "" {
-		if debug.Enabled() {
-			debug.DebugLogWithData(comp.GetTagName(), "attr-default", "Using default attribute", map[string]any{
-				"attr_name":  name,
-				"attr_value": defaultValue,
-			})
-		}
-		normalized := normalizeAttributeValue(name, defaultValue)
-		// Track font families
-		if name == constants.MJMLFontFamily {
-			bc.TrackFontFamily(normalized)
-		}
-		return normalized
+		return normalizeAttributeValue(name, defaultValue)
 	}
 	return ""
 }

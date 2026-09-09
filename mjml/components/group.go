@@ -64,6 +64,24 @@ func (c *MJGroupComponent) GetTagName() string {
 	return "mj-group"
 }
 
+// renderableChildren returns the children Render will actually process: raw
+// elements and mj-column children, in original order. Any other child type
+// is silently skipped by Render, so this is the single authoritative filter
+// shared by Render and the render-metadata pass.
+func (c *MJGroupComponent) renderableChildren() []Component {
+	out := make([]Component, 0, len(c.Children))
+	for _, child := range c.Children {
+		if child.IsRawElement() {
+			out = append(out, child)
+			continue
+		}
+		if _, ok := child.(*MJColumnComponent); ok {
+			out = append(out, child)
+		}
+	}
+	return out
+}
+
 // Render implements optimized Writer-based rendering for MJGroupComponent
 func (c *MJGroupComponent) Render(w io.StringWriter) error {
 	direction := c.getAttribute("direction")
@@ -151,7 +169,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 
 	// Render each column in the group
 	renderedColumns := 0
-	for _, child := range c.Children {
+	for _, child := range c.renderableChildren() {
 		if child.IsRawElement() {
 			if err := child.Render(w); err != nil {
 				return err

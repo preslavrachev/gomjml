@@ -88,13 +88,11 @@ func (c *MJAccordionComponent) Render(w io.StringWriter) error {
 	}
 
 	// Render accordion elements
-	for _, child := range c.Children {
-		if accordionElement, ok := child.(*MJAccordionElementComponent); ok {
-			accordionElement.SetContainerWidth(c.GetContainerWidth())
-			accordionElement.inheritFromParent(c)
-			if err := accordionElement.Render(w); err != nil {
-				return err
-			}
+	for _, accordionElement := range c.renderableElements() {
+		accordionElement.SetContainerWidth(c.GetContainerWidth())
+		accordionElement.inheritFromParent(c)
+		if err := accordionElement.Render(w); err != nil {
+			return err
 		}
 	}
 
@@ -108,6 +106,20 @@ func (c *MJAccordionComponent) Render(w io.StringWriter) error {
 
 func (c *MJAccordionComponent) GetTagName() string {
 	return "mj-accordion"
+}
+
+// renderableElements returns the mj-accordion-element children Render will
+// process, in original order. Non-element children (e.g. stray text nodes)
+// are never rendered by mj-accordion, so this is the single authoritative
+// filter shared by Render and the render-metadata pass.
+func (c *MJAccordionComponent) renderableElements() []*MJAccordionElementComponent {
+	elements := make([]*MJAccordionElementComponent, 0, len(c.Children))
+	for _, child := range c.Children {
+		if el, ok := child.(*MJAccordionElementComponent); ok {
+			elements = append(elements, el)
+		}
+	}
+	return elements
 }
 
 func (c *MJAccordionComponent) GetDefaultAttribute(name string) string {
@@ -209,6 +221,14 @@ func (c *MJAccordionTextComponent) GetTagName() string {
 	return "mj-accordion-text"
 }
 
+// explicitFontFamily returns the font-family attribute only when set directly
+// on the mj-accordion-text element, without falling back to mj-class, global
+// attributes, or component defaults. It performs no tracking so it can be
+// reused by both rendering and a future render-metadata pass.
+func (c *MJAccordionTextComponent) explicitFontFamily() string {
+	return c.Node.GetAttribute(constants.MJMLFontFamily)
+}
+
 func (c *MJAccordionTextComponent) GetDefaultAttribute(name string) string {
 	switch name {
 	case constants.MJMLFontSize:
@@ -248,6 +268,14 @@ func (c *MJAccordionTitleComponent) Render(w io.StringWriter) error {
 
 func (c *MJAccordionTitleComponent) GetTagName() string {
 	return "mj-accordion-title"
+}
+
+// explicitFontFamily returns the font-family attribute only when set directly
+// on the mj-accordion-title element, without falling back to mj-class,
+// global attributes, or component defaults. It performs no tracking so it can
+// be reused by both rendering and a future render-metadata pass.
+func (c *MJAccordionTitleComponent) explicitFontFamily() string {
+	return c.Node.GetAttribute(constants.MJMLFontFamily)
 }
 
 func (c *MJAccordionTitleComponent) GetDefaultAttribute(name string) string {
@@ -353,16 +381,7 @@ func (c *MJAccordionElementComponent) Render(w io.StringWriter) error {
 	}
 
 	// Find title and content components
-	var titleComponent *MJAccordionTitleComponent
-	var textComponent *MJAccordionTextComponent
-
-	for _, child := range c.Children {
-		if title, ok := child.(*MJAccordionTitleComponent); ok {
-			titleComponent = title
-		} else if text, ok := child.(*MJAccordionTextComponent); ok {
-			textComponent = text
-		}
-	}
+	titleComponent, textComponent := c.renderedTitleAndText()
 
 	// Render title section
 	if titleComponent != nil {
@@ -386,12 +405,32 @@ func (c *MJAccordionElementComponent) Render(w io.StringWriter) error {
 	return nil
 }
 
+// renderedTitleAndText selects the mj-accordion-title and mj-accordion-text
+// children that will actually render: the last of each type found among
+// Children, matching MJML's behavior when duplicates are present. Shared by
+// Render and the render-metadata pass so both agree on which child's
+// font-family (if any) is reachable.
+func (c *MJAccordionElementComponent) renderedTitleAndText() (*MJAccordionTitleComponent, *MJAccordionTextComponent) {
+	var titleComponent *MJAccordionTitleComponent
+	var textComponent *MJAccordionTextComponent
+
+	for _, child := range c.Children {
+		if title, ok := child.(*MJAccordionTitleComponent); ok {
+			titleComponent = title
+		} else if text, ok := child.(*MJAccordionTextComponent); ok {
+			textComponent = text
+		}
+	}
+
+	return titleComponent, textComponent
+}
+
 func (c *MJAccordionElementComponent) renderTitle(w io.StringWriter, titleComponent *MJAccordionTitleComponent, iconAlign, iconHeight, iconWidth, iconWrappedUrl, iconUnwrappedUrl, iconWrappedAlt, iconUnwrappedAlt string) error {
 	border := c.parentAccordion.GetAttributeWithDefault(c.parentAccordion, constants.MJMLBorder)
 	fontSize := titleComponent.GetAttributeWithDefault(titleComponent, constants.MJMLFontSize)
 	// Only get font-family if explicitly set on title element
 	fontFamily := ""
-	if value := titleComponent.Node.GetAttribute(constants.MJMLFontFamily); value != "" {
+	if value := titleComponent.explicitFontFamily(); value != "" {
 		fontFamily = value
 		titleComponent.TrackFontFamily(value)
 	}
@@ -570,7 +609,7 @@ func (c *MJAccordionElementComponent) renderContent(w io.StringWriter, textCompo
 	fontSize := textComponent.GetAttributeWithDefault(textComponent, constants.MJMLFontSize)
 	// Only get font-family if explicitly set on text element
 	fontFamily := ""
-	if value := textComponent.Node.GetAttribute(constants.MJMLFontFamily); value != "" {
+	if value := textComponent.explicitFontFamily(); value != "" {
 		fontFamily = value
 		textComponent.TrackFontFamily(value)
 	}

@@ -612,8 +612,11 @@ func (c *MJMLComponent) RegisterCarouselCSS(css string) {
 	c.carouselCSS.WriteString(css)
 }
 
-// collectCarouselCSS recursively collects carousel CSS from all components
+// collectCarouselCSS recursively collects carousel CSS from all components.
+// Resets any CSS collected by a previous render so repeated renders of the
+// same component instance don't accumulate duplicate carousel CSS.
 func (c *MJMLComponent) collectCarouselCSS() {
+	c.carouselCSS.Reset()
 	if c.Body != nil {
 		c.collectCarouselCSSFromComponent(c.Body)
 	}
@@ -1224,24 +1227,15 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// attributes can access the document title during body rendering.
 	title, customFonts := c.extractHeadMetadata()
 
-	// Generate body content once for both font detection and final output
-	if debugEnabled {
-		debug.DebugLog("mjml-root", "render-body", "Rendering body content for font analysis and output")
-	}
-	var bodyBuffer strings.Builder
+	// Collect font families and the empty-style-tag requirement from the body tree
+	// before rendering, so the body can be streamed directly to w exactly once
+	// instead of being buffered for a second, redundant read.
+	var bodyMetadata components.RenderMetadata
 	if c.Body != nil {
-		if err := c.Body.Render(&bodyBuffer); err != nil {
-			if debugEnabled {
-				debug.DebugLogError("mjml-root", "render-body-error", "Failed to render body", err)
-			}
-			return err
-		}
+		bodyMetadata = components.CollectRenderMetadata(c.Body)
 	}
-	bodyContent := bodyBuffer.String()
-	if debugEnabled {
-		debug.DebugLogWithData("mjml-root", "render-complete", "Body rendering completed", map[string]any{
-			"body_length": len(bodyContent),
-		})
+	if c.RenderOpts != nil {
+		c.RenderOpts.RequireEmptyStyleTag = bodyMetadata.RequireEmptyStyleTag
 	}
 
 	// DOCTYPE and HTML opening - include attributes from MJML root element
@@ -1314,8 +1308,8 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// Add explicit custom fonts from mj-font components
 	allFontsToImport = append(allFontsToImport, customFonts...)
 
-	// Get fonts tracked during component rendering
-	trackedFonts := c.RenderOpts.FontTracker.GetFonts()
+	// Get fonts discovered by the pre-render metadata pass
+	trackedFonts := bodyMetadata.FontFamilies()
 	detectedFonts := fonts.ConvertFontFamiliesToURLs(trackedFonts)
 	if debugEnabled {
 		debug.DebugLogWithData(
@@ -1473,7 +1467,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	var bodyStyles []string
 
 	// Only add word-spacing:normal if there's actual body content to match MRML behavior
-	if len(bodyContent) > 0 {
+	if c.Body != nil {
 		bodyStyles = append(bodyStyles, "word-spacing:normal")
 	}
 
@@ -1507,9 +1501,14 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		}
 	}
 
-	// Write the body content (already rendered once above)
-	if _, err := w.WriteString(bodyContent); err != nil {
-		return err
+	// Stream the body directly to w; this is the only time it is rendered.
+	if c.Body != nil {
+		if err := c.Body.Render(w); err != nil {
+			if debugEnabled {
+				debug.DebugLogError("mjml-root", "render-body-error", "Failed to render body", err)
+			}
+			return err
+		}
 	}
 	if _, err := w.WriteString(`</body></html>`); err != nil {
 		return err

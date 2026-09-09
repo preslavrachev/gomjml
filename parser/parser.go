@@ -843,6 +843,25 @@ func (n *MJMLNode) GetMixedContent() string {
 	return finalResult
 }
 
+// HasRenderableMixedContent reports whether GetMixedContent would return a
+// non-empty string, without paying the cost of building it. A child node
+// part always renders at least its own tag markup, so its presence alone is
+// enough; text parts must contain non-whitespace to count.
+func (n *MJMLNode) HasRenderableMixedContent() bool {
+	if len(n.MixedContent) == 0 {
+		return strings.TrimSpace(n.Text) != ""
+	}
+	for _, part := range n.MixedContent {
+		if part.Node != nil {
+			return true
+		}
+		if strings.TrimSpace(part.Text) != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // FindFirstChild finds the first child with the given tag name
 func (n *MJMLNode) FindFirstChild(tagName string) *MJMLNode {
 	for _, child := range n.Children {

@@ -240,12 +240,7 @@ func (c *MJNavbarComponent) renderInlineLinks(w io.StringWriter, baseURL string)
 	}
 
 	// Collect navbar links so we can mirror MJML's MSO table comment structure
-	navbarLinks := make([]*MJNavbarLinkComponent, 0, len(c.Children))
-	for _, child := range c.Children {
-		if navbarLink, ok := child.(*MJNavbarLinkComponent); ok {
-			navbarLinks = append(navbarLinks, navbarLink)
-		}
-	}
+	navbarLinks := c.renderableLinks()
 
 	for index, navbarLink := range navbarLinks {
 		if err := c.renderMSOTableCellOpen(w, navbarLink, index); err != nil {
@@ -340,6 +335,20 @@ func (c *MJNavbarComponent) generateCheckboxID() string {
 		}
 	}
 	return genRandomHexString(16)
+}
+
+// renderableLinks returns the mj-navbar-link children Render will process,
+// in original order. Any other child type is silently skipped by Render, so
+// this is the single authoritative filter shared by Render and the
+// render-metadata pass.
+func (c *MJNavbarComponent) renderableLinks() []*MJNavbarLinkComponent {
+	links := make([]*MJNavbarLinkComponent, 0, len(c.Children))
+	for _, child := range c.Children {
+		if navbarLink, ok := child.(*MJNavbarLinkComponent); ok {
+			links = append(links, navbarLink)
+		}
+	}
+	return links
 }
 
 func (c *MJNavbarComponent) getAttribute(name string) string {

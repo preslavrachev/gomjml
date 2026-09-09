@@ -212,17 +212,7 @@ func (c *MJSocialComponent) getAttribute(name string) string {
 
 // Render implements optimized Writer-based rendering for MJSocialComponent
 func (c *MJSocialComponent) Render(w io.StringWriter) error {
-	hasTextContent := false
-	for _, child := range c.Children {
-		if elem, ok := child.(*MJSocialElementComponent); ok {
-			if strings.TrimSpace(elem.Node.Text) != "" || len(elem.Node.Children) > 0 {
-				hasTextContent = true
-				break
-			}
-		}
-	}
-
-	if hasTextContent {
+	if c.hasTextContent() {
 		c.getAttribute(constants.MJMLFontFamily)
 	}
 
@@ -389,6 +379,21 @@ func (c *MJSocialComponent) GetTagName() string {
 	return "mj-social"
 }
 
+// hasTextContent reports whether any child mj-social-element carries text
+// content, which determines whether the social element font-family is
+// reachable during rendering. Shared between Render and a future
+// render-metadata pass so reachability is computed identically in both.
+func (c *MJSocialComponent) hasTextContent() bool {
+	for _, child := range c.Children {
+		if elem, ok := child.(*MJSocialElementComponent); ok {
+			if strings.TrimSpace(elem.Node.Text) != "" || len(elem.Node.Children) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // MJSocialElementComponent represents mj-social-element
 type MJSocialElementComponent struct {
 	*BaseComponent
@@ -453,21 +458,19 @@ func (c *MJSocialElementComponent) GetDefaultAttribute(name string) string {
 	}
 }
 
-func (c *MJSocialElementComponent) getAttribute(name string) string {
+// resolveAttribute resolves mj-social-element's attribute precedence chain
+// (element, mj-class, parent explicit, parent resolved, global/default,
+// platform default, component default) without any tracking side effects. It
+// exists so rendering and a future render-metadata pass can share the exact
+// same social-specific precedence rules instead of duplicating them.
+func (c *MJSocialElementComponent) resolveAttribute(name string) string {
 	// 1. Check explicit element attribute first
 	if value := c.Node.GetAttribute(name); value != "" {
-		// Track font families
-		if name == constants.MJMLFontFamily {
-			c.TrackFontFamily(value)
-		}
 		return value
 	}
 
 	// 2. Check mj-class definitions for the element
 	if classValue := c.GetClassAttribute(name); classValue != "" {
-		if name == constants.MJMLFontFamily {
-			c.TrackFontFamily(classValue)
-		}
 		return classValue
 	}
 
@@ -476,47 +479,17 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 		if _, inheritable := socialElementInheritableAttributes[name]; inheritable {
 			// First check parent's explicit attribute
 			if parentValue := c.parentSocial.Node.GetAttribute(name); parentValue != "" {
-				if debug.Enabled() {
-					debug.DebugLogWithData(
-						"social-attr",
-						"parent-explicit",
-						"Using parent explicit attribute",
-						map[string]any{
-							"attr":    name,
-							"value":   parentValue,
-							"element": c.Node.GetAttribute("name"),
-						},
-					)
-				}
-				if name == constants.MJMLFontFamily {
-					c.TrackFontFamily(parentValue)
-				}
 				return parentValue
 			}
 			// Then check parent's resolved attribute (includes global attributes)
-			if parentResolved := c.parentSocial.getAttribute(name); parentResolved != "" {
-				if debug.Enabled() {
-					debug.DebugLogWithData(
-						"social-attr",
-						"parent-resolved",
-						"Using parent resolved attribute",
-						map[string]any{
-							"attr":    name,
-							"value":   parentResolved,
-							"element": c.Node.GetAttribute("name"),
-						},
-					)
-				}
-				if name == constants.MJMLFontFamily {
-					c.TrackFontFamily(parentResolved)
-				}
+			if parentResolved := c.parentSocial.ResolveAttribute(c.parentSocial, name); parentResolved != "" {
 				return parentResolved
 			}
 		}
 	}
 
 	// 4. Check global attributes and component defaults
-	if resolved := c.GetAttributeWithDefault(c, name); resolved != "" {
+	if resolved := c.ResolveAttribute(c, name); resolved != "" {
 		return resolved
 	}
 
@@ -529,6 +502,17 @@ func (c *MJSocialElementComponent) getAttribute(name string) string {
 
 	// 6. Fall back to component defaults
 	return c.GetDefaultAttribute(name)
+}
+
+// getAttribute resolves an attribute via resolveAttribute and tracks font
+// families in the shared FontTracker. It is the only place mj-social-element
+// mutates render state during attribute resolution.
+func (c *MJSocialElementComponent) getAttribute(name string) string {
+	value := c.resolveAttribute(name)
+	if name == constants.MJMLFontFamily && value != "" {
+		c.TrackFontFamily(value)
+	}
+	return value
 }
 
 // InheritFromParent sets the parent reference for attribute inheritance
