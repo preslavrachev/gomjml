@@ -1,6 +1,7 @@
 package styles
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -113,3 +114,15 @@ func FormatJSNumber(f float64) string {
 	}
 	return strconv.FormatFloat(f, 'f', -1, 64)
 }
+
+// WidthUnit returns the unit MJML's widthParser reads from width, "px" when
+// there is none: what follows the last run of digits, dots and commas.
+func WidthUnit(width string) string {
+	if m := widthUnitPattern.FindStringSubmatch(width); m != nil && m[1] != "" {
+		return m[1]
+	}
+	return "px"
+}
+
+// widthUnitPattern is widthParser's unitRegex.
+var widthUnitPattern = regexp.MustCompile(`[\d.,]*(\D*)$`)

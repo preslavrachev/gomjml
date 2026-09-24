@@ -73,3 +73,11 @@ func TestFormatJSNumber(t *testing.T) {
 		}
 	}
 }
+
+func TestWidthUnit(t *testing.T) {
+	for in, want := range map[string]string{"10px": "px", "50%": "%", "120": "px", "1.5em": "em", "-50%": "%", "auto": "auto", "": "px"} {
+		if got := WidthUnit(in); got != want {
+			t.Errorf("WidthUnit(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
