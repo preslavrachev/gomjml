@@ -87,13 +87,18 @@ func validateComponentAttributes(node *parser.MJMLNode, opts *options.RenderOpts
 	if node == nil || opts == nil || opts.InvalidAttributeReporter == nil {
 		return
 	}
+	if allowedSet, ok := getAllowedAttributeSet(node.GetTagName()); ok {
+		ValidateAttributes(node, allowedSet, opts)
+	}
+}
 
-	tagName := node.GetTagName()
-	allowedSet, ok := getAllowedAttributeSet(tagName)
-	if !ok {
+// ValidateAttributes reports each attribute of node that is not in allowedSet,
+// not allowed on every tag, and not accepted by opts.AllowAttribute.
+func ValidateAttributes(node *parser.MJMLNode, allowedSet map[string]struct{}, opts *options.RenderOpts) {
+	if node == nil || opts == nil || opts.InvalidAttributeReporter == nil {
 		return
 	}
-
+	tagName := node.GetTagName()
 	line := node.GetLineNumber()
 	for _, attr := range node.Attrs {
 		name := attr.Name.Local
@@ -101,6 +106,9 @@ func validateComponentAttributes(node *parser.MJMLNode, opts *options.RenderOpts
 			continue
 		}
 		if _, exists := allowedSet[name]; exists {
+			continue
+		}
+		if opts.AllowAttribute != nil && opts.AllowAttribute(tagName, name) {
 			continue
 		}
 		opts.InvalidAttributeReporter(tagName, name, line)

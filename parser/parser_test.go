@@ -815,3 +815,29 @@ func TestParseMJMLWithComments(t *testing.T) {
 		}
 	}
 }
+
+func TestParseMJMLLeavesLongerTagNamesStartingWithMJTextAlone(t *testing.T) {
+	root, err := ParseMJML(`<mjml><mj-body><mj-text-block><mj-image /></mj-text-block><mj-text><b>hi</b></mj-text></mj-body></mjml>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := root.FindFirstChild("mj-body")
+	block := body.FindFirstChild("mj-text-block")
+	if block == nil || len(block.Children) != 1 || block.Children[0].GetTagName() != "mj-image" {
+		t.Fatalf("mj-text-block should keep its MJML children, got %+v", block)
+	}
+	if text := body.FindFirstChild("mj-text"); text == nil || text.Text != "<b>hi</b>" {
+		t.Fatalf("mj-text should still hold raw HTML, got %+v", text)
+	}
+}
+
+func TestParseMJMLRecordsLinesForElementsWithoutAttributes(t *testing.T) {
+	root, err := ParseMJML("<mjml>\n<mj-body>\n<mj-section />\n</mj-body>\n</mjml>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	section := root.FindFirstChild("mj-body").FindFirstChild("mj-section")
+	if section.LineNumber != 3 {
+		t.Fatalf("want line 3, got %d", section.LineNumber)
+	}
+}
