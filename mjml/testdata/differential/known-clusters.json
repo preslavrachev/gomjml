@@ -1,0 +1,1424 @@
+[
+  {
+    "id": "accordion-css",
+    "reason": "mj-accordion's head styles differ: gomjml rewrites MJML's rules (spacing, `block! important`), and in some documents leaves the whole accordion style block out or in when MJML does the opposite.",
+    "signatures": [
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-content{display}",
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-content{overflow}",
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-ico{display}",
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-title{-moz-user-select}",
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-title{-webkit-user-select}",
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-title{cursor}",
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-title{touch-action}",
+      "mj-accordion css-missing .moz-text-html input.mj-accordion-checkbox+* .mj-accordion-title{user-select}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) .mj-accordion-element{display}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-content{display}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-content{overflow}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-more{display}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-title{-moz-user-select}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-title{-webkit-user-select}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-title{cursor}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-title{touch-action}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox+* .mj-accordion-title{user-select}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox,.mj-accordion-less{display}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox:checked+* .mj-accordion-content{display}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox:checked+* .mj-accordion-less{display}",
+      "mj-accordion css-missing @media yahoo, only screen and (min-width:N) input.mj-accordion-checkbox:checked+* .mj-accordion-more{display}",
+      "mj-accordion css-missing noinput.mj-accordion-checkbox{display}",
+      "mj-accordion css-order noinput.mj-accordion-checkbox{display}",
+      "mj-accordion missing element tr in tbody"
+    ]
+  },
+  {
+    "id": "accordion-element-border",
+    "reason": "mj-accordion-element border=\"none\" is not applied to the title table (keeps 2px solid black).",
+    "signatures": [
+      "mj-accordion style-changed table{border-bottom}"
+    ]
+  },
+  {
+    "id": "accordion-icon-defaults",
+    "reason": "mj-accordion icon-* attributes given through mj-attributes (align, position, alt, url, width, height) are ignored.",
+    "signatures": [
+      "mj-accordion attr-changed img[alt]",
+      "mj-accordion attr-changed img[src]",
+      "mj-accordion attr-missing td[align]",
+      "mj-accordion attr-missing td[width]",
+      "mj-accordion class-extra td.mj-accordion-ico",
+      "mj-accordion class-missing td.mj-accordion-ico",
+      "mj-accordion extra element img in td",
+      "mj-accordion extra mso-block [if !mso | IE]\u003e in tr",
+      "mj-accordion missing element img in td",
+      "mj-accordion missing mso-block [if !mso | IE]\u003e in tr",
+      "mj-accordion style-changed img{height}",
+      "mj-accordion style-changed img{width}",
+      "mj-accordion style-changed td{vertical-align}",
+      "mj-accordion style-extra td{font-size}",
+      "mj-accordion style-extra td{vertical-align}",
+      "mj-accordion style-extra td{width}",
+      "mj-accordion style-missing td{font-size}",
+      "mj-accordion style-missing td{vertical-align}",
+      "mj-accordion style-missing td{width}"
+    ]
+  },
+  {
+    "id": "accordion-padding",
+    "reason": "mj-accordion padding-* longhands are not applied to its cell.",
+    "signatures": [
+      "mj-accordion style-missing td{padding-bottom}",
+      "mj-accordion style-missing td{padding-left}",
+      "mj-accordion style-missing td{padding-right}",
+      "mj-accordion style-missing td{padding-top}"
+    ]
+  },
+  {
+    "id": "accordion-structure",
+    "reason": "An accordion in a fuzz document renders a different table structure (missing border, role and width attributes on its table).",
+    "signatures": [
+      "mj-accordion attr-missing table[border]"
+    ]
+  },
+  {
+    "id": "accordion-text-style",
+    "reason": "mj-accordion-text/-title font-weight, letter-spacing, color, font-family and background are not applied, and 3-digit colours are not expanded to 6 digits as MJML does (#f00 becomes #ff0000).",
+    "signatures": [
+      "mj-accordion style-changed td{background-color}",
+      "mj-accordion style-changed td{background}",
+      "mj-accordion style-changed td{color}",
+      "mj-accordion style-missing label{font-family}",
+      "mj-accordion style-missing td{background-color}",
+      "mj-accordion style-missing td{background}",
+      "mj-accordion style-missing td{color}",
+      "mj-accordion style-missing td{font-family}",
+      "mj-accordion style-missing td{font-weight}",
+      "mj-accordion style-missing td{letter-spacing}"
+    ]
+  },
+  {
+    "id": "body-width",
+    "reason": "mj-body width reaches only part of the output: sections keep a 600px MSO table and max-width where MJML uses the body width (0px, 25px in the fuzz cases).",
+    "signatures": [
+      "body mso-attr-changed table[width]",
+      "body mso-style-changed table{width}",
+      "body style-changed div{max-width}",
+      "mj-section mso-attr-changed table[width]",
+      "mj-section mso-attr-changed td[width]",
+      "mj-section mso-attr-missing table[width]",
+      "mj-section mso-style-changed table{width}",
+      "mj-section mso-style-changed v:rect{width}",
+      "mj-section mso-style-missing td{font-size}",
+      "mj-section mso-style-missing td{line-height}",
+      "mj-section mso-style-missing td{mso-line-height-rule}",
+      "mj-wrapper mso-attr-changed td[width]"
+    ]
+  },
+  {
+    "id": "box-widths",
+    "reason": "Content widths differ where padding or border longhands combine with a shorthand, or a column has borders: gomjml's MSO cell and image widths are not MJML's (black-friday's hero image, padding=\"0px 25px\" with padding-left/right 0px, is 780px wide instead of 600px; a bordered column's cell 294px instead of 289.5px).",
+    "signatures": [
+      "mj-column mso-style-changed td{width}",
+      "mj-column style-changed td{width}",
+      "mj-image attr-changed img[width]"
+    ]
+  },
+  {
+    "id": "breakpoint",
+    "reason": "mj-breakpoint is not applied: the column media queries keep min-width:480px, and the mobile media query its default.",
+    "signatures": [
+      "mj-column css-extra .moz-text-html .mj-column-per-N{max-width}",
+      "mj-column css-extra .moz-text-html .mj-column-per-N{width}",
+      "mj-column css-extra @media only screen and (min-width:Npx) .mj-column-per-N-N{max-width}",
+      "mj-column css-extra @media only screen and (min-width:Npx) .mj-column-per-N-N{width}",
+      "mj-column css-extra @media only screen and (min-width:Npx) .mj-column-per-N{max-width}",
+      "mj-column css-extra @media only screen and (min-width:Npx) .mj-column-per-N{width}",
+      "mj-column css-extra @media only screen and (min-width:Npx) .mj-column-px-N{max-width}",
+      "mj-column css-extra @media only screen and (min-width:Npx) .mj-column-px-N{width}",
+      "mj-column css-missing .moz-text-html .mj-column-per-N-N{max-width}",
+      "mj-column css-missing .moz-text-html .mj-column-per-N-N{width}",
+      "mj-column css-missing .moz-text-html .mj-column-per-N{max-width}",
+      "mj-column css-missing .moz-text-html .mj-column-per-N{width}",
+      "mj-column css-missing .moz-text-html .mj-column-px-N{max-width}",
+      "mj-column css-missing .moz-text-html .mj-column-px-N{width}",
+      "mj-column css-missing @media only screen and (min-width:Npx) .mj-column-per-N-N{max-width}",
+      "mj-column css-missing @media only screen and (min-width:Npx) .mj-column-per-N-N{width}",
+      "mj-column css-missing @media only screen and (min-width:Npx) .mj-column-per-N{max-width}",
+      "mj-column css-missing @media only screen and (min-width:Npx) .mj-column-per-N{width}",
+      "mj-column css-missing @media only screen and (min-width:Npx) .mj-column-px-N{max-width}",
+      "mj-column css-missing @media only screen and (min-width:Npx) .mj-column-px-N{width}",
+      "mj-column css-order .moz-text-html .mj-column-per-N{width}",
+      "mj-column css-order @media only screen and (min-width:Npx) .mj-column-per-N{width}"
+    ]
+  },
+  {
+    "id": "button-attributes",
+    "reason": "mj-button title, name, letter-spacing, text-align and a width in px are dropped or written differently.",
+    "signatures": [
+      "mj-button attr-missing a[name]",
+      "mj-button attr-missing a[title]",
+      "mj-button style-changed a{width}",
+      "mj-button style-missing a{letter-spacing}",
+      "mj-button style-missing td{text-align}"
+    ]
+  },
+  {
+    "id": "carousel-container-background",
+    "reason": "mj-carousel container-background-color is not applied to its cell.",
+    "signatures": [
+      "mj-carousel style-missing td{background}"
+    ]
+  },
+  {
+    "id": "carousel-css-order",
+    "reason": "mj-carousel's head style rules come out in a different order from MJML's.",
+    "signatures": [
+      "mj-carousel css-order .mj-carousel{-webkit-user-select}"
+    ]
+  },
+  {
+    "id": "carousel-image-defaults",
+    "reason": "mj-carousel-image attributes set through mj-attributes (alt, title, href, css-class, thumbnails-src) are ignored.",
+    "signatures": [
+      "mj-carousel attr-changed img[alt]",
+      "mj-carousel attr-changed img[src]",
+      "mj-carousel attr-missing img[title]",
+      "mj-carousel class-missing a.custom-class-thumbnail",
+      "mj-carousel extra element img in div",
+      "mj-carousel missing element a in div",
+      "mj-carousel mso-attr-changed img[alt]",
+      "mj-carousel mso-attr-missing img[title]",
+      "mj-carousel mso-missing tag \u003c/a\u003e",
+      "mj-carousel mso-missing tag \u003ca\u003e"
+    ]
+  },
+  {
+    "id": "carousel-in-hero",
+    "reason": "mj-carousel inside mj-hero fails in gomjml with \"requires at least one mj-carousel-image child\": the hero does not hand the carousel its children.",
+    "signatures": [
+      "document gomjml-rejects mj-carousel requires at least one mj-carousel-image child"
+    ]
+  },
+  {
+    "id": "carousel-padding",
+    "reason": "mj-carousel padding and its longhands are not applied to its cell.",
+    "signatures": [
+      "mj-carousel style-missing td{padding-bottom}",
+      "mj-carousel style-missing td{padding-left}",
+      "mj-carousel style-missing td{padding-right}",
+      "mj-carousel style-missing td{padding-top}",
+      "mj-carousel style-missing td{padding}"
+    ]
+  },
+  {
+    "id": "carousel-structure",
+    "reason": "A carousel in a fuzz document renders a different structure (extra wrapper div and input, cell attributes); not isolated further.",
+    "signatures": [
+      "mj-carousel attr-changed td[align]",
+      "mj-carousel attr-missing td[bgcolor]"
+    ]
+  },
+  {
+    "id": "carousel-thumbnail-style",
+    "reason": "Carousel thumbnail border and border-radius: tb-border / tb-border-radius, and an image border-radius of 0, keep gomjml's defaults (6px, 2px solid) where MJML uses the given value.",
+    "signatures": [
+      "mj-carousel mso-style-changed img{border-radius}",
+      "mj-carousel style-changed a{border-radius}",
+      "mj-carousel style-changed a{border}",
+      "mj-carousel style-changed img{border-radius}"
+    ]
+  },
+  {
+    "id": "carousel-thumbnail-width",
+    "reason": "mj-carousel tb-width in % (and the thumbnail widths derived from it) is written as given (50%) where MJML writes the computed pixel number.",
+    "signatures": [
+      "mj-carousel attr-changed img[width]",
+      "mj-carousel mso-attr-changed img[width]",
+      "mj-carousel mso-style-changed img{width}",
+      "mj-carousel style-changed img{width}"
+    ]
+  },
+  {
+    "id": "closing-tag-whitespace",
+    "reason": "An ending tag with whitespace before '\u003e' (\u003c/mj-text\\n\u003e, as Prettier formats MJML) ends mj-text in MJML; gomjml's raw content runs on to the next literal \u003c/mj-text\u003e, swallowing the components in between into the text as markup. 24 of the 25 email templates use this formatting.",
+    "signatures": [
+      "mj-column class-extra td.aa-info",
+      "mj-column extra element tr in tbody",
+      "mj-column missing element tr in tbody",
+      "mj-text extra element mj-button in div",
+      "mj-text extra element mj-column in div",
+      "mj-text extra element mj-section in div",
+      "mj-text extra element mj-spacer in div",
+      "mj-text extra element mj-text in div"
+    ]
+  },
+  {
+    "id": "column-inner-background",
+    "reason": "inner-background-color is written on the inner table even without padding; MJML only uses it with padding. The carousel and column MSO signatures in the fuzz cases follow from the different structure.",
+    "signatures": [
+      "mj-carousel extra mso-block [if !mso]\u003e in td",
+      "mj-carousel extra mso-block [if mso]\u003e div in td",
+      "mj-column attr-changed td[align]",
+      "mj-column attr-missing td[align]",
+      "mj-column extra element table in td",
+      "mj-column missing element div in td",
+      "mj-column missing element p in td",
+      "mj-column missing element table in td",
+      "mj-column mso-style-changed td{vertical-align}",
+      "mj-column mso-style-extra td{vertical-align}",
+      "mj-column style-changed div{vertical-align}",
+      "mj-column style-changed table{background-color}",
+      "mj-column style-changed td{padding}",
+      "mj-column style-extra div{vertical-align}",
+      "mj-column style-extra table{background-color}",
+      "mj-column style-extra table{vertical-align}",
+      "mj-column style-extra td{padding-bottom}",
+      "mj-column style-extra td{padding-left}",
+      "mj-column style-extra td{vertical-align}",
+      "mj-column style-missing table{background-color}",
+      "mj-column style-missing table{vertical-align}",
+      "mj-column style-missing td{font-size}",
+      "mj-column style-missing td{padding-bottom}",
+      "mj-column style-missing td{word-break}",
+      "mj-section style-extra td{border-left}",
+      "mj-section style-missing td{border-right}",
+      "mj-text extra element div in td"
+    ]
+  },
+  {
+    "id": "column-inner-border",
+    "reason": "mj-column inner-border-*: the border is not applied to the inner table when the column has padding, and its value leaks into the inner table's border-radius (border-radius: 1px solid #336699).",
+    "signatures": [
+      "mj-column style-changed table{border}",
+      "mj-column style-extra table{border-bottom}",
+      "mj-column style-extra table{border-left}",
+      "mj-column style-extra table{border-radius}",
+      "mj-column style-extra table{border-right}",
+      "mj-column style-extra table{border-top}",
+      "mj-column style-extra table{border}",
+      "mj-column style-missing table{border-bottom}",
+      "mj-column style-missing table{border-collapse}",
+      "mj-column style-missing table{border-left}",
+      "mj-column style-missing table{border-radius}",
+      "mj-column style-missing table{border-right}",
+      "mj-column style-missing table{border-top}",
+      "mj-column style-missing table{border}"
+    ]
+  },
+  {
+    "id": "column-pixel-width",
+    "reason": "A column with a pixel width gets that width on its div; MJML writes width:100% on the div and the pixel width only in the class rule.",
+    "signatures": [
+      "mj-column style-changed div{width}"
+    ]
+  },
+  {
+    "id": "column-zero-width",
+    "reason": "A column width of 0px falls back to an equal share (mj-column-per-50) in gomjml; MJML keeps mj-column-px-0.",
+    "signatures": [
+      "mj-column class-extra div.mj-column-per-N",
+      "mj-column class-extra div.mj-column-px-N",
+      "mj-column class-missing div.mj-column-per-N",
+      "mj-column class-missing div.mj-column-px-N",
+      "mj-column extra element div in td",
+      "mj-column extra mso-block [if mso | IE]\u003e /td in td",
+      "mj-column mso-extra tag \u003c/table\u003e",
+      "mj-column mso-extra tag \u003c/tr\u003e",
+      "mj-column mso-extra tag \u003ctd\u003e",
+      "mj-column mso-missing tag \u003c/table\u003e",
+      "mj-column mso-missing tag \u003c/tr\u003e",
+      "mj-column mso-missing tag \u003ctd\u003e",
+      "mj-section missing element div in td",
+      "mj-section missing mso-block [if mso | IE]\u003e /td in td"
+    ]
+  },
+  {
+    "id": "comments",
+    "reason": "HTML comments between components: MJML keeps them in the output, gomjml drops them, and the MSO blocks around them are split differently.",
+    "signatures": [
+      "mj-section missing mso-block [if mso | IE]\u003e td in td"
+    ]
+  },
+  {
+    "id": "css-class-extra",
+    "reason": "css-class lands on an element where MJML does not put it (mj-section's div, columns in fuzz documents).",
+    "signatures": [
+      "mj-column class-extra div.custom-class",
+      "mj-column mso-class-extra td.custom-class-outlook",
+      "mj-section class-extra div.custom-class"
+    ]
+  },
+  {
+    "id": "divider-width",
+    "reason": "mj-divider's MSO table width is computed differently from MJML's when the divider has a width or horizontal padding.",
+    "signatures": [
+      "mj-divider mso-attr-changed table[width]",
+      "mj-divider mso-style-changed table{width}"
+    ]
+  },
+  {
+    "id": "font-imports",
+    "reason": "Font links and @import rules differ from MJML's: gomjml imports fonts no rendered element uses (Ubuntu next to an mj-social-element's own font-family, an mj-font nothing references), leaves out ones MJML imports, and orders the @imports differently.",
+    "signatures": [
+      "head attr-changed link[href]",
+      "head css-extra @import url(https://example.com/path?a=N\u0026b=N)",
+      "head css-extra @import url(https://fonts.googleapis.com/css?family=Lato)",
+      "head css-extra @import url(https://fonts.googleapis.com/css?family=Lato:N,N,N,N)",
+      "head css-extra @import url(https://fonts.googleapis.com/css?family=Montserrat:N,N,N)",
+      "head css-extra @import url(https://fonts.googleapis.com/css?family=Montserrat:N,N,N,N)",
+      "head css-extra @import url(https://fonts.googleapis.com/css?family=Raleway)",
+      "head css-extra @import url(https://fonts.googleapis.com/css?family=Roboto:N,N,N,N)",
+      "head css-extra @import url(https://fonts.googleapis.com/css?family=Ubuntu:N,N,N,N)",
+      "head css-missing @import url(https://example.com/path?a=N\u0026amp",
+      "head css-missing @import url(https://fonts.googleapis.com/css?family=Open+Sans:N,N,N,N)",
+      "head css-missing @import url(https://fonts.googleapis.com/css?family=Ubuntu:N,N,N,N)",
+      "head css-order @import url(https://fonts.googleapis.com/css?family=Open+Sans:N,N,N,N)",
+      "head css-order @import url(https://fonts.googleapis.com/css?family=Roboto:N,N)",
+      "head extra element link in head",
+      "head extra mso-block [if !mso]\u003e in head",
+      "head missing element link in head",
+      "head missing mso-block [if !mso]\u003e in head"
+    ]
+  },
+  {
+    "id": "full-width-mobile-css",
+    "reason": "The mj-full-width-mobile media query (fluid-on-mobile images, full-width buttons) is written in a different style block, or where MJML writes none, or the reverse.",
+    "signatures": [
+      "mj-image css-extra @media only screen and (max-width:Npx) table.mj-full-width-mobile{width}",
+      "mj-image css-extra @media only screen and (max-width:Npx) td.mj-full-width-mobile{width}",
+      "mj-image css-missing @media only screen and (max-width:Npx) table.mj-full-width-mobile{width}",
+      "mj-image css-missing @media only screen and (max-width:Npx) td.mj-full-width-mobile{width}"
+    ]
+  },
+  {
+    "id": "full-width-section-structure",
+    "reason": "A full-width section among boxed ones in a fuzz document (and onepage): MJML writes the full-width table where gomjml writes a boxed div; not isolated further.",
+    "signatures": [
+      "body missing element table in div",
+      "mj-section extra element div in div"
+    ]
+  },
+  {
+    "id": "fuzz-knock-on",
+    "reason": "Seen in one or two fuzz documents only, next to a larger structural difference that another cluster names in the same document; not isolated as a defect of its own yet.",
+    "signatures": [
+      "body extra element div in div",
+      "body extra element v:rect in td",
+      "body missing element div in td",
+      "body missing mso-block [if mso | IE]\u003e /td in td",
+      "body missing mso-block [if mso | IE]\u003e /v:textbox in td",
+      "body mso-missing tag \u003cv:fill\u003e",
+      "body mso-missing tag \u003cv:rect\u003e",
+      "body mso-missing tag \u003cv:textbox\u003e",
+      "mj-accordion attr-missing table[role]",
+      "mj-accordion attr-missing table[width]",
+      "mj-accordion class-extra table.mj-accordion",
+      "mj-accordion extra element label in td",
+      "mj-accordion extra element tr in tbody",
+      "mj-accordion missing element div in td",
+      "mj-accordion style-changed td{padding}",
+      "mj-accordion style-extra table{border-bottom}",
+      "mj-accordion style-extra table{border-collapse}",
+      "mj-accordion style-extra table{border}",
+      "mj-accordion style-extra table{font-family}",
+      "mj-accordion style-extra table{width}",
+      "mj-accordion style-extra td{padding}",
+      "mj-accordion style-extra td{word-break}",
+      "mj-accordion style-missing td{word-break}",
+      "mj-button extra element table in td",
+      "mj-carousel attr-missing td[role]",
+      "mj-carousel attr-missing td[valign]",
+      "mj-carousel class-extra div.mj-carousel",
+      "mj-carousel extra element div in div",
+      "mj-carousel extra element div in td",
+      "mj-carousel extra element input in div",
+      "mj-carousel missing element a in td",
+      "mj-carousel missing element br in div",
+      "mj-carousel missing element i in div",
+      "mj-carousel missing element p in div",
+      "mj-carousel missing text in div",
+      "mj-carousel style-extra td{font-size}",
+      "mj-carousel style-extra td{word-break}",
+      "mj-carousel style-missing div{font-family}",
+      "mj-carousel style-missing div{font-size}",
+      "mj-carousel style-missing div{letter-spacing}",
+      "mj-carousel style-missing div{line-height}",
+      "mj-carousel style-missing div{text-align}",
+      "mj-carousel style-missing td{border-radius}",
+      "mj-carousel style-missing td{border}",
+      "mj-carousel style-missing td{cursor}",
+      "mj-carousel style-missing td{mso-padding-alt}",
+      "mj-column attr-extra table[width]",
+      "mj-column class-extra div.mj-column-per-N-N",
+      "mj-column class-extra div.mj-outlook-group-fix",
+      "mj-column class-missing div.mj-hero-content",
+      "mj-column extra element table in div",
+      "mj-column missing element div in div",
+      "mj-column missing mso-block [if mso | IE]\u003e /td in div",
+      "mj-column missing mso-block [if mso | IE]\u003e table in div",
+      "mj-column mso-attr-extra table[role]",
+      "mj-column mso-attr-missing table[width]",
+      "mj-column mso-style-extra td{width}",
+      "mj-column mso-style-missing table{width}",
+      "mj-column mso-style-missing td{align}",
+      "mj-column style-changed div{direction}",
+      "mj-column style-changed div{font-size}",
+      "mj-column style-changed table{vertical-align}",
+      "mj-column style-extra div{direction}",
+      "mj-column style-extra div{display}",
+      "mj-column style-extra div{font-size}",
+      "mj-column style-extra div{text-align}",
+      "mj-column style-extra div{width}",
+      "mj-column style-extra td{background-color}",
+      "mj-column style-extra td{border-left}",
+      "mj-column style-extra td{border-radius}",
+      "mj-column style-extra td{padding-top}",
+      "mj-column style-extra td{padding}",
+      "mj-column style-missing div{line-height}",
+      "mj-column style-missing div{margin}",
+      "mj-column style-missing table{line-height}",
+      "mj-column style-missing table{margin}",
+      "mj-column style-missing table{width}",
+      "mj-column style-missing td{padding}",
+      "mj-group style-changed div{direction}",
+      "mj-hero attr-missing table[width]",
+      "mj-hero class-missing div.mj-column-per-N-N",
+      "mj-hero class-missing div.mj-outlook-group-fix",
+      "mj-hero extra element table in div",
+      "mj-hero missing element a in div",
+      "mj-hero missing element br in div",
+      "mj-hero missing mso-block [if mso | IE]\u003e /v:textbox in td",
+      "mj-hero missing text in div",
+      "mj-hero mso-attr-missing table[align]",
+      "mj-hero mso-attr-missing td[width]",
+      "mj-hero mso-extra tag \u003c/a\u003e",
+      "mj-hero mso-extra tag \u003c/div\u003e",
+      "mj-hero mso-extra tag \u003c/table\u003e",
+      "mj-hero mso-extra tag \u003c/tr\u003e",
+      "mj-hero mso-extra tag \u003ca\u003e",
+      "mj-hero mso-extra tag \u003cbr\u003e",
+      "mj-hero mso-extra tag \u003cdiv\u003e",
+      "mj-hero mso-extra tag \u003cv:image\u003e",
+      "mj-hero mso-extra text",
+      "mj-hero mso-missing tag \u003cv:fill\u003e",
+      "mj-hero mso-missing tag \u003cv:rect\u003e",
+      "mj-hero mso-missing tag \u003cv:textbox\u003e",
+      "mj-hero mso-style-missing td{vertical-align}",
+      "mj-hero mso-style-missing td{width}",
+      "mj-hero style-extra div{max-width}",
+      "mj-hero style-extra table{width}",
+      "mj-hero style-missing div{background}",
+      "mj-hero style-missing div{direction}",
+      "mj-hero style-missing div{display}",
+      "mj-hero style-missing div{float}",
+      "mj-hero style-missing div{font-size}",
+      "mj-hero style-missing div{max-width}",
+      "mj-hero style-missing div{text-align}",
+      "mj-hero style-missing div{vertical-align}",
+      "mj-hero style-missing div{width}",
+      "mj-hero style-missing table{background-color}",
+      "mj-hero style-missing table{background}",
+      "mj-hero style-missing table{vertical-align}",
+      "mj-hero style-missing td{padding-top}",
+      "mj-hero style-missing td{padding}",
+      "mj-hero style-missing td{word-break}",
+      "mj-navbar attr-changed td[align]",
+      "mj-navbar extra element div in td",
+      "mj-navbar missing element table in td",
+      "mj-section attr-extra table[align]",
+      "mj-section attr-missing td[background]",
+      "mj-section attr-missing td[height]",
+      "mj-section class-missing div.mj-column-px-N",
+      "mj-section class-missing div.mj-outlook-group-fix",
+      "mj-section extra element div in td",
+      "mj-section missing element b in div",
+      "mj-section missing element div in div",
+      "mj-section missing element i in div",
+      "mj-section missing mso-block [if mso | IE]\u003e /td in div",
+      "mj-section missing mso-block [if mso | IE]\u003e table in div",
+      "mj-section mso-attr-extra table[bgcolor]",
+      "mj-section mso-attr-extra td[width]",
+      "mj-section mso-attr-missing table[bgcolor]",
+      "mj-section mso-class-extra table.custom-class-outlook",
+      "mj-section mso-extra tag \u003c/b\u003e",
+      "mj-section mso-extra tag \u003c/i\u003e",
+      "mj-section mso-extra tag \u003c/td\u003e",
+      "mj-section mso-extra tag \u003c/tr\u003e",
+      "mj-section mso-extra tag \u003cb\u003e",
+      "mj-section mso-extra tag \u003ci\u003e",
+      "mj-section mso-missing tag \u003cv:image\u003e",
+      "mj-section mso-style-missing td{width}",
+      "mj-section style-changed div{margin}",
+      "mj-section style-extra div{color}",
+      "mj-section style-extra td{border-right}",
+      "mj-section style-extra td{border}",
+      "mj-section style-extra td{direction}",
+      "mj-section style-extra td{font-size}",
+      "mj-section style-extra td{padding-left}",
+      "mj-section style-extra td{padding-top}",
+      "mj-section style-extra td{text-align}",
+      "mj-section style-missing div{background-color}",
+      "mj-section style-missing div{direction}",
+      "mj-section style-missing div{display}",
+      "mj-section style-missing div{font-size}",
+      "mj-section style-missing div{line-height}",
+      "mj-section style-missing div{text-align}",
+      "mj-section style-missing div{width}",
+      "mj-section style-missing table{background-color}",
+      "mj-section style-missing td{background-position}",
+      "mj-section style-missing td{background-repeat}",
+      "mj-section style-missing td{background}",
+      "mj-section style-missing td{border-left}",
+      "mj-section style-missing td{border}",
+      "mj-section style-missing td{height}",
+      "mj-section style-missing td{vertical-align}",
+      "mj-section style-missing tr{vertical-align}",
+      "mj-social attr-changed img[alt]",
+      "mj-social attr-missing img[title]",
+      "mj-social missing element td in tr",
+      "mj-social style-changed span{font-family}",
+      "mj-social style-changed span{line-height}",
+      "mj-social-element attr-extra table[align]",
+      "mj-social-element attr-missing td[align]",
+      "mj-social-element attr-missing td[bgcolor]",
+      "mj-social-element attr-missing td[role]",
+      "mj-social-element attr-missing td[valign]",
+      "mj-social-element style-extra table{background}",
+      "mj-social-element style-extra table{display}",
+      "mj-social-element style-extra table{float}",
+      "mj-social-element style-extra td{padding}",
+      "mj-social-element style-extra td{vertical-align}",
+      "mj-social-element style-missing table{border-collapse}",
+      "mj-social-element style-missing table{line-height}",
+      "mj-social-element style-missing td{background}",
+      "mj-social-element style-missing td{border-radius}",
+      "mj-social-element style-missing td{border}",
+      "mj-social-element style-missing td{cursor}",
+      "mj-social-element style-missing td{mso-padding-alt}",
+      "mj-spacer attr-missing td[align]",
+      "mj-spacer extra element div in td",
+      "mj-spacer missing element table in td",
+      "mj-spacer missing text in div",
+      "mj-spacer style-extra div{height}",
+      "mj-spacer style-extra td{font-size}",
+      "mj-spacer style-extra td{padding-bottom}",
+      "mj-spacer style-extra td{padding-top}",
+      "mj-spacer style-extra td{word-break}",
+      "mj-spacer style-missing div{font-family}",
+      "mj-spacer style-missing div{font-size}",
+      "mj-spacer style-missing div{text-align}",
+      "mj-spacer style-missing td{padding-left}",
+      "mj-spacer style-missing td{padding}",
+      "mj-spacer style-missing td{vertical-align}",
+      "mj-table attr-changed td[align]",
+      "mj-table attr-extra table[width]",
+      "mj-table attr-missing td[background]",
+      "mj-table extra element table in td",
+      "mj-table extra element td in tr",
+      "mj-table missing element img in td",
+      "mj-table missing mso-block [if mso | IE]\u003e table in td",
+      "mj-table style-extra table{border}",
+      "mj-table style-extra table{color}",
+      "mj-table style-extra table{font-family}",
+      "mj-table style-extra table{font-size}",
+      "mj-table style-extra table{line-height}",
+      "mj-table style-extra table{table-layout}",
+      "mj-table style-extra table{width}",
+      "mj-table style-extra td{padding-bottom}",
+      "mj-table style-missing table{border-collapse}",
+      "mj-table style-missing table{border-spacing}",
+      "mj-table style-missing td{width}",
+      "mj-wrapper missing element a in div",
+      "mj-wrapper missing element b in div",
+      "mj-wrapper missing element br in div",
+      "mj-wrapper missing element i in div",
+      "mj-wrapper missing element p in div",
+      "mj-wrapper missing element span in div",
+      "mj-wrapper mso-extra tag \u003c/a\u003e",
+      "mj-wrapper mso-extra tag \u003c/b\u003e",
+      "mj-wrapper mso-extra tag \u003c/i\u003e",
+      "mj-wrapper mso-extra tag \u003c/p\u003e",
+      "mj-wrapper mso-extra tag \u003c/span\u003e",
+      "mj-wrapper mso-extra tag \u003ca\u003e",
+      "mj-wrapper mso-extra tag \u003cb\u003e",
+      "mj-wrapper mso-extra tag \u003cbr\u003e",
+      "mj-wrapper mso-extra tag \u003ci\u003e",
+      "mj-wrapper mso-extra tag \u003cp\u003e",
+      "mj-wrapper mso-extra tag \u003cspan\u003e"
+    ]
+  },
+  {
+    "id": "group-vertical-align",
+    "reason": "mj-group vertical-align is not applied to the group's div and MSO cell.",
+    "signatures": [
+      "mj-group mso-style-missing td{vertical-align}",
+      "mj-group style-missing div{vertical-align}"
+    ]
+  },
+  {
+    "id": "group-widths",
+    "reason": "Inside mj-group, column MSO widths and the widths content gets (carousel images at 600px) come from the section instead of the group's column width.",
+    "signatures": [
+      "mj-group mso-style-changed td{width}"
+    ]
+  },
+  {
+    "id": "hero-align",
+    "reason": "A hero's align, float and padding-top are handled differently in the fuzz documents.",
+    "signatures": [
+      "mj-hero attr-missing div[align]",
+      "mj-hero style-extra td{padding-top}"
+    ]
+  },
+  {
+    "id": "hero-background",
+    "reason": "mj-hero's cell and layout differ from MJML's: the background cell declares background twice (the url shorthand after its longhands) where MJML declares it once, and height, mode=\"fluid-height\" (the padding cell MJML adds), align and the content div's classes differ with it.",
+    "signatures": [
+      "mj-hero attr-changed td[height]",
+      "mj-hero attr-extra td[background]",
+      "mj-hero attr-extra td[height]",
+      "mj-hero attr-missing table[align]",
+      "mj-hero attr-missing td[background]",
+      "mj-hero class-extra div.mj-hero-content",
+      "mj-hero extra element div in td",
+      "mj-hero extra element table in td",
+      "mj-hero extra mso-block [if mso | IE]\u003e /td in td",
+      "mj-hero extra mso-block [if mso | IE]\u003e table in td",
+      "mj-hero missing element div in td",
+      "mj-hero missing element td in tr",
+      "mj-hero missing mso-block [if mso | IE]\u003e /td in td",
+      "mj-hero missing mso-block [if mso | IE]\u003e table in td",
+      "mj-hero mso-attr-changed table[width]",
+      "mj-hero mso-attr-extra table[width]",
+      "mj-hero mso-attr-missing table[role]",
+      "mj-hero mso-style-changed table{width}",
+      "mj-hero mso-style-changed td{font-size}",
+      "mj-hero mso-style-changed td{line-height}",
+      "mj-hero mso-style-extra table{width}",
+      "mj-hero mso-style-missing td{padding-bottom}",
+      "mj-hero mso-style-missing td{padding-left}",
+      "mj-hero mso-style-missing td{padding-right}",
+      "mj-hero mso-style-missing td{padding-top}",
+      "mj-hero mso-style-missing td{padding}",
+      "mj-hero style-changed div{margin}",
+      "mj-hero style-changed div{max-width}",
+      "mj-hero style-changed td{height}",
+      "mj-hero style-changed td{padding}",
+      "mj-hero style-changed td{width}",
+      "mj-hero style-duplicate td{background}",
+      "mj-hero style-extra div{margin}",
+      "mj-hero style-extra table{margin}",
+      "mj-hero style-extra td{background-position}",
+      "mj-hero style-extra td{background-repeat}",
+      "mj-hero style-extra td{background}",
+      "mj-hero style-extra td{height}",
+      "mj-hero style-extra td{padding}",
+      "mj-hero style-extra td{vertical-align}",
+      "mj-hero style-extra tr{vertical-align}",
+      "mj-hero style-missing td{direction}",
+      "mj-hero style-missing td{font-size}",
+      "mj-hero style-missing td{mso-padding-bottom-alt}",
+      "mj-hero style-missing td{padding-bottom}",
+      "mj-hero style-missing td{text-align}",
+      "mj-hero style-missing td{width}"
+    ]
+  },
+  {
+    "id": "hero-background-color",
+    "reason": "mj-hero background-color is not written on the hero's inner cell and content div.",
+    "signatures": [
+      "mj-hero mso-style-missing td{background-color}",
+      "mj-hero style-missing div{background-color}"
+    ]
+  },
+  {
+    "id": "hero-border-radius",
+    "reason": "mj-hero border-radius is not applied to the hero cell.",
+    "signatures": [
+      "mj-hero style-missing td{border-radius}"
+    ]
+  },
+  {
+    "id": "hero-mso",
+    "reason": "mj-hero's MSO wrapper (table, v:image) is missing or split differently in fuzz documents where the hero follows other body children.",
+    "signatures": [
+      "mj-hero extra mso-block [if mso | IE]\u003e /td in div",
+      "mj-hero extra mso-block [if mso | IE]\u003e table in div",
+      "mj-hero mso-missing tag \u003c/td\u003e",
+      "mj-hero mso-missing tag \u003c/tr\u003e",
+      "mj-hero mso-missing tag \u003ctable\u003e",
+      "mj-hero mso-missing tag \u003ctd\u003e",
+      "mj-hero mso-missing tag \u003ctr\u003e",
+      "mj-hero mso-missing tag \u003cv:image\u003e"
+    ]
+  },
+  {
+    "id": "hero-nesting",
+    "reason": "mj-hero inside mj-wrapper or next to other heroes: the MSO table and v:image are laid out differently.",
+    "signatures": [
+      "mj-hero missing element tr in tbody",
+      "mj-hero mso-missing tag \u003c/table\u003e"
+    ]
+  },
+  {
+    "id": "hero-vml-image",
+    "reason": "The hero's VML image: background-height 0 or a % background-width are written as given where MJML falls back to the container size.",
+    "signatures": [
+      "mj-hero mso-style-changed v:image{width}",
+      "mj-hero mso-style-missing v:image{height}"
+    ]
+  },
+  {
+    "id": "html-in-title-preview",
+    "reason": "Markup inside mj-title and mj-preview: MJML keeps it (as text in \u003ctitle\u003e, as elements in the preview), gomjml drops the elements.",
+    "signatures": [
+      "body attr-changed div[aria-label]",
+      "body missing element b in div",
+      "head text-changed text in title"
+    ]
+  },
+  {
+    "id": "image-attributes",
+    "reason": "mj-image font-size, max-height, srcset, sizes and usemap are dropped.",
+    "signatures": [
+      "mj-image attr-missing img[sizes]",
+      "mj-image attr-missing img[srcset]",
+      "mj-image attr-missing img[usemap]",
+      "mj-image style-changed img{font-size}",
+      "mj-image style-missing img{max-height}"
+    ]
+  },
+  {
+    "id": "image-borders",
+    "reason": "mj-image border-* longhands are not applied to the img.",
+    "signatures": [
+      "mj-image style-missing img{border-bottom}",
+      "mj-image style-missing img{border-left}",
+      "mj-image style-missing img{border-right}",
+      "mj-image style-missing img{border-top}"
+    ]
+  },
+  {
+    "id": "inline-content",
+    "reason": "Inner HTML of mj-accordion-title/-text, mj-navbar-link, mj-table, mj-social-element and mj-button is re-serialised: text moves after the inline elements around it, void elements get closing tags, and attributes (a href, span style) are lost.",
+    "signatures": [
+      "mj-accordion attr-missing a[href]",
+      "mj-accordion extra element a in td",
+      "mj-accordion extra element b in td",
+      "mj-accordion extra element br in td",
+      "mj-accordion extra element i in td",
+      "mj-accordion extra element p in td",
+      "mj-accordion extra element span in td",
+      "mj-accordion extra text in td",
+      "mj-accordion missing element a in td",
+      "mj-accordion missing element b in td",
+      "mj-accordion missing element br in td",
+      "mj-accordion missing element i in td",
+      "mj-accordion missing element p in td",
+      "mj-accordion missing element span in td",
+      "mj-accordion missing text in td",
+      "mj-accordion style-missing span{color}",
+      "mj-accordion text-changed text in td",
+      "mj-accordion whitespace-changed text in td",
+      "mj-button extra text in a",
+      "mj-button whitespace-changed text in a",
+      "mj-navbar missing element a in div",
+      "mj-navbar missing element b in a",
+      "mj-navbar missing element br in a",
+      "mj-navbar missing element i in a",
+      "mj-navbar missing element span in a",
+      "mj-navbar missing text in a",
+      "mj-navbar text-changed text in a",
+      "mj-navbar whitespace-changed text in a",
+      "mj-social attr-changed img[src]",
+      "mj-social attr-extra img[src]",
+      "mj-social missing element a in td",
+      "mj-social missing element b in span",
+      "mj-social missing element p in td",
+      "mj-social missing element span in span",
+      "mj-social missing text in span",
+      "mj-social style-changed table{background}",
+      "mj-social style-extra table{background}",
+      "mj-social style-missing span{font-weight}",
+      "mj-social text-changed text in span",
+      "mj-social whitespace-changed text in span",
+      "mj-social-element missing element a in td",
+      "mj-social-element missing element span in td",
+      "mj-social-element style-changed span{color}",
+      "mj-social-element whitespace-changed text in a",
+      "mj-social-element whitespace-changed text in span",
+      "mj-table extra element a in td",
+      "mj-table extra element b in td",
+      "mj-table extra element br in td",
+      "mj-table extra element i in td",
+      "mj-table extra element p in td",
+      "mj-table extra element span in td",
+      "mj-table extra text in td",
+      "mj-table missing element a in td",
+      "mj-table missing element b in td",
+      "mj-table missing element br in td",
+      "mj-table missing element i in td",
+      "mj-table missing element p in td",
+      "mj-table missing element span in td",
+      "mj-table missing text in td",
+      "mj-table text-changed text in td",
+      "mj-table whitespace-changed text in td",
+      "mj-text extra element b in div",
+      "mj-text missing element b in div",
+      "mj-text missing element p in div",
+      "mj-text text-changed text in a",
+      "mj-text text-changed text in div",
+      "mj-text whitespace-changed text in div"
+    ]
+  },
+  {
+    "id": "mixed-group-columns",
+    "reason": "A section mixing a column and an mj-group lays the group out as a full-width column (mj-column-per-100, extra MSO cells) instead of the 70% it was given.",
+    "signatures": [
+      "mj-column extra element div in div",
+      "mj-column extra mso-block [if mso | IE]\u003e /td in div",
+      "mj-column extra mso-block [if mso | IE]\u003e table in div",
+      "mj-group class-extra div.mj-column-px-N",
+      "mj-group class-missing div.mj-column-per-N",
+      "mj-group extra mso-block [if mso | IE]\u003e table in td",
+      "mj-group missing element table in div",
+      "mj-group mso-extra tag \u003c/table\u003e",
+      "mj-group mso-extra tag \u003c/tr\u003e",
+      "mj-group mso-missing tag \u003ctd\u003e",
+      "mj-group style-changed div{font-size}",
+      "mj-group style-extra div{line-height}"
+    ]
+  },
+  {
+    "id": "mj-raw-whitespace",
+    "reason": "gomjml trims or re-serialises the markup MJML keeps as written inside mj-raw and conditional comments (unclassified MSO comment differences).",
+    "signatures": [
+      "body whitespace-changed text in div",
+      "document unclassified MSO conditional comment differences found"
+    ]
+  },
+  {
+    "id": "mj-style-color-inline",
+    "reason": "An inlined mj-style color (.custom-class { color }) is applied by MJML to the cells and rows the class lands on; gomjml misses some of them.",
+    "signatures": [
+      "mj-accordion style-missing tr{color}",
+      "mj-carousel style-missing div{color}",
+      "mj-column style-missing div{color}",
+      "mj-navbar style-missing td{color}",
+      "mj-social style-missing td{color}",
+      "mj-spacer style-missing div{color}"
+    ]
+  },
+  {
+    "id": "mj-style-inline-selectors",
+    "reason": "mj-style inline=\"inline\" selectors that target children (.t div, a) are applied to the wrong element: gomjml puts the declaration on the td with !important and misses the div and link.",
+    "signatures": [
+      "mj-column style-changed td{font-size}",
+      "mj-column style-duplicate td{font-size}",
+      "mj-text style-changed div{font-size}",
+      "mj-text style-missing a{color}"
+    ]
+  },
+  {
+    "id": "mj-style-link-decoration",
+    "reason": "mj-style rules (a { text-decoration: none }) inlined into links: MJML's juice inlines them into every matching a, gomjml misses the links inside components.",
+    "signatures": [
+      "body style-missing a{text-decoration}",
+      "mj-accordion style-missing a{text-decoration}",
+      "mj-carousel style-missing a{text-decoration}",
+      "mj-social-element style-missing a{text-decoration}",
+      "mj-table style-missing a{text-decoration}",
+      "mj-text style-missing a{text-decoration}"
+    ]
+  },
+  {
+    "id": "mjml-dir",
+    "reason": "\u003cmjml dir=\"rtl\"\u003e sets dir on MJML's wrapper div; gomjml keeps dir=\"auto\".",
+    "signatures": [
+      "body attr-changed div[dir]"
+    ]
+  },
+  {
+    "id": "mjml-rejects-no-body",
+    "reason": "MJML rejects a document without mj-body (\"Malformed MJML\"); gomjml returns the string \"MJML badly formatted\" as HTML, with no error.",
+    "signatures": [
+      "document mjml-rejects gomjml-renders"
+    ]
+  },
+  {
+    "id": "navbar-css",
+    "reason": "mj-navbar's hamburger media query and noinput rules are missing or duplicated compared with MJML, depending on which navbars in the document use the hamburger.",
+    "signatures": [
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{display}",
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{font-size}",
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{max-height}",
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{max-width}",
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-menu-trigger .mj-menu-icon-close{display}",
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-menu-trigger .mj-menu-icon-open{display}",
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]~.mj-inline-links\u003ea{display}",
+      "mj-navbar css-extra @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]~.mj-inline-links{display}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{display}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{font-size}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{max-height}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-inline-links,.mj-menu-checkbox[type=\"checkbox\"]~.mj-menu-trigger{max-width}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-menu-trigger .mj-menu-icon-close{display}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]:checked~.mj-menu-trigger .mj-menu-icon-open{display}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]~.mj-inline-links\u003ea{display}",
+      "mj-navbar css-missing @media only screen and (max-width:Npx) .mj-menu-checkbox[type=\"checkbox\"]~.mj-inline-links{display}",
+      "mj-navbar css-missing noinput.mj-menu-checkbox{display}",
+      "mj-navbar css-missing noinput.mj-menu-checkbox{max-height}",
+      "mj-navbar css-missing noinput.mj-menu-checkbox{visibility}",
+      "mj-navbar css-order noinput.mj-menu-checkbox{display}"
+    ]
+  },
+  {
+    "id": "navbar-hamburger",
+    "reason": "The hamburger label puts padding after its padding-* longhands; MJML's order lets the longhands win.",
+    "signatures": [
+      "mj-navbar style-order label{padding-bottom,padding}",
+      "mj-navbar style-order label{padding-right,padding}"
+    ]
+  },
+  {
+    "id": "navbar-link-attributes",
+    "reason": "mj-navbar-link name and letter-spacing are dropped, and base-url is joined without MJML's doubled slash.",
+    "signatures": [
+      "mj-navbar attr-changed a[href]",
+      "mj-navbar attr-missing a[name]",
+      "mj-navbar style-missing a{letter-spacing}"
+    ]
+  },
+  {
+    "id": "navbar-padding",
+    "reason": "mj-navbar padding and padding-* are not applied to its cell (mj-class or attributes).",
+    "signatures": [
+      "mj-navbar style-missing td{padding-bottom}",
+      "mj-navbar style-missing td{padding-left}",
+      "mj-navbar style-missing td{padding-right}",
+      "mj-navbar style-missing td{padding-top}",
+      "mj-navbar style-missing td{padding}"
+    ]
+  },
+  {
+    "id": "navbar-structure",
+    "reason": "Several navbars in one column: the MSO cells between links are split differently and a link is lost.",
+    "signatures": [
+      "mj-navbar extra mso-block [if mso | IE]\u003e /tr in div",
+      "mj-navbar missing mso-block [if mso | IE]\u003e /td in div",
+      "mj-navbar mso-missing tag \u003ctd\u003e"
+    ]
+  },
+  {
+    "id": "pre-whitespace",
+    "reason": "Whitespace inside \u003cpre\u003e in mj-text: MJML keeps the blank lines and indentation, gomjml changes them.",
+    "signatures": [
+      "mj-text whitespace-changed text in pre"
+    ]
+  },
+  {
+    "id": "section-background-image-templates",
+    "reason": "In tech-geek and reactivation-email, the MSO block around a section with a background (VML rect, fill and textbox, bgcolor) differs from MJML's; not isolated further.",
+    "signatures": [
+      "mj-section mso-attr-changed table[bgcolor]",
+      "mj-section mso-extra tag \u003cv:fill\u003e",
+      "mj-section mso-extra tag \u003cv:rect\u003e",
+      "mj-section mso-extra tag \u003cv:textbox\u003e"
+    ]
+  },
+  {
+    "id": "section-background-position",
+    "reason": "gomjml converts a section's background-position to VML fill origin/position differently from MJML (0.1, 0.2 where MJML writes 0.5, 0), and leaves background-position, -repeat and -size off the div.",
+    "signatures": [
+      "mj-section mso-attr-changed v:fill[origin]",
+      "mj-section mso-attr-changed v:fill[position]",
+      "mj-section style-missing div{background-position}",
+      "mj-section style-missing div{background-repeat}",
+      "mj-section style-missing div{background-size}"
+    ]
+  },
+  {
+    "id": "section-boxing",
+    "reason": "A section rendered with the other box from MJML's: full-width=\"false\" makes gomjml render a full-width section (MJML treats \"false\" as not full-width), and an mj-raw between sections, which MJML closes its MSO table around, gets a malformed \u003c!--[endif]----\u003e in gomjml that leaves the table open (basic and most templates).",
+    "signatures": [
+      "body extra element table in div",
+      "body missing element div in div",
+      "body missing mso-block [if mso | IE]\u003e /td in div",
+      "body missing mso-block [if mso | IE]\u003e table in div",
+      "mj-section mso-condition-changed [if mso | IE]\u003e"
+    ]
+  },
+  {
+    "id": "section-css-class-defaults",
+    "reason": "css-class given as a default (mj-attributes) is not applied to sections, columns, groups, heroes and content cells, nor as their -outlook class.",
+    "signatures": [
+      "body class-missing table.custom-class",
+      "mj-accordion class-missing td.custom-class",
+      "mj-accordion class-missing tr.custom-class",
+      "mj-carousel class-missing div.custom-class",
+      "mj-carousel class-missing td.custom-class",
+      "mj-carousel mso-class-missing div.custom-class",
+      "mj-column class-missing div.custom-class",
+      "mj-column class-missing td.custom-class",
+      "mj-column mso-class-missing td.custom-class-outlook",
+      "mj-group class-missing div.custom-class",
+      "mj-group mso-class-missing td.custom-class-outlook",
+      "mj-hero class-missing div.custom-class",
+      "mj-navbar class-missing td.custom-class",
+      "mj-section class-missing div.custom-class",
+      "mj-section mso-class-missing table.custom-class-outlook",
+      "mj-section mso-class-missing td.custom-class-outlook",
+      "mj-social class-missing td.custom-class",
+      "mj-social class-missing tr.custom-class",
+      "mj-spacer class-missing td.custom-class",
+      "mj-table class-missing td.custom-class",
+      "mj-wrapper class-missing table.custom-class",
+      "mj-wrapper mso-class-missing td.custom-class-outlook"
+    ]
+  },
+  {
+    "id": "section-mso-split",
+    "reason": "Between consecutive sections, wrappers and heroes gomjml opens and closes the MSO table cells in different places from MJML (an extra closing \u003c/td\u003e block), in fuzz documents that mix them.",
+    "signatures": [
+      "body extra mso-block [if mso | IE]\u003e /td in div",
+      "mj-section extra mso-block [if mso | IE]\u003e /td in div",
+      "mj-section extra mso-block [if mso | IE]\u003e /td in td"
+    ]
+  },
+  {
+    "id": "section-padding-longhands",
+    "reason": "A section's padding-* longhands from mj-attributes or mj-class are not applied to its cell.",
+    "signatures": [
+      "mj-section style-changed td{padding}",
+      "mj-section style-missing td{padding-bottom}",
+      "mj-section style-missing td{padding-left}",
+      "mj-section style-missing td{padding-right}",
+      "mj-section style-missing td{padding-top}"
+    ]
+  },
+  {
+    "id": "section-transparent-background",
+    "reason": "background-color=\"transparent\" on a section: MJML writes both background and background-color, gomjml only background-color.",
+    "signatures": [
+      "mj-section style-changed div{background-color}",
+      "mj-section style-changed div{background}",
+      "mj-section style-changed table{background-color}",
+      "mj-section style-changed table{background}",
+      "mj-section style-extra div{background-color}",
+      "mj-section style-extra div{background}",
+      "mj-section style-extra table{background-color}",
+      "mj-section style-extra table{background}",
+      "mj-section style-missing div{background}",
+      "mj-section style-missing table{background}"
+    ]
+  },
+  {
+    "id": "social-container",
+    "reason": "mj-social container-background-color is written without the td background attribute MJML adds, and padding-* longhands from mj-attributes are not applied.",
+    "signatures": [
+      "mj-social attr-missing td[background]",
+      "mj-social style-changed td{background}",
+      "mj-social style-changed td{padding}",
+      "mj-social style-missing td{background}",
+      "mj-social style-missing td{padding-bottom}",
+      "mj-social style-missing td{padding-left}",
+      "mj-social style-missing td{padding-right}",
+      "mj-social style-missing td{padding-top}",
+      "mj-social style-missing td{padding}"
+    ]
+  },
+  {
+    "id": "social-custom-element",
+    "reason": "An mj-social-element with an unknown name and no src is dropped; MJML renders it with an empty icon.",
+    "signatures": [
+      "mj-social missing element table in td",
+      "mj-social missing element tr in tbody"
+    ]
+  },
+  {
+    "id": "social-element-alignment",
+    "reason": "mj-social-element vertical-align is not applied to the icon cell.",
+    "signatures": [
+      "mj-social-element style-changed td{vertical-align}"
+    ]
+  },
+  {
+    "id": "social-element-defaults",
+    "reason": "mj-social-element attributes set through mj-attributes (font, colour, border-radius, icon-size, css-class) are ignored, and 3-digit colours are not expanded as MJML does.",
+    "signatures": [
+      "mj-social-element class-missing tr.custom-class",
+      "mj-social-element mso-style-missing td{height}",
+      "mj-social-element style-changed a{color}",
+      "mj-social-element style-changed a{font-family}",
+      "mj-social-element style-changed a{font-size}",
+      "mj-social-element style-changed a{line-height}",
+      "mj-social-element style-changed a{text-decoration}",
+      "mj-social-element style-changed img{border-radius}",
+      "mj-social-element style-changed table{background}",
+      "mj-social-element style-changed table{border-radius}",
+      "mj-social-element style-changed table{width}",
+      "mj-social-element style-changed td{height}",
+      "mj-social-element style-changed td{width}"
+    ]
+  },
+  {
+    "id": "social-element-icon-position",
+    "reason": "icon-position=\"right\" puts the text cell before the icon in MJML; gomjml leaves the text link out of that cell.",
+    "signatures": [
+      "mj-social-element extra element a in td"
+    ]
+  },
+  {
+    "id": "social-element-image",
+    "reason": "mj-social-element srcset, sizes, title and rel are dropped, and a % icon-height/width is written as given where MJML writes a number.",
+    "signatures": [
+      "mj-social-element attr-changed img[height]",
+      "mj-social-element attr-changed img[width]",
+      "mj-social-element attr-missing a[rel]",
+      "mj-social-element attr-missing img[sizes]",
+      "mj-social-element attr-missing img[srcset]",
+      "mj-social-element attr-missing img[title]"
+    ]
+  },
+  {
+    "id": "social-element-padding",
+    "reason": "mj-social-element padding-* longhands are not applied to its cells.",
+    "signatures": [
+      "mj-social-element extra element span in td",
+      "mj-social-element extra element table in td",
+      "mj-social-element missing element table in td",
+      "mj-social-element style-changed td{padding}",
+      "mj-social-element style-missing td{padding-bottom}",
+      "mj-social-element style-missing td{padding-left}",
+      "mj-social-element style-missing td{padding-right}",
+      "mj-social-element style-missing td{padding-top}"
+    ]
+  },
+  {
+    "id": "social-mode-vertical",
+    "reason": "mj-social mode=\"vertical\" renders the text as a span without a link; MJML keeps the link.",
+    "signatures": [
+      "mj-social extra element img in td",
+      "mj-social extra element span in td"
+    ]
+  },
+  {
+    "id": "social-structure",
+    "reason": "An mj-social in a fuzz document is split into different MSO cells.",
+    "signatures": [
+      "mj-social extra mso-block [if mso | IE]\u003e /tr in td",
+      "mj-social missing mso-block [if mso | IE]\u003e /td in td",
+      "mj-social mso-missing tag \u003ctd\u003e",
+      "mj-social-element extra mso-block [if mso | IE]\u003e /td in td",
+      "mj-social-element extra mso-block [if mso | IE]\u003e table in td",
+      "mj-social-element missing element td in tr"
+    ]
+  },
+  {
+    "id": "spacer-attributes",
+    "reason": "mj-spacer writes an unknown vertical-align attribute on its cell, and its height and line-height differ in the templates.",
+    "signatures": [
+      "mj-spacer attr-extra td[vertical-align]",
+      "mj-spacer style-changed div{height}",
+      "mj-spacer style-changed div{line-height}"
+    ]
+  },
+  {
+    "id": "table-attributes",
+    "reason": "mj-table role and a pixel width are written differently, and padding-* and css-class from mj-attributes are not applied.",
+    "signatures": [
+      "mj-table attr-changed table[width]",
+      "mj-table attr-missing table[role]",
+      "mj-table style-missing td{padding-bottom}",
+      "mj-table style-missing td{padding-left}",
+      "mj-table style-missing td{padding-right}",
+      "mj-table style-missing td{padding-top}"
+    ]
+  },
+  {
+    "id": "template-knock-on",
+    "reason": "Seen in one or two templates only (delivery, onepage, recast, newsletter), next to the closing-tag-whitespace defect, which swallows components into a text and shifts what follows; not isolated as a defect of its own yet.",
+    "signatures": [
+      "body attr-extra table[background]",
+      "body missing mso-block [if mso | IE]\u003e table in td",
+      "body style-changed table{background}",
+      "body style-extra table{background-position}",
+      "body style-extra table{background-repeat}",
+      "body style-extra table{background-size}",
+      "body style-missing table{background-color}",
+      "mj-column attr-changed a[href]",
+      "mj-column attr-extra td[align]",
+      "mj-column style-extra td{background}",
+      "mj-column style-extra td{font-size}",
+      "mj-column style-extra td{padding-right}",
+      "mj-column style-extra td{word-break}",
+      "mj-column style-missing td{padding-left}",
+      "mj-column style-missing td{padding-right}",
+      "mj-column style-missing td{vertical-align}",
+      "mj-divider extra element p in td",
+      "mj-divider extra mso-block [if mso | IE]\u003e table in td",
+      "mj-image attr-changed img[src]",
+      "mj-section extra mso-block [if mso | IE]\u003e v:rect in td",
+      "mj-section missing element table in div",
+      "mj-section mso-extra tag \u003c/v:rect\u003e",
+      "mj-section mso-extra tag \u003c/v:textbox\u003e",
+      "mj-section style-missing div{border-radius}",
+      "mj-section style-missing div{overflow}",
+      "mj-section style-missing table{border-collapse}",
+      "mj-section style-missing td{border-radius}",
+      "mj-social-element mso-attr-missing table[width]",
+      "mj-social-element mso-missing tag \u003c/table\u003e",
+      "mj-social-element mso-missing tag \u003c/td\u003e",
+      "mj-social-element mso-missing tag \u003c/tr\u003e",
+      "mj-social-element mso-style-missing table{border-top}",
+      "mj-social-element mso-style-missing table{font-size}",
+      "mj-social-element mso-style-missing table{margin}",
+      "mj-social-element mso-style-missing table{width}",
+      "mj-social-element mso-style-missing td{line-height}",
+      "mj-text attr-changed a[href]",
+      "mj-text extra element mj-divider in div",
+      "mj-text extra element mj-raw in div",
+      "mj-text style-changed div{color}",
+      "mj-text style-missing h3{margin-bottom}",
+      "mj-text style-missing h3{margin-top}",
+      "mj-text text-changed text in b",
+      "mj-text text-changed text in p"
+    ]
+  },
+  {
+    "id": "text-height",
+    "reason": "mj-text height is ignored: no MSO height table, no div height.",
+    "signatures": [
+      "mj-column missing mso-block [if mso | IE]\u003e /td in td",
+      "mj-column missing mso-block [if mso | IE]\u003e table in td",
+      "mj-text style-missing div{height}"
+    ]
+  },
+  {
+    "id": "unclassified-text",
+    "reason": "The comparison finds text or entity differences the signature walk cannot place (DOM structure matches); not yet triaged further.",
+    "signatures": [
+      "document unclassified DOM structure differences",
+      "document unclassified HTML entity encoding differences found"
+    ]
+  },
+  {
+    "id": "wrapper-background",
+    "reason": "mj-wrapper background-url is not rendered as MJML does (no VML rect, no background shorthand); the fuzz cases show the child sections misplaced after it.",
+    "signatures": [
+      "mj-wrapper extra element table in td",
+      "mj-wrapper extra element v:rect in td",
+      "mj-wrapper missing element div in td",
+      "mj-wrapper missing mso-block [if mso | IE]\u003e /td in td",
+      "mj-wrapper missing mso-block [if mso | IE]\u003e /v:textbox in td",
+      "mj-wrapper missing mso-block [if mso | IE]\u003e table in td"
+    ]
+  },
+  {
+    "id": "wrapper-border-collapse",
+    "reason": "gomjml adds border-collapse:separate to an mj-wrapper's table when the wrapper has a border (even border=\"none\"); MJML does not.",
+    "signatures": [
+      "mj-wrapper style-extra table{border-collapse}"
+    ]
+  },
+  {
+    "id": "wrapper-full-width-background",
+    "reason": "A full-width mj-wrapper with a background image renders no VML rect and a background-image style where MJML writes the background attribute, VML fill and shorthand.",
+    "signatures": [
+      "body attr-missing table[background]",
+      "body extra mso-block [if mso | IE]\u003e table in td",
+      "body missing mso-block [if mso | IE]\u003e v:rect in td",
+      "body mso-missing tag \u003c/v:rect\u003e",
+      "body mso-missing tag \u003c/v:textbox\u003e",
+      "body style-changed table{background-position}",
+      "body style-extra table{background-image}",
+      "body style-missing table{background}"
+    ]
+  },
+  {
+    "id": "wrapper-padding",
+    "reason": "mj-wrapper does not take its horizontal padding off the width it gives its sections: their MSO tables and max-width stay 600px where MJML's are narrower. In the fuzz cases the section markup that follows then differs too.",
+    "signatures": [
+      "body missing mso-block [if mso | IE]\u003e /v:textbox in div",
+      "mj-section extra element table in div",
+      "mj-section extra mso-block [if mso | IE]\u003e table in div",
+      "mj-section missing element br in div",
+      "mj-section missing element p in div",
+      "mj-section missing element span in div",
+      "mj-section missing text in div",
+      "mj-section mso-extra tag \u003c/div\u003e",
+      "mj-section mso-extra tag \u003c/p\u003e",
+      "mj-section mso-extra tag \u003c/span\u003e",
+      "mj-section mso-extra tag \u003cbr\u003e",
+      "mj-section mso-extra tag \u003cdiv\u003e",
+      "mj-section mso-extra tag \u003cp\u003e",
+      "mj-section mso-extra tag \u003cspan\u003e",
+      "mj-section mso-extra tag \u003ctable\u003e",
+      "mj-section mso-extra tag \u003ctbody\u003e",
+      "mj-section mso-extra tag \u003ctd\u003e",
+      "mj-section mso-extra tag \u003ctr\u003e",
+      "mj-section mso-extra text",
+      "mj-section mso-missing tag \u003c/table\u003e",
+      "mj-section mso-missing tag \u003c/td\u003e",
+      "mj-section mso-missing tag \u003c/tr\u003e",
+      "mj-section mso-missing tag \u003ctable\u003e",
+      "mj-section mso-missing tag \u003ctd\u003e",
+      "mj-section mso-missing tag \u003ctr\u003e",
+      "mj-section mso-missing tag \u003cv:fill\u003e",
+      "mj-section mso-missing tag \u003cv:rect\u003e",
+      "mj-section mso-missing tag \u003cv:textbox\u003e",
+      "mj-section style-changed div{max-width}",
+      "mj-section style-extra div{margin}",
+      "mj-section style-extra div{max-width}",
+      "mj-wrapper extra element table in div",
+      "mj-wrapper extra mso-block [if mso | IE]\u003e /td in div",
+      "mj-wrapper extra mso-block [if mso | IE]\u003e table in div",
+      "mj-wrapper missing element div in div",
+      "mj-wrapper missing text in div",
+      "mj-wrapper mso-attr-changed table[width]",
+      "mj-wrapper mso-extra tag \u003c/div\u003e",
+      "mj-wrapper mso-extra tag \u003c/table\u003e",
+      "mj-wrapper mso-extra tag \u003c/td\u003e",
+      "mj-wrapper mso-extra tag \u003c/tr\u003e",
+      "mj-wrapper mso-extra tag \u003cdiv\u003e",
+      "mj-wrapper mso-extra tag \u003ctable\u003e",
+      "mj-wrapper mso-extra tag \u003ctd\u003e",
+      "mj-wrapper mso-extra tag \u003ctr\u003e",
+      "mj-wrapper mso-extra text",
+      "mj-wrapper mso-missing tag \u003ctable\u003e",
+      "mj-wrapper mso-missing tag \u003ctd\u003e",
+      "mj-wrapper mso-missing tag \u003ctr\u003e",
+      "mj-wrapper mso-missing tag \u003cv:fill\u003e",
+      "mj-wrapper mso-missing tag \u003cv:rect\u003e",
+      "mj-wrapper mso-missing tag \u003cv:textbox\u003e",
+      "mj-wrapper mso-style-changed table{width}",
+      "mj-wrapper style-changed div{background-position}",
+      "mj-wrapper style-changed div{background}",
+      "mj-wrapper style-changed div{max-width}",
+      "mj-wrapper style-extra div{background-color}",
+      "mj-wrapper style-extra div{background-image}",
+      "mj-wrapper style-extra div{margin}",
+      "mj-wrapper style-extra div{max-width}",
+      "mj-wrapper style-missing div{background}"
+    ]
+  },
+  {
+    "id": "xml-entities",
+    "reason": "gomjml parses MJML as XML, so an HTML named entity XML does not define (\u0026rarr;, \u0026euro;) is a syntax error; MJML accepts it.",
+    "signatures": [
+      "document gomjml-rejects failed to parse MJML: XML syntax error on line N: invalid character entity \u0026rarr;"
+    ]
+  },
+  {
+    "id": "xml-mismatched-tags",
+    "reason": "MJML's parser tolerates a mis-nested mj-group/mj-section close tag in these templates; gomjml's XML parser rejects the document.",
+    "signatures": [
+      "document gomjml-rejects failed to parse MJML: XML syntax error on line N: element \u003cmj-group\u003e closed by \u003c/mj-section\u003e",
+      "document gomjml-rejects failed to parse MJML: XML syntax error on line N: element \u003cmj-section\u003e closed by \u003c/mj-group\u003e"
+    ]
+  },
+  {
+    "id": "xml-quot-in-attribute",
+    "reason": "An attribute value holding \u0026quot; fails gomjml's parse (\"attribute name without =\"); MJML decodes it. Likely the entity is decoded before the XML parse.",
+    "signatures": [
+      "document gomjml-rejects failed to parse MJML: XML syntax error on line N: attribute name without = in element"
+    ]
+  }
+]

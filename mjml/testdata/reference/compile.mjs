@@ -56,12 +56,12 @@ export function version(pkg = 'mjml') {
 
 // compile returns { html, warnings } or { error, warnings } when MJML rejects
 // the input, error being the message the CLI prints after "Error: ".
-export function compile(mjml, { pkg = 'mjml', filePath } = {}) {
-  const { mjml2html, minify } = compiler(pkg)
+export function compile(mjml, { pkg, filePath } = {}) {
+  const { mjml2html, minify } = compiler(pkg || 'mjml')
   reset()
   for (let i = 0; i < cliStartupDraws; i++) Math.random()
   try {
-    const result = mjml2html(mjml, { filePath, actualPath: filePath })
+    const result = mjml2html(mjml, { filePath: filePath || undefined, actualPath: filePath || undefined })
     const warnings = (result.errors ?? []).map(({ line, tagName, message }) => ({ line, tagName, message }))
     return { html: minify(result.html, minifyConfig), warnings }
   } catch (err) {
