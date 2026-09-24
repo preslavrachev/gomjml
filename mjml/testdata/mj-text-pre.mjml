@@ -1,0 +1,68 @@
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>
+          <!-- Put in a pre so we preserve the new line formatting and white spaces from user templates. -->
+          <pre style="white-space: pre-line;">Hi Sam,
+
+Thanks for renewing your policy.
+Your documents are attached.
+
+
+  Indented line   with  spaces.
+Kind regards,
+The Team</pre>
+        </mj-text>
+        <mj-text>
+          <pre style="white-space: pre;">Line one
+    four spaces in
+
+Line after blank</pre>
+        </mj-text>
+        <mj-text>
+          <pre style="white-space: pre-wrap;">Wrapped	tab
+  two
+
+end</pre>
+        </mj-text>
+        <mj-text>
+<pre>Plain pre
+  kept
+
+   end</pre>
+        </mj-text>
+        <mj-text>
+          <p>Before   the  pre</p>
+          <pre>First
+
+<b>bold</b>   kept
+</pre>
+          <p>After
+            the pre</p>
+        </mj-text>
+        <mj-text>
+          <pre>a <br> b
+
+c <br/> d  <img src="x.png"/> e</pre>
+          <textarea>t <br/>  u
+
+v</textarea>
+        </mj-text>
+        <mj-text>
+          <PRE>  Upper   case
+
+  pre a <br/>  b  </PRE>
+        </mj-text>
+        <mj-text>
+          <TextArea>  Mixed
+
+  case  </TextArea>
+        </mj-text>
+        <mj-text>
+          <p>a <B>bold</B>   text <I>it</I>  more</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
