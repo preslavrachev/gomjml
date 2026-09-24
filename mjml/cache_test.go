@@ -9,8 +9,8 @@ import (
 
 // helper to clear cache and stop cleanup between tests
 func resetASTCache() {
-	astCache.Range(func(key, _ any) bool {
-		astCache.Delete(key)
+	defaultASTCache.entries.Range(func(key, _ any) bool {
+		defaultASTCache.entries.Delete(key)
 		return true
 	})
 	StopASTCacheCleanup()
@@ -42,7 +42,7 @@ func TestCachingDisabledByDefault(t *testing.T) {
 	}
 
 	entries := 0
-	astCache.Range(func(_, _ any) bool { entries++; return true })
+	defaultASTCache.entries.Range(func(_, _ any) bool { entries++; return true })
 	if entries != 0 {
 		t.Fatalf("expected cache to remain empty, got %d entries", entries)
 	}
@@ -79,7 +79,7 @@ func TestCachingStoresAndReusesAST(t *testing.T) {
 	}
 
 	entries := 0
-	astCache.Range(func(_, _ any) bool { entries++; return true })
+	defaultASTCache.entries.Range(func(_, _ any) bool { entries++; return true })
 	if entries != 1 {
 		t.Fatalf("expected 1 cache entry, got %d", entries)
 	}
@@ -89,9 +89,9 @@ func TestCacheExpiration(t *testing.T) {
 	resetASTCache()
 	defer resetASTCache()
 
-	origTTL := astCacheTTL
-	astCacheTTL = 50 * time.Millisecond
-	defer func() { astCacheTTL = origTTL }()
+	origTTL := defaultASTCache.ttl
+	defaultASTCache.ttl = 50 * time.Millisecond
+	defer func() { defaultASTCache.ttl = origTTL }()
 
 	var calls int32
 	origParse := ParseMJML
@@ -107,7 +107,7 @@ func TestCacheExpiration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render1: %v", err)
 	}
-	time.Sleep(astCacheTTL + 10*time.Millisecond)
+	time.Sleep(defaultASTCache.ttl + 10*time.Millisecond)
 	r2, err := RenderWithAST(tpl, WithCache())
 	if err != nil {
 		t.Fatalf("render2: %v", err)
@@ -125,9 +125,9 @@ func TestCacheHitDoesNotExtendExpiration(t *testing.T) {
 	resetASTCache()
 	defer resetASTCache()
 
-	origTTL := astCacheTTL
-	astCacheTTL = 100 * time.Millisecond
-	defer func() { astCacheTTL = origTTL }()
+	origTTL := defaultASTCache.ttl
+	defaultASTCache.ttl = 100 * time.Millisecond
+	defer func() { defaultASTCache.ttl = origTTL }()
 
 	var calls int32
 	origParse := ParseMJML
@@ -179,7 +179,7 @@ func TestCacheConcurrentParsingSingleParse(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			if _, err := parseAST(tpl, true); err != nil {
+			if _, err := defaultASTCache.Parse(tpl); err != nil {
 				t.Errorf("parse: %v", err)
 			}
 		}()
@@ -201,12 +201,12 @@ func TestStopASTCacheCleanup(t *testing.T) {
 	if _, err := RenderWithAST(tpl, WithCache()); err != nil {
 		t.Fatalf("render: %v", err)
 	}
-	if cleanupCancel == nil {
+	if defaultASTCache.cleanupCancel == nil {
 		t.Fatalf("expected cleanup goroutine to start")
 	}
 
 	StopASTCacheCleanup()
-	if cleanupCancel != nil {
+	if defaultASTCache.cleanupCancel != nil {
 		t.Fatalf("expected cleanup goroutine to stop")
 	}
 }
@@ -241,7 +241,7 @@ func TestCacheSeparateTemplates(t *testing.T) {
 	}
 
 	entries := 0
-	astCache.Range(func(_, _ any) bool { entries++; return true })
+	defaultASTCache.entries.Range(func(_, _ any) bool { entries++; return true })
 	if entries != 2 {
 		t.Fatalf("expected 2 cache entries, got %d", entries)
 	}
@@ -253,20 +253,20 @@ func TestSetASTCacheTTLOnce(t *testing.T) {
 
 	astCacheTTLOnce = sync.Once{}
 	astCacheCleanupOnce = sync.Once{}
-	astCacheTTL = 5 * time.Minute
-	astCacheCleanupInterval = astCacheTTL / 2
+	defaultASTCache.ttl = 5 * time.Minute
+	defaultASTCache.cleanupInterval = defaultASTCache.ttl / 2
 
 	SetASTCacheTTLOnce(100 * time.Millisecond)
-	if astCacheTTL != 100*time.Millisecond {
-		t.Fatalf("expected TTL 100ms, got %v", astCacheTTL)
+	if defaultASTCache.ttl != 100*time.Millisecond {
+		t.Fatalf("expected TTL 100ms, got %v", defaultASTCache.ttl)
 	}
-	if astCacheCleanupInterval != 50*time.Millisecond {
-		t.Fatalf("expected cleanup interval 50ms, got %v", astCacheCleanupInterval)
+	if defaultASTCache.cleanupInterval != 50*time.Millisecond {
+		t.Fatalf("expected cleanup interval 50ms, got %v", defaultASTCache.cleanupInterval)
 	}
 
 	SetASTCacheTTLOnce(200 * time.Millisecond)
-	if astCacheTTL != 100*time.Millisecond {
-		t.Fatalf("second TTL set should be ignored, got %v", astCacheTTL)
+	if defaultASTCache.ttl != 100*time.Millisecond {
+		t.Fatalf("second TTL set should be ignored, got %v", defaultASTCache.ttl)
 	}
 }
 
@@ -275,15 +275,15 @@ func TestSetASTCacheCleanupIntervalOnce(t *testing.T) {
 	defer resetASTCache()
 
 	astCacheCleanupOnce = sync.Once{}
-	astCacheCleanupInterval = time.Second
+	defaultASTCache.cleanupInterval = time.Second
 
 	SetASTCacheCleanupIntervalOnce(100 * time.Millisecond)
-	if astCacheCleanupInterval != 100*time.Millisecond {
-		t.Fatalf("expected cleanup interval 100ms, got %v", astCacheCleanupInterval)
+	if defaultASTCache.cleanupInterval != 100*time.Millisecond {
+		t.Fatalf("expected cleanup interval 100ms, got %v", defaultASTCache.cleanupInterval)
 	}
 
 	SetASTCacheCleanupIntervalOnce(200 * time.Millisecond)
-	if astCacheCleanupInterval != 100*time.Millisecond {
-		t.Fatalf("second cleanup interval set should be ignored, got %v", astCacheCleanupInterval)
+	if defaultASTCache.cleanupInterval != 100*time.Millisecond {
+		t.Fatalf("second cleanup interval set should be ignored, got %v", defaultASTCache.cleanupInterval)
 	}
 }
