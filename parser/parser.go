@@ -478,6 +478,11 @@ func wrapMJTextContent(content string) string {
 			out.Write(b[pos:])
 			break
 		}
+		if next := idx + len(openNeedle); next < len(b) && !strings.ContainsRune(">/ \t\r\n", rune(b[next])) {
+			out.Write(b[pos:next]) // a longer tag name, such as <mj-text-block>
+			pos = next
+			continue
+		}
 
 		out.Write(b[pos:idx])
 
@@ -645,7 +650,7 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup,
 		}
 	}
 
-	if lookup != nil && len(node.Attrs) > 0 {
+	if lookup != nil {
 		node.LineNumber = lookup.Line(startOffset)
 	}
 

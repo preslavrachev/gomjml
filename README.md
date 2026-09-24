@@ -174,9 +174,44 @@ html, err := mjml.Render(mjmlContent, mjml.WithAllowedAttributes(func(tagName, a
 }))
 ```
 
+### Custom Components
+
+Define tags of your own in a `custom.Registry` and pass it to a render with `mjml.WithComponents`. A custom tag is a composite, like MJML's `renderMJML` components: its `Expand` function returns built-in MJML that replaces the tag before rendering, so the output stays within the MJML specification. There is no global registry; renders with different registries can run concurrently, and a registry is safe for concurrent use.
+
+```go
+import "github.com/preslavrachev/gomjml/mjml/custom"
+
+reg := custom.NewRegistry()
+err := reg.Register("mj-policy-summary", custom.Def{
+	Attributes: []string{"insured", "premium"},
+	Defaults:   map[string]string{"currency": "GBP"},
+	Expand: func(c custom.Call) ([]*custom.Node, error) {
+		return []*custom.Node{
+			custom.Element("mj-text", nil, custom.Text("Policy for "+c.Attrs["insured"])),
+			custom.Element("mj-table", nil,
+				custom.Element("tr", nil,
+					custom.Element("td", nil, custom.Text("Premium")),
+					custom.Element("td", nil, custom.Text(c.Attrs["currency"]+" "+c.Attrs["premium"])))),
+		}, nil
+	},
+})
+
+out, err := mjml.Render(`<mjml><mj-body><mj-section><mj-column>
+  <mj-policy-summary insured="Acme Ltd" premium="1,234.00" />
+</mj-column></mj-section></mj-body></mjml>`, mjml.WithComponents(reg))
+```
+
+- Build nodes that carry data with `custom.Element` and `custom.Text`: text is escaped and never parsed, so it cannot become markup. `custom.Parse` is for trusted MJML only; the parser decodes entities such as `&lt;` first, so escaping a value before interpolating it does not make it safe. Attribute values are written into the HTML unescaped, so keep untrusted data in text.
+
+- `c.Attrs` resolves the tag's attributes as MJML does: the element, `mj-class`, `mj-attributes` for the tag, then `Defaults`.
+- Attributes outside `Attributes` and `Defaults` are reported like invalid attributes on built-in tags, at the custom tag's line; `WithAllowedAttributes` applies to them too.
+- A container tag places `c.Node.Children` in its result; `c.Parent` tells the expansion where the tag sits. Custom tags inside the result expand too.
+- `HeadStyle` adds CSS to the head once, ahead of the document's own `mj-style`.
+- Custom tags expand in `mj-body` only. `RenderWithAST` returns the AST as written, with custom tags unexpanded.
+
 ### Adding New Components
 
-While it is not recommended to do so, because it will break the compatibility with the MJML specification, you can fork the repository and add new components by following these steps:
+For tags that must emit their own HTML, which will break compatibility with the MJML specification, you can fork the repository and add new components by following these steps:
 
 ```go
 // 1. Create component file in mjml/components/
