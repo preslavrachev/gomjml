@@ -85,6 +85,7 @@ func (c *MJNavbarComponent) renderCellOpen(w io.StringWriter, align string) erro
 		cellTag.AddAttribute(constants.AttrClass, cssClass)
 	}
 
+	c.AddDebugAttribute(cellTag, "navbar")
 	return cellTag.RenderOpen(w)
 }
 
