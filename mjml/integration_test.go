@@ -365,10 +365,10 @@ func TestCSSNormalization(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "different order CSS rules",
+			name:     "reordered CSS rules",
 			css1:     ".mj-column-per-100 { width:100% } .mj-column-per-50 { width:50% }",
 			css2:     ".mj-column-per-50 { width:50% } .mj-column-per-100 { width:100% }",
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "different whitespace",
@@ -383,10 +383,16 @@ func TestCSSNormalization(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "complex media query reordering",
+			name:     "rules reordered inside a media query",
 			css1:     "@media only screen { .mj-column-per-100 { width:100% } .mj-column-per-50 { width:50% } }",
 			css2:     "@media only screen { .mj-column-per-50 { width:50% } .mj-column-per-100 { width:100% } }",
-			expected: true,
+			expected: false,
+		},
+		{
+			name:     "same characters, different breakpoint",
+			css1:     "@media only screen and (min-width:480px) { .mj-column-per-100 { width:100% } }",
+			css2:     "@media only screen and (min-width:840px) { .mj-column-per-100 { width:100% } }",
+			expected: false,
 		},
 	}
 
@@ -584,7 +590,6 @@ func compareNodes(expected, actual *goquery.Selection) bool {
 				equal = false
 				return
 			}
-			// Then apply general CSS normalization for ordering issues
 			if normalizeCSSContent(expectedText) != normalizeCSSContent(actualText) {
 				equal = false
 				return
@@ -963,19 +968,13 @@ func hasFirefoxCSSIssue(expected, actual string) bool {
 	return actualCount < expectedCount
 }
 
-// normalizeCSSContent normalizes CSS content for comparison by removing whitespace and sorting characters
+// normalizeCSSContent removes all whitespace from CSS so that only formatting is ignored
 func normalizeCSSContent(css string) string {
-	// Remove all whitespace and newlines
 	normalized := strings.ReplaceAll(css, " ", "")
 	normalized = strings.ReplaceAll(normalized, "\n", "")
 	normalized = strings.ReplaceAll(normalized, "\t", "")
 	normalized = strings.ReplaceAll(normalized, "\r", "")
-
-	// Convert to slice of runes, sort, and convert back
-	runes := []rune(normalized)
-	slices.Sort(runes)
-
-	return string(runes)
+	return normalized
 }
 
 // checkSelfClosingTagDifferences detects differences in self-closing tag serialization
