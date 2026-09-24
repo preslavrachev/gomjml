@@ -115,3 +115,55 @@ func TestCreateComponent(t *testing.T) {
 		t.Errorf("Render() output should contain 'Hello'")
 	}
 }
+
+// A template that emits markup before <mjml> must fail rather than render
+// only the stray element (issue #36).
+func TestRenderRejectsElementBeforeRoot(t *testing.T) {
+	input := `
+<mj-text font-size="18px">I SHOULD NOT BE HERE</mj-text>
+
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Hello Ed</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
+`
+	html, err := Render(input)
+	if err == nil {
+		t.Fatalf("Render() error = nil, output %q", html)
+	}
+	if want := "expected <mjml> root, found <mj-text> at line 2"; !strings.Contains(err.Error(), want) {
+		t.Errorf("Render() error = %q, want it to contain %q", err, want)
+	}
+	if html != "" {
+		t.Errorf("Render() output = %q, want none", html)
+	}
+}
+
+func TestRenderRejectsFragmentRoot(t *testing.T) {
+	html, err := Render(`<mj-body><mj-section><mj-column><mj-text>Hi</mj-text></mj-column></mj-section></mj-body>`)
+	if err == nil {
+		t.Fatalf("Render() error = nil, output %q", html)
+	}
+	if want := "expected <mjml> root, found <mj-body>"; !strings.Contains(err.Error(), want) {
+		t.Errorf("Render() error = %q, want it to contain %q", err, want)
+	}
+}
+
+func TestRenderFromASTAcceptsMJMLPrefixedFragment(t *testing.T) {
+	ast, err := ParseMJML(`<mj-raw><mjml-logo/></mj-raw>`)
+	if err != nil {
+		t.Fatalf("ParseMJML() error = %v", err)
+	}
+	html, err := RenderFromAST(ast)
+	if err != nil {
+		t.Fatalf("RenderFromAST() error = %v", err)
+	}
+	if !strings.Contains(html, "<mjml-logo") {
+		t.Errorf("RenderFromAST() = %q, want the raw <mjml-logo> element", html)
+	}
+}
