@@ -1,6 +1,8 @@
 package mjml
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -9,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -30,8 +33,9 @@ Regenerate the references with scripts/regen-goldens.sh.
 For fixture "foo", the input is testdata/foo.mjml and the reference is testdata/foo.html, or
 testdata/foo.error when MJML rejects the input.
 
-A fixture listed in knownDiffs must still differ from the reference: it is reported as skipped
-with its reason, and fails once it matches so that the entry gets removed.
+A fixture listed in knownDiffs must still differ from the reference in exactly the recorded way:
+it is reported as skipped with its reason, fails once it matches so that the entry gets removed,
+and fails when its differences change, so the entry never covers a new regression.
 
 On mismatch, the test provides a detailed DOM diff, logs style differences, and writes both
 actual and expected outputs to temporary files for debugging purposes.
@@ -51,14 +55,17 @@ func TestMJMLAgainstExpected(t *testing.T) {
 
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
-			differences := referenceDifferences(t, name)
-			reason, known := knownDiffs[name]
+			differences, digest := referenceDifferences(t, name)
+			known, isKnown := knownDiffs[name]
 			switch {
-			case known && len(differences) == 0:
+			case isKnown && len(differences) == 0:
 				t.Errorf("%s now matches MJML; remove it from knownDiffs", name)
-			case known:
+			case isKnown && digest != known.digest:
+				t.Errorf("%s differs from MJML beyond its knownDiffs entry (digest %s, recorded %s):\n%s",
+					name, digest, known.digest, strings.Join(differences, "\n\n"))
+			case isKnown:
 				t.Logf("\n%s", strings.Join(differences, "\n\n"))
-				t.Skipf("known difference from MJML: %s", reason)
+				t.Skipf("known difference from MJML: %s", known.reason)
 			case len(differences) > 0:
 				t.Errorf("\n=== COMPREHENSIVE DIFFERENCE ANALYSIS ===\n%s\n===========================================",
 					strings.Join(differences, "\n\n"))
@@ -115,8 +122,9 @@ func referenceFixtures(t *testing.T) []string {
 }
 
 // referenceDifferences renders fixture name with gomjml and describes how the result
-// differs from the MJML reference. It returns nil when they match.
-func referenceDifferences(t *testing.T, name string) []string {
+// differs from the MJML reference, with a digest that identifies those differences.
+// It returns nil when they match.
+func referenceDifferences(t *testing.T, name string) ([]string, string) {
 	t.Helper()
 	filename := getTestdataFilename(name)
 	mjmlContent, err := os.ReadFile(filename)
@@ -126,10 +134,10 @@ func referenceDifferences(t *testing.T, name string) []string {
 
 	if rejection, err := os.ReadFile(strings.TrimSuffix(filename, ".mjml") + ".error"); err == nil {
 		if _, err := Render(string(mjmlContent)); err == nil {
-			return []string{fmt.Sprintf("MJML rejects this input (%s) but gomjml rendered it",
-				strings.TrimSpace(string(rejection)))}
+			return digested([]string{fmt.Sprintf("MJML rejects this input (%s) but gomjml rendered it",
+				strings.TrimSpace(string(rejection)))})
 		}
-		return nil
+		return nil, ""
 	}
 
 	expectedFile := strings.TrimSuffix(filename, ".mjml") + ".html"
@@ -157,14 +165,14 @@ func referenceDifferences(t *testing.T, name string) []string {
 		var mjmlErr Error
 		if checkErr != nil && errors.As(err, &mjmlErr) {
 			if checkErr(mjmlErr) == nil {
-				return nil
+				return nil, ""
 			}
-			return []string{fmt.Sprintf("Error did not match expectation: %v", err)}
+			return digested([]string{fmt.Sprintf("Error did not match expectation: %v", err)})
 		}
-		return []string{fmt.Sprintf("Failed to render MJML: %v", err)}
+		return digested([]string{fmt.Sprintf("Failed to render MJML: %v", err)})
 	}
 	if checkErr != nil {
-		return []string{fmt.Sprintf("Expected the following error: %s, but got none", checkErr(errors.New("no error")))}
+		return digested([]string{fmt.Sprintf("Expected the following error: %s, but got none", checkErr(errors.New("no error")))})
 	}
 
 	// Collect ALL difference types instead of early returns for comprehensive analysis
@@ -270,10 +278,11 @@ func referenceDifferences(t *testing.T, name string) []string {
 		)
 	}
 
-	if len(allDifferences) > 0 {
-		writeDebugFiles(name, expected, actual)
+	if len(allDifferences) == 0 {
+		return nil, ""
 	}
-	return allDifferences
+	writeDebugFiles(name, expected, actual)
+	return allDifferences, digestLines(append(canonicalDifference(normalizedExpected, normalizedActual), allDifferences...))
 }
 
 // getTestdataFilename returns the file path for a test MJML file located in the "testdata" directory,
@@ -469,6 +478,7 @@ func (d StyleDiff) String() string {
 		for prop, value := range d.Missing {
 			missing = append(missing, fmt.Sprintf("%s=%s", prop, value))
 		}
+		slices.Sort(missing)
 		parts = append(parts, fmt.Sprintf("Missing: %s", strings.Join(missing, ", ")))
 	}
 
@@ -477,6 +487,7 @@ func (d StyleDiff) String() string {
 		for prop, values := range d.Mismatched {
 			mismatched = append(mismatched, fmt.Sprintf("%s=%s→%s", prop, values[0], values[1]))
 		}
+		slices.Sort(mismatched)
 		parts = append(parts, fmt.Sprintf("Wrong values: %s", strings.Join(mismatched, ", ")))
 	}
 
@@ -485,6 +496,7 @@ func (d StyleDiff) String() string {
 		for prop, value := range d.Extra {
 			extra = append(extra, fmt.Sprintf("%s=%s", prop, value))
 		}
+		slices.Sort(extra)
 		parts = append(parts, fmt.Sprintf("Extra: %s", strings.Join(extra, ", ")))
 	}
 
@@ -1567,19 +1579,112 @@ func canonicalizeTagAttributes(block, tag string) string {
 	})
 }
 
-// knownDiffs lists fixtures whose gomjml output is known to differ from the MJML reference,
-// with the reason. TestMJMLAgainstExpected skips them while they differ and fails once they match.
-var knownDiffs = map[string]string{
-	"mj-breakpoint":            "mj-breakpoint is not implemented; media queries keep the 480px default",
-	"mj-hero-background-url":   "the hero cell declares background twice, the url shorthand after its longhands",
-	"mj-hero-background-width": "the hero cell declares background twice, the url shorthand after its longhands",
-	"mj-hero-mode":             "the hero cell declares background twice, the url shorthand after its longhands",
-	"mj-navbar-ico":            "the hamburger label puts padding before padding-right; MJML's reverse order lets padding win",
-	"mj-raw-go-template":       "gomjml trims the whitespace MJML keeps around mj-raw content",
-	"mj-raw-head":              "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
-	"mj-text-height":           "mj-text height is ignored: no MSO height table, no div height",
-	"mj-wrapper-background":    "mj-wrapper background-url is not rendered: no VML rect, no background shorthand",
-	"mjml":                     "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
+// knownDiff records why a fixture's gomjml output differs from the MJML reference, and a digest
+// of the differences the comparison reports for it.
+type knownDiff struct {
+	reason string
+	digest string
+}
+
+// knownDiffs lists fixtures whose gomjml output is known to differ from the MJML reference.
+// TestMJMLAgainstExpected skips them while they differ exactly as recorded; after a deliberate
+// change, copy the digest the failure reports.
+var knownDiffs = map[string]knownDiff{
+	"mj-breakpoint":            {"mj-breakpoint is not implemented; media queries keep the 480px default", "1a53fbeff7d7"},
+	"mj-hero-background-url":   {"the hero cell declares background twice, the url shorthand after its longhands", "9eda5e3dd80b"},
+	"mj-hero-background-width": {"the hero cell declares background twice, the url shorthand after its longhands", "9eda5e3dd80b"},
+	"mj-hero-mode":             {"the hero cell declares background twice, the url shorthand after its longhands", "86dff938508d"},
+	"mj-navbar-ico":            {"the hamburger label puts padding before padding-right; MJML's reverse order lets padding win", "658ea93b4e27"},
+	"mj-raw-go-template":       {"gomjml trims the whitespace MJML keeps around mj-raw content", "7e551b6a17b4"},
+	"mj-raw-head":              {"MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML", "c2b434fd09e0"},
+	"mj-text-height":           {"mj-text height is ignored: no MSO height table, no div height", "67462e089b53"},
+	"mj-wrapper-background":    {"mj-wrapper background-url is not rendered: no VML rect, no background shorthand", "ef1208914af8"},
+	"mjml":                     {"MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML", "c2b434fd09e0"},
+}
+
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func digested(differences []string) ([]string, string) {
+	return differences, digestLines(differences)
+}
+
+// digestLines hashes lines of text, ignoring colour codes, blank lines and line order.
+func digestLines(texts []string) string {
+	var lines []string
+	for line := range strings.SplitSeq(ansiEscape.ReplaceAllString(strings.Join(texts, "\n"), ""), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	slices.Sort(lines)
+	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+	return hex.EncodeToString(sum[:6])
+}
+
+// canonicalDifference lists the canonical lines only one document has, so that a knownDiffs
+// digest pins what differs rather than the coarser wording of the reported differences.
+func canonicalDifference(expected, actual string) []string {
+	counts := make(map[string]int)
+	for _, line := range canonicalLines(expected) {
+		counts[line]++
+	}
+	for _, line := range canonicalLines(actual) {
+		counts[line]--
+	}
+	var lines []string
+	for line, count := range counts {
+		for ; count > 0; count-- {
+			lines = append(lines, "- "+line)
+		}
+		for ; count < 0; count++ {
+			lines = append(lines, "+ "+line)
+		}
+	}
+	return lines
+}
+
+// canonicalLines describes a document the way the comparison sees it: one line per element
+// with its tag path, its attributes as compared and its ordered content, plus each MSO block.
+func canonicalLines(document string) []string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(document))
+	if err != nil {
+		return []string{"unparsable: " + err.Error()}
+	}
+	var lines []string
+	doc.Find("*").Each(func(_ int, element *goquery.Selection) {
+		var path []string
+		for node := element; node.Length() > 0 && goquery.NodeName(node) != "#document"; node = node.Parent() {
+			path = append(path, goquery.NodeName(node))
+		}
+		slices.Reverse(path)
+
+		var attributes []string
+		for _, attr := range element.Get(0).Attr {
+			value := attr.Val
+			switch {
+			case strings.HasPrefix(attr.Key, "data-mj-debug"):
+				continue
+			case attr.Key == "style":
+				value = normalizeStyleAttribute(value)
+			case attr.Key == "class":
+				value = normalizeClassAttribute(value)
+			}
+			attributes = append(attributes, fmt.Sprintf("%s=%q", attr.Key, value))
+		}
+		slices.Sort(attributes)
+
+		// The same content views compareNodes compares: child order, then the element's own text.
+		content := strings.Join(contentSequence(element), " | ") + " text=" +
+			strconv.Quote(strings.TrimSpace(element.Contents().Not("*").Text()))
+		if goquery.NodeName(element) == "style" {
+			content = normalizeCSSContent(element.Text())
+		}
+		lines = append(lines, strings.Join(path, ">")+" ["+strings.Join(attributes, " ")+"] "+content)
+	})
+	for _, block := range extractMSOSequences(document) {
+		lines = append(lines, "mso "+block)
+	}
+	return lines
 }
 
 // normalizeForComparison prepares either side of a reference comparison.

@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -97,6 +98,7 @@ func (d StyleDiff) String() string {
 		for prop, value := range d.Missing {
 			missing = append(missing, fmt.Sprintf("%s=%s", prop, value))
 		}
+		slices.Sort(missing)
 		parts = append(parts, fmt.Sprintf("Missing: %s", strings.Join(missing, ", ")))
 	}
 
@@ -105,6 +107,7 @@ func (d StyleDiff) String() string {
 		for prop, values := range d.Mismatched {
 			mismatched = append(mismatched, fmt.Sprintf("%s=%s→%s", prop, values[0], values[1]))
 		}
+		slices.Sort(mismatched)
 		parts = append(parts, fmt.Sprintf("Wrong values: %s", strings.Join(mismatched, ", ")))
 	}
 
@@ -113,6 +116,7 @@ func (d StyleDiff) String() string {
 		for prop, value := range d.Extra {
 			extra = append(extra, fmt.Sprintf("%s=%s", prop, value))
 		}
+		slices.Sort(extra)
 		parts = append(parts, fmt.Sprintf("Extra: %s", strings.Join(extra, ", ")))
 	}
 
