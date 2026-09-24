@@ -57,6 +57,30 @@ func (c *MJTitleComponent) GetDefaultAttribute(name string) string {
 	return ""
 }
 
+// MJBreakpointComponent represents mj-breakpoint
+type MJBreakpointComponent struct {
+	*BaseComponent
+}
+
+// NewMJBreakpointComponent creates a new mj-breakpoint component
+func NewMJBreakpointComponent(node *parser.MJMLNode, opts *options.RenderOpts) *MJBreakpointComponent {
+	return &MJBreakpointComponent{
+		BaseComponent: NewBaseComponent(node, opts),
+	}
+}
+
+func (c *MJBreakpointComponent) Render(w io.StringWriter) error {
+	return nil // The breakpoint is read by the MJML component's media queries
+}
+
+func (c *MJBreakpointComponent) GetTagName() string {
+	return "mj-breakpoint"
+}
+
+func (c *MJBreakpointComponent) GetDefaultAttribute(name string) string {
+	return ""
+}
+
 // MJFontComponent represents mj-font
 type MJFontComponent struct {
 	*BaseComponent

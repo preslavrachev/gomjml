@@ -267,6 +267,7 @@ func (c *MJNewComponent) GetTagName() string {
 | `mj-font` | ✅ **Implemented** | Custom font imports with Google Fonts support |
 | `mj-preview` | ✅ **Implemented** | Preview text for email clients |
 | `mj-style` | ✅ **Implemented** | Custom CSS styles |
+| `mj-breakpoint` | ✅ **Implemented** | Width below which columns stack |
 | `mj-attributes` | ✅ **Implemented** | Global attribute definitions |
 | `mj-all` | ✅ **Implemented** | Global attributes for all components |
 | **Other Components** | | |
