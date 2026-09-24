@@ -98,6 +98,8 @@ type lineLookup struct {
 	lineOffsets []int
 	lastOffset  int64
 	lastIndex   int
+	// lineShift restores the lines stripped before the root.
+	lineShift int
 }
 
 func newLineLookup(content []byte) *lineLookup {
@@ -122,7 +124,7 @@ func (ll *lineLookup) Line(offset int64) int {
 		}
 		ll.lastIndex = idx
 		ll.lastOffset = offset
-		return idx + 1
+		return idx + 1 + ll.lineShift
 	}
 
 	idx := max(sort.Search(len(ll.lineOffsets), func(i int) bool {
@@ -130,7 +132,7 @@ func (ll *lineLookup) Line(offset int64) int {
 	})-1, 0)
 	ll.lastIndex = idx
 	ll.lastOffset = offset
-	return idx + 1
+	return idx + 1 + ll.lineShift
 }
 
 // AIDEV-NOTE: mjml-spec-structure; MJML document structure per official spec
@@ -144,9 +146,15 @@ func (ll *lineLookup) Line(offset int64) int {
 
 // ParseMJML parses an MJML string into an AST
 func ParseMJML(mjmlContent string) (*MJMLNode, error) {
+	mjmlContent = strings.TrimPrefix(mjmlContent, "\uFEFF")
+
 	// AIDEV-NOTE: comment-preservation; Preserve all XML comments for MRML compatibility
 	// MRML preserves regular XML comments and wraps them with MSO conditionals
 	processedContent := stripNonMSOComments(mjmlContent)
+	lineShift := 0
+	if len(processedContent) < len(mjmlContent) {
+		lineShift = strings.Count(mjmlContent, "\n") - strings.Count(processedContent, "\n")
+	}
 
 	// Pre-process HTML entities that XML parser doesn't handle
 	processedContent = preprocessHTMLEntities(processedContent)
@@ -156,13 +164,100 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 
 	contentBytes := []byte(processedContent)
 	lookup := newLineLookup(contentBytes)
+	lookup.lineShift = lineShift
 
 	decoder := xml.NewDecoder(bytes.NewReader(contentBytes))
-	root, err := parseNode(decoder, xml.StartElement{}, lookup, 0, contentBytes)
+	start, err := rootStart(decoder, mjmlContent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MJML: %w", err)
 	}
+	root, err := parseNode(decoder, start, lookup, decoder.InputOffset(), contentBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse MJML: %w", err)
+	}
+	if err := checkAfterRoot(decoder, root, lookup, mjmlContent); err != nil {
+		return nil, fmt.Errorf("failed to parse MJML: %w", err)
+	}
 	return root, nil
+}
+
+// rootStart skips whitespace, comments, an XML declaration and a doctype to
+// the first element. MJML silently drops anything else there.
+func rootStart(d *xml.Decoder, content string) (xml.StartElement, error) {
+	for {
+		tok, err := d.Token()
+		if err != nil {
+			return xml.StartElement{}, err
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			return t, nil
+		case xml.CharData:
+			if text := bytes.Trim(t, " \t\r\n"); len(text) > 0 {
+				return xml.StartElement{}, fmt.Errorf("expected <mjml> root, found text %q at line %d",
+					excerpt(text), strayLine(content))
+			}
+		}
+	}
+}
+
+// checkAfterRoot rejects an element after </mjml>, as MJML does, and an <mjml>
+// document after a fragment root. Like MJML, it ignores text, stray end tags
+// and anything unparsable after the root.
+func checkAfterRoot(d *xml.Decoder, root *MJMLNode, lookup *lineLookup, content string) error {
+	d.Strict = false
+	depth := 0
+	for {
+		offset := d.InputOffset()
+		tok, err := d.RawToken()
+		if err != nil {
+			return nil
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			if depth == 0 && root.XMLName.Local == "mjml" {
+				return fmt.Errorf("unexpected <%s> after </mjml> at line %d", t.Name.Local, lookup.Line(offset))
+			}
+			if depth == 0 && t.Name.Local == "mjml" {
+				return fmt.Errorf("expected <mjml> root, found <%s> at line %d", root.XMLName.Local, strayLine(content))
+			}
+			depth++
+		case xml.EndElement:
+			depth = max(depth-1, 0)
+		}
+	}
+}
+
+// strayLine finds the first token that may not precede the root in the
+// caller's input, since comment stripping moves lines before the root.
+func strayLine(content string) int {
+	d := xml.NewDecoder(strings.NewReader(content))
+	d.Strict = false
+	for {
+		line, _ := d.InputPos()
+		tok, err := d.RawToken()
+		if err != nil {
+			return line
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			return line
+		case xml.CharData:
+			if text := bytes.TrimLeft(t, " \t\r\n"); len(text) > 0 {
+				return line + bytes.Count(t[:len(t)-len(text)], []byte("\n"))
+			}
+		}
+	}
+}
+
+// excerpt shortens text to its first line for an error message.
+func excerpt(text []byte) string {
+	s, _, _ := strings.Cut(string(text), "\n")
+	s = strings.TrimRight(s, " \t\r")
+	if r := []rune(s); len(r) > 40 {
+		s = string(r[:40]) + "..."
+	}
+	return s
 }
 
 // preprocessHTMLEntities replaces common HTML entities with Unicode characters

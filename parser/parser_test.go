@@ -815,3 +815,159 @@ func TestParseMJMLWithComments(t *testing.T) {
 		}
 	}
 }
+
+const rootTestBody = `<mjml>
+  <mj-body>
+    <mj-text>Hello</mj-text>
+  </mj-body>
+</mjml>`
+
+func TestParseMJMLRejectsContentOutsideRoot(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{
+			name:    "element before root",
+			input:   "\n<mj-text font-size=\"18px\">I SHOULD NOT BE HERE</mj-text>\n\n" + rootTestBody,
+			wantErr: "expected <mjml> root, found <mj-text> at line 2",
+		},
+		{
+			name:    "text before root",
+			input:   "stray text\n" + rootTestBody,
+			wantErr: `expected <mjml> root, found text "stray text" at line 1`,
+		},
+		{
+			name:    "nbsp before root",
+			input:   "&nbsp;\n" + rootTestBody,
+			wantErr: `expected <mjml> root, found text "\u00a0" at line 1`,
+		},
+		{
+			name:    "cdata before root",
+			input:   "<![CDATA[ a > b ]]>\n" + rootTestBody,
+			wantErr: `expected <mjml> root, found text "a > b" at line 1`,
+		},
+		{
+			name:    "element before root after comments",
+			input:   "<!-- one\ntwo -->\n<!--[if mso]><p>x</p><![endif]-->\n<mj-section/>\n" + rootTestBody,
+			wantErr: "expected <mjml> root, found <mj-section> at line 4",
+		},
+		{
+			name:    "element before root after a doctype internal subset",
+			input:   "<!DOCTYPE mjml [\n  <!ENTITY a \"b\">\n]>\n<mj-text>x</mj-text>\n" + rootTestBody,
+			wantErr: "expected <mjml> root, found <mj-text> at line 4",
+		},
+		{
+			name:    "element after root",
+			input:   rootTestBody + "\n<mj-text>after</mj-text>",
+			wantErr: "unexpected <mj-text> after </mjml> at line 6",
+		},
+		{
+			name:    "second root",
+			input:   rootTestBody + rootTestBody,
+			wantErr: "unexpected <mjml> after </mjml> at line 5",
+		},
+		{
+			name:    "element after trailing text",
+			input:   rootTestBody + "\ntrailing text\n<mj-text>after</mj-text>",
+			wantErr: "unexpected <mj-text> after </mjml> at line 7",
+		},
+		{
+			name:    "element after a duplicate end tag",
+			input:   rootTestBody + "\n</mjml>\n<mj-text>after</mj-text>",
+			wantErr: "unexpected <mj-text> after </mjml> at line 7",
+		},
+		{
+			name:    "element after root counts lines stripped before it",
+			input:   "<!-- a\nb\nc -->\n" + rootTestBody + "\n<mj-text>after</mj-text>",
+			wantErr: "unexpected <mj-text> after </mjml> at line 9",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node, err := ParseMJML(tt.input)
+			if err == nil {
+				t.Fatalf("ParseMJML() = <%s>, want error %q", node.GetTagName(), tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("ParseMJML() error = %q, want it to contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestParseMJMLAllowsPrologAndTrailingContent(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"surrounding whitespace", "\n\t  " + rootTestBody + "\n\n  \t"},
+		{"xml declaration", `<?xml version="1.0" encoding="UTF-8"?>` + "\n" + rootTestBody},
+		{"byte order mark", "\uFEFF" + rootTestBody},
+		{"byte order mark and xml declaration", "\uFEFF<?xml version=\"1.0\"?>\n" + rootTestBody},
+		{"doctype", "<!DOCTYPE mjml>\n" + rootTestBody},
+		{"doctype with internal subset", "<!DOCTYPE mjml [ <!ENTITY a \"b\"> ]>\n" + rootTestBody},
+		{"comments before and after", "<!-- before -->\n" + rootTestBody + "\n<!-- after -->\n"},
+		{"mso conditionals before and after", "<!--[if mso]><p>x</p><![endif]-->\n" + rootTestBody + "\n<!--[if !mso]><!--><!--<![endif]-->"},
+		{"decorative comment after root", rootTestBody + "\n<!-- ---- end ---- -->"},
+		{"unterminated comment before root", "<!-- oops\n" + rootTestBody},
+		// MJML ignores text and a stray end tag after the root.
+		{"text after root", rootTestBody + "\n\n  trailing text\n"},
+		{"duplicate end tag after root", rootTestBody + "\n</mjml>\n"},
+		{"nbsp after root", rootTestBody + "&nbsp;\u00a0\n"},
+		{"custom element inside mj-raw", "<mjml><mj-body><mj-raw><mjml-logo/></mj-raw></mj-body></mjml>"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node, err := ParseMJML(tt.input)
+			if err != nil {
+				t.Fatalf("ParseMJML() error = %v", err)
+			}
+			if node.GetTagName() != "mjml" || node.FindFirstChild("mj-body") == nil {
+				t.Errorf("ParseMJML() root = <%s> with %d children, want <mjml> with <mj-body>", node.GetTagName(), len(node.Children))
+			}
+		})
+	}
+}
+
+func TestParseMJMLFragments(t *testing.T) {
+	// Components and their tests parse fragments; the first element stays
+	// the root unless an <mjml> document follows it.
+	tests := []struct {
+		name    string
+		input   string
+		wantTag string
+	}{
+		{"trailing sibling", "<mj-text>Hello</mj-text>\n<mj-text>World</mj-text>", "mj-text"},
+		{"mjml text inside mj-text", "<mj-text><mjml></mj-text>", "mj-text"},
+		{"mjml-prefixed element inside mj-raw", "<mj-raw><mjml-logo/></mj-raw>", "mj-raw"},
+		{"mjml nested in a trailing sibling", "<mj-text>a</mj-text><mj-section><mjml/></mj-section>", "mj-text"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node, err := ParseMJML(tt.input)
+			if err != nil {
+				t.Fatalf("ParseMJML() error = %v", err)
+			}
+			if node.GetTagName() != tt.wantTag {
+				t.Errorf("ParseMJML() root = <%s>, want <%s>", node.GetTagName(), tt.wantTag)
+			}
+		})
+	}
+}
+
+func TestParseMJMLLineNumbersCountStrippedComments(t *testing.T) {
+	input := "<!-- a\nb -->\n<mjml>\n<mj-body>\n<mj-section padding=\"0\">\n</mj-section>\n</mj-body>\n</mjml>"
+	node, err := ParseMJML(input)
+	if err != nil {
+		t.Fatalf("ParseMJML() error = %v", err)
+	}
+	section := node.FindFirstChild("mj-body").FindFirstChild("mj-section")
+	if got := section.GetLineNumber(); got != 5 {
+		t.Errorf("mj-section line = %d, want 5", got)
+	}
+}
