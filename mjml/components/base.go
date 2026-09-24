@@ -215,6 +215,21 @@ func (bc *BaseComponent) ResolveAttribute(comp Component, name string) string {
 	return ""
 }
 
+// ExplicitAttribute resolves name like ResolveAttribute but without the
+// component's default, for attributes whose absence MJML treats specially.
+func (bc *BaseComponent) ExplicitAttribute(comp Component, name string) string {
+	if value, exists := bc.Attrs[name]; exists && value != "" {
+		return value
+	}
+	if classValue := bc.getClassAttribute(name); classValue != "" {
+		return classValue
+	}
+	if globalValue := bc.getGlobalAttribute(comp.GetTagName(), name); globalValue != "" {
+		return normalizeAttributeValue(name, globalValue)
+	}
+	return ""
+}
+
 // getGlobalAttribute gets a global attribute value from the global store
 func (bc *BaseComponent) getGlobalAttribute(componentName, attrName string) string {
 	if bc.RenderOpts == nil || bc.RenderOpts.GlobalAttributes == nil {
@@ -318,7 +333,8 @@ func (bc *BaseComponent) GetNonRawSiblings() int {
 // GetEffectiveWidth returns the container width if set, otherwise default body width
 // AIDEV-NOTE: width-flow-calculation; used to calculate actual pixel width for rendering and child width calculation
 func (bc *BaseComponent) GetEffectiveWidth() int {
-	if bc.ContainerWidth > 0 {
+	// A negative width is MJML's too: paddings wider than the container.
+	if bc.ContainerWidth != 0 {
 		return bc.ContainerWidth
 	}
 	return GetDefaultBodyWidthPixels()
@@ -614,4 +630,37 @@ func (bc *BaseComponent) GetMSOClassAttribute() string {
 		return " class=\"" + cssClass + "-outlook\""
 	}
 	return ""
+}
+
+// ShorthandAttrValue returns one side of a shorthand attribute such as padding,
+// as MJML's getShorthandAttrValue does: a non-empty longhand (padding-left)
+// wins over the shorthand, and only the leading integer of either counts.
+func (bc *BaseComponent) ShorthandAttrValue(comp Component, attribute, direction string) int {
+	if longhand := bc.ResolveAttribute(comp, attribute+"-"+direction); longhand != "" {
+		n, _ := styles.ParseLeadingInt(longhand)
+		return n
+	}
+	shorthand := bc.ResolveAttribute(comp, attribute)
+	if shorthand == "" {
+		return 0
+	}
+	return styles.ShorthandValue(shorthand, direction)
+}
+
+// ShorthandBorderValue returns the width of one side of a border attribute, as
+// MJML's getShorthandBorderValue does: border-left, else border.
+func (bc *BaseComponent) ShorthandBorderValue(comp Component, direction, attribute string) int {
+	border := bc.ResolveAttribute(comp, attribute+"-"+direction)
+	if border == "" {
+		border = bc.ResolveAttribute(comp, attribute)
+	}
+	return styles.BorderValue(border)
+}
+
+// BoxWidths returns the horizontal paddings and borders of comp and the width
+// left for its content, as MJML's getBoxWidths does.
+func (bc *BaseComponent) BoxWidths(comp Component) (paddings, borders, box int) {
+	paddings = bc.ShorthandAttrValue(comp, "padding", "right") + bc.ShorthandAttrValue(comp, "padding", "left")
+	borders = bc.ShorthandBorderValue(comp, "right", "border") + bc.ShorthandBorderValue(comp, "left", "border")
+	return paddings, borders, bc.GetEffectiveWidth() - paddings - borders
 }

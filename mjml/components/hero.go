@@ -231,8 +231,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 			continue
 		}
 
-		// Set container width for children
-		child.SetContainerWidth(containerWidth)
+		child.SetContainerWidth(containerWidth - c.ShorthandAttrValue(c, "padding", "left") - c.ShorthandAttrValue(c, "padding", "right"))
 
 		// Set hero context for child rendering
 		childOpts := *c.RenderOpts // Copy the options

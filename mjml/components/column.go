@@ -2,6 +2,7 @@ package components
 
 import (
 	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,9 @@ import (
 // Any standard component, or component that you have defined and registered, can be placed within a column – except mj-column or mj-section elements.
 type MJColumnComponent struct {
 	*BaseComponent
+	// groupWidth is set by mj-group, whose child width can be fractional.
+	groupWidth    float64
+	hasGroupWidth bool
 }
 
 // NewMJColumnComponent creates a new mj-column component
@@ -34,73 +38,51 @@ func (c *MJColumnComponent) GetTagName() string {
 	return "mj-column"
 }
 
-// calculateEffectiveContentWidth calculates the available content width for column children
-// by subtracting the column's own padding from its actual width (not container width)
-// AIDEV-NOTE: width-flow-core; column must subtract paddings before SetContainerWidth() calls to children
+// calculateEffectiveContentWidth is the width the column gives its children, as
+// MJML's getChildContext computes it: the column's width less its paddings,
+// borders and inner borders.
 func (c *MJColumnComponent) calculateEffectiveContentWidth() int {
-	// Use the column's own width, not the container width from section
-	columnWidth := c.GetWidthAsPixel()
-	containerWidth := 600 // fallback
-	if len(columnWidth) > 2 && columnWidth[len(columnWidth)-2:] == "px" {
-		// Parse without allocating substring
-		if value, err := strconv.Atoi(columnWidth[:len(columnWidth)-2]); err == nil {
-			containerWidth = value
+	paddings, borders, _ := c.BoxWidths(c)
+	allPaddings := float64(paddings + borders +
+		c.ShorthandBorderValue(c, "left", "inner-border") + c.ShorthandBorderValue(c, "right", "inner-border"))
+	parentWidth := c.parentWidth()
+
+	var width float64
+	if widthAttr := c.widthAttribute(); widthAttr != "" {
+		size := c.GetParsedWidth()
+		if size.IsPercent() {
+			width = parentWidth*size.Value()/100 - allPaddings
+		} else {
+			px, _ := styles.ParseLeadingInt(widthAttr)
+			width = float64(px) - allPaddings
 		}
+	} else {
+		// MJML writes parentWidth/n as a px width, and parses px widths with parseInt.
+		width = math.Trunc(parentWidth/float64(c.nonRawSiblings())) - allPaddings
 	}
-
-	// Get column padding (defaults to no padding) using full attribute resolution
-	padding := c.GetAttributeWithDefault(c, "padding")
-	leftPadding, rightPadding := c.parsePaddingLeftRight(padding)
-
-	// Subtract total horizontal padding
-	effectiveWidth := containerWidth - leftPadding - rightPadding
-	if effectiveWidth < 0 {
-		effectiveWidth = containerWidth // fallback
-	}
-
-	return effectiveWidth
+	// Children read the width with parseInt.
+	return int(width)
 }
 
-// parsePaddingLeftRight parses CSS padding shorthand to get left and right padding values in pixels
-// Optimized to avoid allocations by parsing in place
-func (c *MJColumnComponent) parsePaddingLeftRight(padding string) (left, right int) {
-	if len(padding) == 0 {
-		return 0, 0
+// parentWidth is the width the column's parent gives it, with the fraction a
+// group may leave.
+func (c *MJColumnComponent) parentWidth() float64 {
+	if c.hasGroupWidth {
+		return c.groupWidth
 	}
+	return float64(c.BaseComponent.GetEffectiveWidth())
+}
 
-	// Fast path: single value like "20px"
-	if len(padding) > 2 && padding[len(padding)-2:] == "px" {
-		// Parse without allocating substring
-		if value, err := strconv.Atoi(padding[:len(padding)-2]); err == nil {
-			return value, value // same value for all sides
-		}
+// widthAttribute is the width given to the column, "" for the automatic one.
+func (c *MJColumnComponent) widthAttribute() string {
+	return c.ExplicitAttribute(c, "width")
+}
+
+func (c *MJColumnComponent) nonRawSiblings() int {
+	if n := c.GetNonRawSiblings(); n > 0 {
+		return n
 	}
-
-	// Handle "10px 25px" format by finding space separator
-	spaceIdx := -1
-	for i := 0; i < len(padding); i++ {
-		if padding[i] == ' ' {
-			spaceIdx = i
-			break
-		}
-	}
-
-	if spaceIdx > 0 {
-		// Find second token (skip spaces)
-		secondStart := spaceIdx + 1
-		for secondStart < len(padding) && padding[secondStart] == ' ' {
-			secondStart++
-		}
-
-		if secondStart < len(padding) && len(padding) > secondStart+2 && padding[len(padding)-2:] == "px" {
-			// Parse second value (left/right padding)
-			if value, err := strconv.Atoi(padding[secondStart : len(padding)-2]); err == nil {
-				return value, value
-			}
-		}
-	}
-
-	return 0, 0
+	return 1
 }
 
 // Render implements optimized Writer-based rendering for MJColumnComponent
@@ -325,8 +307,8 @@ func (c *MJColumnComponent) getAutoWidthPercent() string {
 
 // GetParsedWidth returns the parsed width following MRML logic
 func (c *MJColumnComponent) GetParsedWidth() styles.Size {
-	if widthAttr := c.GetAttribute("width"); widthAttr != nil {
-		if size, err := styles.ParseSize(*widthAttr); err == nil {
+	if widthAttr := c.widthAttribute(); widthAttr != "" {
+		if size, err := styles.ParseSize(widthAttr); err == nil {
 			return size
 		}
 	}
@@ -358,27 +340,19 @@ func (c *MJColumnComponent) GetColumnClass() (string, styles.Size) {
 	return className, parsedWidth
 }
 
-// GetWidthAsPixel converts the parsed width to pixels for MSO compatibility
-// Following MRML's get_width_as_pixel() logic
+// GetWidthAsPixel is the column's width in pixels for its Outlook cell, as
+// MJML's getWidthAsPixel writes it ("289.5px").
 func (c *MJColumnComponent) GetWidthAsPixel() string {
-	// Use the parent container's width, not the column's own width
-	containerWidth := c.BaseComponent.GetEffectiveWidth()
-	parsedWidth := c.GetParsedWidth()
+	return styles.FormatJSNumber(c.widthAsPixel()) + "px"
+}
 
-	if containerWidth > 0 {
-		if parsedWidth.IsPercent() {
-			// Convert percentage to pixels
-			pixelValue := float64(containerWidth) * parsedWidth.Value() / 100.0
-			var b strings.Builder
-			b.WriteString(strconv.FormatFloat(pixelValue, 'f', 0, 64))
-			b.WriteString("px")
-			return b.String()
-		} else {
-			// Already in pixels
-			return parsedWidth.String()
-		}
+func (c *MJColumnComponent) widthAsPixel() float64 {
+	parsedWidth := c.GetParsedWidth()
+	if parsedWidth.IsPercent() {
+		return c.parentWidth() * parsedWidth.Value() / 100
 	}
-	return "100%"
+	px, _ := styles.ParseLeadingInt(c.widthAttribute())
+	return float64(px)
 }
 
 // GetMobileWidth returns the mobile width following MRML's get_mobile_width() logic
