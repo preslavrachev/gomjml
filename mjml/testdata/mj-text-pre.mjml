@@ -49,6 +49,19 @@ c <br/> d  <img src="x.png"/> e</pre>
 
 v</textarea>
         </mj-text>
+        <mj-text>
+          <PRE>  Upper   case
+
+  pre a <br/>  b  </PRE>
+        </mj-text>
+        <mj-text>
+          <TextArea>  Mixed
+
+  case  </TextArea>
+        </mj-text>
+        <mj-text>
+          <p>a <B>bold</B>   text <I>it</I>  more</p>
+        </mj-text>
       </mj-column>
     </mj-section>
   </mj-body>
