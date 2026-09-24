@@ -183,6 +183,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-text-container-background-color"},
 		{name: "mj-text-decoration"},
 		{name: "mj-text-example"},
+		{name: "mj-text-pre"},
 		{name: "mj-text-font-family"},
 		{name: "mj-text-font-size"},
 		{name: "mj-text-font-style"},

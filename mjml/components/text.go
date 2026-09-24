@@ -197,8 +197,9 @@ func (c *MJTextComponent) writeRawInnerHTML(w io.StringWriter) error {
 }
 
 func (c *MJTextComponent) buildRawInnerHTML() (string, error) {
-	// If we have mixed content, reconstruct it preserving original order
-	if len(c.Node.MixedContent) > 0 {
+	// Content wrapped in CDATA arrives as text; only unwrapped content is
+	// split into elements that need reconstructing.
+	if c.hasElementChildren() {
 		var builder strings.Builder
 		prevEndedWithSpace := false
 		lastIndex := len(c.Node.MixedContent) - 1
@@ -242,10 +243,18 @@ func (c *MJTextComponent) buildRawInnerHTML() (string, error) {
 		return builder.String(), nil
 	}
 
-	// Fallback: no mixed content, use trimmed and collapsed text content
-	normalized := collapseTextWhitespace(c.Node.Text)
-	normalized = strings.TrimSpace(normalized)
-	return c.restoreHTMLEntities(normalized), nil
+	// html-minifier's collapse, as MJML's minify applies it, so <pre> and
+	// <textarea> keep their whitespace.
+	return c.restoreHTMLEntities(collapseHTMLWhitespace(c.Node.Text)), nil
+}
+
+func (c *MJTextComponent) hasElementChildren() bool {
+	for _, part := range c.Node.MixedContent {
+		if part.Node != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // restoreHTMLEntities converts Unicode characters back to HTML entities for proper output
