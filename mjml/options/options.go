@@ -60,6 +60,7 @@ type RenderOpts struct {
 	RemainingBodySections    int                      // Remaining Outlook-sensitive blocks (mj-section/mj-wrapper) after the current one
 	RequireEmptyStyleTag     bool                     // Whether the head output should include an empty style tag for Outlook parity
 	InvalidAttributeReporter func(tagName, attrName string, line int)
+	AllowAttribute           func(tagName, attrName string) bool
 	GlobalAttributes         *globals.GlobalAttributes // Per-render global attributes (mj-all, mj-class, component defaults)
 }
 
