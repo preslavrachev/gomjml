@@ -256,6 +256,11 @@ func referenceDifferences(t *testing.T, name string) []string {
 		}
 	}
 
+	// The attribute comparison sorts declarations, so check the orders that change rendering.
+	if conflicts := checkStyleDeclarationConflicts(normalizedExpected, normalizedActual); conflicts != "" {
+		allDifferences = append(allDifferences, "Inline style declaration differences found:\n"+conflicts)
+	}
+
 	// Check for self-closing tag serialization differences regardless of DOM tree match
 	selfClosingDiff := checkSelfClosingTagDifferences(normalizedExpected, normalizedActual)
 	if selfClosingDiff != "" {
@@ -579,6 +584,12 @@ func compareNodes(expected, actual *goquery.Selection) bool {
 			return
 		}
 
+		// Style text is compared as CSS below.
+		if expectedTag != "style" && !slices.Equal(contentSequence(expectedNode), contentSequence(actualNode)) {
+			equal = false
+			return
+		}
+
 		// Compare text content for elements that might have mixed content
 		expectedText := strings.TrimSpace(expectedNode.Contents().Not("*").Text())
 		actualText := strings.TrimSpace(actualNode.Contents().Not("*").Text())
@@ -601,6 +612,32 @@ func compareNodes(expected, actual *goquery.Selection) bool {
 	})
 
 	return equal
+}
+
+// contentSequence lists a node's children in order: the tag of each element and the
+// whitespace-collapsed text of each run of text, so text that moves past a child element differs.
+// Comments are skipped, like everywhere else in the DOM comparison.
+func contentSequence(node *goquery.Selection) []string {
+	var sequence []string
+	var text strings.Builder
+	flush := func() {
+		if run := strings.Join(strings.Fields(text.String()), " "); run != "" {
+			sequence = append(sequence, "#text "+run)
+		}
+		text.Reset()
+	}
+	node.Contents().Each(func(_ int, child *goquery.Selection) {
+		switch name := goquery.NodeName(child); name {
+		case "#text":
+			text.WriteString(child.Text())
+		case "#comment":
+		default:
+			flush()
+			sequence = append(sequence, "<"+name+">")
+		}
+	})
+	flush()
+	return sequence
 }
 
 // compareAttributes compares attributes between two nodes, normalizing style attributes
@@ -694,6 +731,83 @@ func normalizeStyleAttribute(style string) string {
 	}
 
 	return result
+}
+
+// checkStyleDeclarationConflicts reports inline styles that compute differently although they
+// hold the same declarations: one side declares a property twice (as in a fallback pair), or a
+// shorthand and one of its longhands appear in the opposite order, so the other one wins.
+func checkStyleDeclarationConflicts(expected, actual string) string {
+	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
+	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
+	if err1 != nil || err2 != nil {
+		return ""
+	}
+	expectedStyled := expectedDoc.Find("[style]")
+	actualStyled := actualDoc.Find("[style]")
+	if expectedStyled.Length() != actualStyled.Length() {
+		return "" // the DOM and style comparisons already report this
+	}
+
+	var differences []string
+	expectedStyled.Each(func(i int, element *goquery.Selection) {
+		expectedStyle, _ := element.Attr("style")
+		actualStyle, _ := actualStyled.Eq(i).Attr("style")
+		expectedNames, actualNames := declarationNames(expectedStyle), declarationNames(actualStyle)
+		if slices.Equal(expectedNames, actualNames) {
+			return
+		}
+		conflict := ""
+		for _, names := range [][]string{expectedNames, actualNames} {
+			if duplicate := firstDuplicate(names); duplicate != "" && conflict == "" {
+				conflict = duplicate + " is declared more than once"
+			}
+		}
+		for j, first := range expectedNames {
+			for _, second := range expectedNames[j+1:] {
+				if conflict != "" || !(resetsLonghand(first, second) || resetsLonghand(second, first)) {
+					continue
+				}
+				a, b := slices.Index(actualNames, first), slices.Index(actualNames, second)
+				if a != -1 && b != -1 && a > b {
+					conflict = fmt.Sprintf("%s and %s are declared in the opposite order", first, second)
+				}
+			}
+		}
+		if conflict != "" {
+			differences = append(differences, fmt.Sprintf("  <%s> element[%d]: %s\n    Expected: style=%q\n    Actual:   style=%q",
+				goquery.NodeName(element), i, conflict, expectedStyle, actualStyle))
+		}
+	})
+	return strings.Join(differences, "\n")
+}
+
+// declarationNames returns the property names of an inline style in declaration order.
+func declarationNames(style string) []string {
+	var names []string
+	for declaration := range strings.SplitSeq(style, ";") {
+		if property, _, found := strings.Cut(declaration, ":"); found {
+			names = append(names, strings.TrimSpace(property))
+		}
+	}
+	return names
+}
+
+func firstDuplicate(names []string) string {
+	for i, name := range names {
+		if slices.Contains(names[i+1:], name) {
+			return name
+		}
+	}
+	return ""
+}
+
+// resetsLonghand reports whether shorthand sets longhand, as padding sets padding-left.
+func resetsLonghand(shorthand, longhand string) bool {
+	if !strings.HasPrefix(longhand, shorthand+"-") {
+		return false
+	}
+	// border and its sides do not set these, despite the shared prefix.
+	return !strings.HasSuffix(longhand, "-radius") && longhand != "border-collapse" && longhand != "border-spacing"
 }
 
 // createDOMDiff compares two HTML DOM strings and returns a formatted string describing their differences.
@@ -1456,12 +1570,16 @@ func canonicalizeTagAttributes(block, tag string) string {
 // knownDiffs lists fixtures whose gomjml output is known to differ from the MJML reference,
 // with the reason. TestMJMLAgainstExpected skips them while they differ and fails once they match.
 var knownDiffs = map[string]string{
-	"mj-breakpoint":         "mj-breakpoint is not implemented; media queries keep the 480px default",
-	"mj-raw-go-template":    "gomjml trims the whitespace MJML keeps around mj-raw content",
-	"mj-raw-head":           "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
-	"mj-text-height":        "mj-text height is ignored: no MSO height table, no div height",
-	"mj-wrapper-background": "mj-wrapper background-url is not rendered: no VML rect, no background shorthand",
-	"mjml":                  "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
+	"mj-breakpoint":            "mj-breakpoint is not implemented; media queries keep the 480px default",
+	"mj-hero-background-url":   "the hero cell declares background twice, the url shorthand after its longhands",
+	"mj-hero-background-width": "the hero cell declares background twice, the url shorthand after its longhands",
+	"mj-hero-mode":             "the hero cell declares background twice, the url shorthand after its longhands",
+	"mj-navbar-ico":            "the hamburger label puts padding before padding-right; MJML's reverse order lets padding win",
+	"mj-raw-go-template":       "gomjml trims the whitespace MJML keeps around mj-raw content",
+	"mj-raw-head":              "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
+	"mj-text-height":           "mj-text height is ignored: no MSO height table, no div height",
+	"mj-wrapper-background":    "mj-wrapper background-url is not rendered: no VML rect, no background shorthand",
+	"mjml":                     "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
 }
 
 // normalizeForComparison prepares either side of a reference comparison.
