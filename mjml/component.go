@@ -59,6 +59,8 @@ func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component
 		return components.NewMJTitleComponent(node, opts), nil
 	case "mj-font":
 		return components.NewMJFontComponent(node, opts), nil
+	case "mj-breakpoint":
+		return components.NewMJBreakpointComponent(node, opts), nil
 	case "mj-wrapper":
 		return components.NewMJWrapperComponent(node, opts), nil
 	case "mj-divider":

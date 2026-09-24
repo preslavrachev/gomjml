@@ -6,6 +6,7 @@ import (
 	"hash/maphash"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -843,12 +844,46 @@ func (c *MJMLComponent) collectColumnClassesFromComponent(comp Component) {
 	}
 }
 
+// breakpoint is the width the columns stack below: the last mj-breakpoint's
+// width, used as written as MJML does, or MJML's default of 480px.
+func (c *MJMLComponent) breakpoint() string {
+	breakpoint := "480px"
+	if c.Head == nil {
+		return breakpoint
+	}
+	for _, child := range c.Head.Children {
+		if bp, ok := child.(*components.MJBreakpointComponent); ok {
+			if width := bp.GetAttribute("width"); width != nil && *width != "" {
+				breakpoint = *width
+			}
+		}
+	}
+	return breakpoint
+}
+
+// lowerBreakpoint is the max-width of the mobile media queries, one pixel
+// below the breakpoint. Like MJML's makeLowerBreakpoint it takes the leading
+// integer whatever the unit, so "37em" gives "36px".
+func (c *MJMLComponent) lowerBreakpoint() string {
+	// parseInt skips leading whitespace, so MJML does too.
+	breakpoint := strings.TrimLeft(c.breakpoint(), " \t\n\r")
+	digits := len(breakpoint) - len(strings.TrimLeft(breakpoint, "0123456789"))
+	pixels, err := strconv.Atoi(breakpoint[:digits])
+	if err != nil {
+		return breakpoint
+	}
+	return strconv.Itoa(pixels-1) + "px"
+}
+
 // generateResponsiveCSS generates responsive CSS for collected column classes
 func (c *MJMLComponent) generateResponsiveCSS() string {
 	var css strings.Builder
 
 	// Standard responsive media query
-	css.WriteString("<style type=\"text/css\">@media only screen and (min-width:480px) {\n")
+	breakpoint := c.breakpoint()
+	css.WriteString("<style type=\"text/css\">@media only screen and (min-width:")
+	css.WriteString(breakpoint)
+	css.WriteString(") {\n")
 	// Deterministic ordering to match MRML byte output
 	for _, className := range c.columnClassOrder {
 		size := c.columnClasses[className]
@@ -864,7 +899,9 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	css.WriteString("      }</style>")
 
 	// Mozilla-specific responsive media query
-	css.WriteString(`<style media="screen and (min-width:480px)">`)
+	css.WriteString(`<style media="screen and (min-width:`)
+	css.WriteString(breakpoint)
+	css.WriteString(`)">`)
 	first := true
 	for _, className := range c.columnClassOrder {
 		if !first {
@@ -983,7 +1020,7 @@ func (c *MJMLComponent) generateAccordionCSS() string {
 func (c *MJMLComponent) generateNavbarCSS() string {
 	return `<style type="text/css">
         noinput.mj-menu-checkbox { display:block!important; max-height:none!important; visibility:visible!important; }
-        @media only screen and (max-width:479px) {
+        @media only screen and (max-width:` + c.lowerBreakpoint() + `) {
           .mj-menu-checkbox[type="checkbox"] ~ .mj-inline-links { display:none!important; }
           .mj-menu-checkbox[type="checkbox"]:checked ~ .mj-inline-links,
           .mj-menu-checkbox[type="checkbox"] ~ .mj-menu-trigger { display:block!important; max-width:none!important; max-height:none!important; font-size:inherit!important; }
@@ -1401,7 +1438,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	// Mobile CSS - add only if components need it (following MRML pattern)
 	if c.hasMobileCSSComponents() {
-		mobileCSSText := `<style type="text/css">@media only screen and (max-width:479px) {
+		mobileCSSText := `<style type="text/css">@media only screen and (max-width:` + c.lowerBreakpoint() + `) {
                 table.mj-full-width-mobile { width: 100% !important; }
                 td.mj-full-width-mobile { width: auto !important; }
             }

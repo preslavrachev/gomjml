@@ -256,6 +256,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 			}
 			return err
 		}},
+		// // MJ-BREAKPOINT tests
+		{name: "mj-breakpoint"},
+		{name: "mj-breakpoint-default"},
+		{name: "mj-breakpoint-options"},
 		// // MJ-TABLE tests
 		{name: "mj-table"},
 		{name: "mj-table-global-attributes"},
