@@ -4,14 +4,20 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - 'mjml/testdata/**'
+      - 'mjml/**'
+      - 'go.mod'
+      - 'go.sum'
       - 'scripts/regen-goldens.sh'
+      - 'scripts/differential.sh'
       - '.github/workflows/reference.yml'
   pull_request:
     branches: [ main, master ]
     paths:
-      - 'mjml/testdata/**'
+      - 'mjml/**'
+      - 'go.mod'
+      - 'go.sum'
       - 'scripts/regen-goldens.sh'
+      - 'scripts/differential.sh'
       - '.github/workflows/reference.yml'
   workflow_dispatch:
 
@@ -40,3 +46,35 @@ jobs:
           echo "::error::mjml/testdata differs from the pinned MJML output. Run scripts/regen-goldens.sh and commit the result."
           exit 1
         }
+
+  differential:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24.4'
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: mjml/testdata/reference/.nvmrc
+        cache: npm
+        cache-dependency-path: mjml/testdata/reference/package-lock.json
+
+    # Renders every case with the pinned MJML and compares it with gomjml's
+    # output and with the records in mjml/testdata/differential, failing on any
+    # change: a new difference, a fixed one, or a reference that moved.
+    - name: Compare gomjml with MJML over the differential corpus
+      run: scripts/differential.sh
+
+    - name: Upload the differential report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mjml-differential-report
+        path: mjml/testdata/differential/.cache/report/
+        if-no-files-found: ignore
