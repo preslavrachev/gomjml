@@ -41,6 +41,14 @@ end</pre>
           <p>After
             the pre</p>
         </mj-text>
+        <mj-text>
+          <pre>a <br> b
+
+c <br/> d  <img src="x.png"/> e</pre>
+          <textarea>t <br/>  u
+
+v</textarea>
+        </mj-text>
       </mj-column>
     </mj-section>
   </mj-body>

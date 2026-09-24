@@ -20,6 +20,8 @@ type MJTextComponent struct {
 
 var selfClosingVoidTagPattern = regexp.MustCompile(`(?i)<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b([^>]*)/>`)
 
+var preformattedPattern = regexp.MustCompile(`(?is)<pre(?:\s[^>]*)?>.*?</pre\s*>|<textarea(?:\s[^>]*)?>.*?</textarea\s*>`)
+
 var voidTagsWithoutClosingSlash = map[string]struct{}{
 	"br": {},
 }
@@ -270,6 +272,30 @@ func (c *MJTextComponent) restoreHTMLEntities(text string) string {
 // intentionally drop the slash to reflect the HTML emitted by the MJML
 // reference compiler.
 func normalizeVoidHTMLTags(html string) string {
+	if html == "" {
+		return html
+	}
+	regions := preformattedPattern.FindAllStringIndex(html, -1)
+	if regions == nil {
+		return normalizeVoidTagsOutsidePre(html)
+	}
+	var out strings.Builder
+	out.Grow(len(html))
+	last := 0
+	for _, r := range regions {
+		out.WriteString(normalizeVoidTagsOutsidePre(html[last:r[0]]))
+		// MJML writes every void tag without its slash and leaves the
+		// whitespace of <pre> and <textarea> alone.
+		out.WriteString(selfClosingVoidTagPattern.ReplaceAllStringFunc(html[r[0]:r[1]], func(tag string) string {
+			return strings.TrimRight(tag[:len(tag)-2], " \n\r\t") + ">"
+		}))
+		last = r[1]
+	}
+	out.WriteString(normalizeVoidTagsOutsidePre(html[last:]))
+	return out.String()
+}
+
+func normalizeVoidTagsOutsidePre(html string) string {
 	if html == "" {
 		return html
 	}
