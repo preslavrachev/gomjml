@@ -1,25 +1,28 @@
 package mjml
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/preslavrachev/gomjml/mjml/components"
 	"github.com/preslavrachev/gomjml/mjml/testutils"
 )
 
 /*
-TestMJMLAgainstExpected runs a suite of integration tests to verify that the MJML rendering
-implementation produces HTML output matching the expected results for a variety of MJML input files,
-created using the MRML CLI.
+TestMJMLAgainstExpected renders every testdata/*.mjml fixture and compares the result with the
+reference output of the MJML CLI, pinned in testdata/reference/package.json.
+Regenerate the references with scripts/regen-goldens.sh.
 
 // AIDEV-NOTE: If you are unsure about a test output, try the htmlcompare utility for a semantic diff.
 // Example:
@@ -27,419 +30,268 @@ created using the MRML CLI.
 // Or from project root:
 //   ./bin/htmlcompare basic --testdata-dir mjml/testdata
 
-For each test case, it reads the corresponding MJML file from the "testdata" directory, using the test case name
-(e.g., "basic") to construct the filename "testdata/basic.mjml". It then renders the MJML to HTML using the Render function,
-and compares the output to a pre-generated expected HTML file named "testdata/basic.html".
+For fixture "foo", the input is testdata/foo.mjml and the reference is testdata/foo.html, or
+testdata/foo.error when MJML rejects the input.
 
-The mapping is:
-  - For test case "foo", the MJML input is at "testdata/foo.mjml"
-  - The expected HTML output is at "testdata/foo.html"
+A fixture listed in knownDiffs must still differ from the reference in exactly the recorded way:
+it is reported as skipped with its reason, fails once it matches so that the entry gets removed,
+and fails when its differences change, so the entry never covers a new regression.
 
 On mismatch, the test provides a detailed DOM diff, logs style differences, and writes both
 actual and expected outputs to temporary files for debugging purposes.
 */
 func TestMJMLAgainstExpected(t *testing.T) {
-	// Enable deterministic ID generation for stable test comparisons
-	components.EnableTestMode()
-
-	type testCase struct {
-		name       string
-		errHandler func(error) error
+	names := referenceFixtures(t)
+	for name := range knownDiffs {
+		if !slices.Contains(names, name) {
+			t.Errorf("knownDiffs entry %s names no fixture in testdata", name)
+		}
+	}
+	for name := range expectedRenderErrors {
+		if !slices.Contains(names, name) {
+			t.Errorf("expectedRenderErrors entry %s names no fixture in testdata", name)
+		}
 	}
 
-	testCases := []testCase{
-		// "mjml", -- MJML Badly formatted, must return an error instead
-		{name: "mj-body"},
-		{name: "mj-body-background-color"},
-		{name: "mj-body-class"},
-		{name: "mj-body-width"},
-		{name: "basic"},
-		{name: "comment"},
-		{name: "with-head"},
-		{name: "complex-layout"},
-		{name: "wrapper-basic"},
-		{name: "wrapper-background"},
-		{name: "wrapper-fullwidth"},
-		{name: "wrapper-border"},
-		{name: "group-footer-test"},
-		{name: "section-bg-vml-color"},
-		{name: "section-fullwidth-background-image"},
-		{name: "section-fullwidth-bg-transparent"},
-		{name: "section-padding-top-zero"},
-		{name: "austin-layout-from-mjml-io"},
-		// // Austin layout component tests
-		{name: "austin-header-section"},
-		{name: "austin-hero-images"},
-		{name: "austin-wrapper-basic"},
-		{name: "austin-text-with-links"},
-		{name: "austin-buttons"},
-		{name: "austin-two-column-images"},
-		{name: "austin-divider"},
-		{name: "mj-divider"},
-		{name: "mj-divider-alignment"},
-		{name: "mj-divider-border"},
-		{name: "mj-divider-class"},
-		{name: "mj-divider-container-background-color"},
-		{name: "mj-divider-in-mj-text"},
-		{name: "mj-divider-padding"},
-		{name: "mj-divider-width"},
-		{name: "mj-divider-container-background-transparent"},
-		{name: "austin-two-column-text"},
-		{name: "austin-full-width-wrapper"},
-		{name: "austin-social-media"},
-		{name: "austin-footer-text"},
-		{name: "austin-group-component"},
-		{name: "austin-global-attributes"},
-		{name: "austin-map-image"},
-		// // MRML reference tests
-		{name: "mrml-divider-basic"},
-		{name: "mrml-text-basic"},
-		{name: "mrml-button-basic"},
-		{name: "body-wrapper-section"},
-		{name: "mj-attributes"},
-		// // MJ-Group tests from MRML
-		{name: "mj-group"},
-		{name: "mj-group-background-color"},
-		{name: "mj-group-class"},
-		{name: "mj-group-mso-wrapper-raw"},
-		{name: "mj-group-direction"},
-		{name: "mj-group-vertical-align"},
-		{name: "mj-group-width"},
-		// Simple MJML components from MRML test suite
-		{name: "mj-button"},
-		{name: "mj-button-align"},
-		{name: "mj-button-background"},
-		{name: "mj-button-border"},
-		{name: "mj-button-border-radius"},
-		{name: "mj-button-class"},
-		{name: "mj-button-color"},
-		{name: "mj-button-container-background-color"},
-		{name: "mj-button-example"},
-		{name: "mj-button-font-family"},
-		{name: "mj-button-font-size"},
-		{name: "mj-button-font-style"},
-		{name: "mj-button-font-weight"},
-		{name: "mj-button-height"},
-		{name: "mj-button-href"},
-		{name: "mj-button-inner-padding"},
-		{name: "mj-button-line-height"},
-		{name: "mj-button-padding"},
-		{name: "mj-button-text-decoration"},
-		{name: "mj-button-text-transform"},
-		{name: "mj-button-vertical-align"},
-		{name: "mj-button-width"},
-		{name: "mj-button-global-attributes"},
-		{name: "mj-image"},
-		{name: "mj-image-align"},
-		{name: "mj-image-border"},
-		{name: "mj-image-border-radius"},
-		{name: "mj-image-container-background-color"},
-		{name: "mj-image-fluid-on-mobile"},
-		{name: "mj-image-height"},
-		{name: "mj-image-href"},
-		{name: "mj-image-padding"},
-		{name: "mj-image-rel"},
-		{name: "mj-image-title"},
-		{name: "mj-image-class"},
-		{name: "mj-image-src-with-url-params"},
-		{name: "mj-section"},
-		{name: "mj-section-background-vml"},
-		{name: "mj-section-background-color"},
-		{name: "mj-section-background-url"},
-		{name: "mj-section-background-url-full"},
-		{name: "mj-section-body-width"},
-		{name: "mj-section-border"},
-		{name: "mj-section-border-radius"},
-		{name: "mj-section-direction"},
-		{name: "mj-section-full-width"},
-		{name: "mj-section-padding"},
-		{name: "mj-section-text-align"},
-		{name: "mj-section-bg-cover-no-repeat"},
-		{name: "mj-section-global-attributes"},
-		{name: "mj-section-width"},
-		{name: "mj-section-with-columns"},
-		{name: "mj-section-class"},
-		{name: "mj-column"},
-		{name: "mj-column-background-color"},
-		{name: "mj-column-border"},
-		{name: "mj-column-border-issue-466"},
-		{name: "mj-column-border-radius"},
-		{name: "mj-column-inner-background-color"},
-		{name: "mj-column-vertical-align"},
-		{name: "mj-column-padding"},
-		{name: "mj-column-class"},
-		{name: "mj-column-global-attributes"},
-		{name: "mj-wrapper"},
-		{name: "mj-wrapper-border"},
-		{name: "mj-wrapper-border-radius"},
-		{name: "mj-wrapper-gap"},
-		{name: "mj-wrapper-multiple-sections"},
-		{name: "mj-wrapper-other"},
-		{name: "mj-wrapper-padding"},
-		// // MJ-Text tests
-		{name: "mj-text"},
-		{name: "mj-text-align"},
-		{name: "mj-text-color"},
-		{name: "mj-text-container-background-color"},
-		{name: "mj-text-decoration"},
-		{name: "mj-text-example"},
-		{name: "mj-text-font-family"},
-		{name: "mj-text-font-size"},
-		{name: "mj-text-font-style"},
-		{name: "mj-text-font-weight"},
-		{name: "mj-text-class"},
-		// // MJ-RAW tests
-		{name: "mj-raw"},
-		{name: "mj-raw-conditional-comment"},
-		{name: "mj-raw-head"}, // MJML says file badly formatted
-		{name: "mj-raw-go-template"},
-		// // MJ-SOCIAL tests
-		{name: "mj-social"},
-		{name: "mj-social-anchors"},
-		{name: "mj-social-align"},
-		{name: "mj-social-border-radius"},
-		{name: "mj-social-class"},
-		{name: "mj-social-color"},
-		{name: "mj-social-complex-styling"},
-		{name: "mj-social-container-background-color"},
-		{name: "mj-social-element-ending"},
-		{name: "mj-social-font-family"},
-		{name: "mj-social-font"},
-		{name: "mj-social-icon"},
-		{name: "mj-social-link"},
-		{name: "mj-social-mode"},
-		{name: "mj-social-notifuse"},
-		{name: "mj-social-padding"},
-		{name: "mj-social-structure-basic"},
-		{name: "mj-social-text"},
-		{name: "mj-social-text-wrapper"},
-		{name: "mj-social-no-ubuntu-fonts-overridden"},
-		{name: "mj-social-ubuntu-fonts-with-text-content"},
-		{name: "mj-social-ubuntu-fonts-icons-only-fallback"},
-		// // MJ-ACCORDION tests
-		{name: "mj-accordion"},
-		{name: "mj-accordion-font-padding"},
-		{name: "mj-accordion-icon"},
-		{name: "mj-accordion-other"},
-		// // MJ-NAVBAR tests
-		{name: "mj-navbar"},
-		{name: "mj-navbar-ico"},
-		{name: "mj-navbar-align-class"},
-		// {name: "mj-navbar-multiple"}, // This will require rework of the ID generation strategy --- IGNORE --- for now
-		// // MJ-HERO tests
-		{name: "mj-hero"},
-		{name: "mj-hero-background-color"},
-		{name: "mj-hero-background-height"},
-		{name: "mj-hero-background-position"},
-		{name: "mj-hero-background-url"},
-		{name: "mj-hero-background-width"},
-		{name: "mj-hero-class"},
-		{name: "mj-hero-height"},
-		{name: "mj-hero-width", errHandler: func(err error) error {
-			expectedErr := ErrInvalidAttribute("mj-hero", "width", 3)
-			if err.Error() == expectedErr.Error() {
-				return nil
-			}
-			return expectedErr
-		}},
-		{name: "mj-hero-mode"},
-		{name: "mj-hero-vertical-align"},
-		// // MJ-SPACER test
-		{name: "mj-spacer"},
-		{name: "mj-spacer-invalid-attributes", errHandler: func(err error) error {
-			expectedErr1 := ErrInvalidAttribute("mj-spacer", "vertical-align", 16)
-			expectedErr2 := ErrInvalidAttribute("mj-spacer", "width", 18)
-			errMesg := err.Error()
-			if strings.Contains(errMesg, expectedErr1.Details[0].Message) &&
-				strings.Contains(errMesg, expectedErr2.Details[0].Message) {
-				return nil
-			}
-			return err
-		}},
-		// // MJ-TABLE tests
-		{name: "mj-table"},
-		{name: "mj-table-global-attributes"},
-		{name: "mj-table-other"},
-		{name: "mj-table-table"},
-		{name: "mj-table-text"},
-		// // MJ-CAROUSEL tests
-		{name: "mj-carousel"},
-		{name: "mj-carousel-align-border-radius-class"},
-		{name: "mj-carousel-icon"},
-		{name: "mj-carousel-tb"},
-		{name: "mj-carousel-thumbnails"},
-		// // Custom test cases
-		{name: "notifuse-open-br-tags"},
-		{name: "notifuse-wrapper-bgcolor"},
-		{name: "notifuse-full"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Generate filename from test name
-			filename := getTestdataFilename(tc.name)
-
-			// Read test MJML file
-			mjmlContent, err := os.ReadFile(filename)
-			if err != nil {
-				t.Fatalf("Failed to read test file %s: %v", filename, err)
-			}
-
-			// Get expected output from cached HTML file
-			expectedFile := strings.Replace(filename, ".mjml", ".html", 1)
-			expectedContent, err := os.ReadFile(expectedFile)
-			if err != nil {
-				t.Fatalf("Failed to read expected HTML file %s: %v", expectedFile, err)
-			}
-			expected := string(expectedContent)
-
-			// FAIL LOUD AND CLEAR: Check for empty expected HTML file
-			if len(strings.TrimSpace(expected)) == 0 {
-				t.Fatalf("❌ EMPTY EXPECTED HTML FILE: %s\n"+
-					"🚨 The expected HTML file is completely empty! This indicates:\n"+
-					"   - Missing reference implementation output\n"+
-					"   - Failed HTML generation during test setup\n"+
-					"   - Incomplete test case preparation\n"+
-					"📝 Action required: Generate valid expected HTML content for this test case\n"+
-					"💡 Hint: Use the reference MJML implementation to generate expected output",
-					expectedFile)
-			}
-
-			// Get actual output from Go implementation (direct library usage)
-			actual, err := Render(string(mjmlContent))
-			if err != nil {
-				handled := false
-				if tc.errHandler != nil {
-					var mjmlErr Error
-					if errors.As(err, &mjmlErr) {
-						if tc.errHandler(mjmlErr) == nil {
-							handled = true
-						} else {
-							t.Fatalf("Error did not match expectation: %v", err)
-						}
-					}
-				}
-				if handled {
-					return
-				}
-				// Unexpected error or no error handler - fail the test
-				t.Fatalf("Failed to render MJML: %v", err)
-			}
-
-			// If we expected an error but got none, fail
-			if tc.errHandler != nil {
-				t.Fatalf("Expected the following error: %s, but got none", tc.errHandler(errors.New("no error")))
-			}
-
-			// Collect ALL difference types instead of early returns for comprehensive analysis
-			var allDifferences []string
-
-			// Normalize legacy MJML reference quirks (eg. MRML style conditionals) so that
-			// comparisons operate on semantically equivalent markup. This keeps the testdata
-			// fixtures stable while letting the Go renderer follow the upstream MJML output.
-			normalizedExpected := normalizeMJMLReference(expected)
-			normalizedActual := normalizeMJMLReference(actual)
-
-			// Check for MSO table attribute differences FIRST (before DOM comparison)
-			// because MSO conditionals are not part of DOM and will be ignored by DOM comparison
-			msoTableDiff := checkMSOTableAttributeDifferences(normalizedExpected, normalizedActual)
-			if msoTableDiff != "" {
-				allDifferences = append(allDifferences, "MSO table attribute differences found:\n"+msoTableDiff)
-			}
-
-			// Check for MSO conditional comment differences
-			msoDiff := checkMSOConditionalDifferences(normalizedExpected, normalizedActual)
-			if msoDiff != "" {
-				allDifferences = append(allDifferences, "MSO conditional comment differences found:\n"+msoDiff)
-			}
-
-			// Compare outputs using DOM tree comparison
-			domTreesMatch := compareDOMTrees(normalizedExpected, normalizedActual)
-			if !domTreesMatch {
-				// Check for HTML entity encoding differences
-				entityDiff := checkHTMLEntityDifferences(normalizedExpected, normalizedActual)
-				if entityDiff != "" {
-					allDifferences = append(allDifferences, "HTML entity encoding differences found:\n"+entityDiff)
-				}
-
-				// Check for VML attribute differences
-				vmlDiff := checkVMLAttributeDifferences(normalizedExpected, normalizedActual)
-				if vmlDiff != "" {
-					allDifferences = append(allDifferences, "VML attribute differences found:\n"+vmlDiff)
-				}
-
-				// Check for background CSS property differences
-				bgDiff := checkBackgroundPropertyDifferences(normalizedExpected, normalizedActual)
-				if bgDiff != "" {
-					allDifferences = append(allDifferences, "Background CSS property differences found:\n"+bgDiff)
-				}
-
-				// Enhanced DOM-based diff with debugging
-				domDiff := createDOMDiff(normalizedExpected, normalizedActual)
-				if domDiff != "" {
-					allDifferences = append(allDifferences, "DOM structure differences:\n"+domDiff)
-				}
-
-				// Enhanced debugging: analyze style differences with precise element identification
-				// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
-				styleResult := testutils.CompareStylesPrecise(normalizedExpected, normalizedActual)
-				if styleResult.ParseError != nil {
-					allDifferences = append(
-						allDifferences,
-						fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError),
-					)
-				} else if styleResult.HasDifferences {
-					var styleDiffs []string
-					styleDiffs = append(styleDiffs, fmt.Sprintf("Style differences for %s:", tc.name))
-					for _, element := range styleResult.Elements {
-						switch element.Status {
-						case testutils.ElementExtra:
-							componentInfo := ""
-							if element.Component != "" {
-								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
-							}
-							styleDiffs = append(styleDiffs, fmt.Sprintf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
-								element.Index, element.Tag, element.Classes, element.Actual, componentInfo))
-						case testutils.ElementMissing:
-							styleDiffs = append(styleDiffs, fmt.Sprintf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
-								element.Index, element.Tag, element.Classes, element.Expected))
-						case testutils.ElementDifferent:
-							componentInfo := ""
-							if element.Component != "" {
-								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
-							}
-							styleDiffs = append(styleDiffs, fmt.Sprintf("  Style diff element[%d]: <%s class=\"%s\">%s",
-								element.Index, element.Tag, element.Classes, componentInfo))
-							styleDiffs = append(styleDiffs, fmt.Sprintf("    Expected: style=\"%s\"", element.Expected))
-							styleDiffs = append(styleDiffs, fmt.Sprintf("    Actual:   style=\"%s\"", element.Actual))
-							if !element.StyleDiff.IsEmpty() {
-								styleDiffs = append(styleDiffs, fmt.Sprintf("    %s", element.StyleDiff.String()))
-							}
-						}
-					}
-					if len(styleDiffs) > 0 {
-						allDifferences = append(allDifferences, strings.Join(styleDiffs, "\n"))
-					}
-				}
-			}
-
-			// Check for self-closing tag serialization differences regardless of DOM tree match
-			selfClosingDiff := checkSelfClosingTagDifferences(normalizedExpected, normalizedActual)
-			if selfClosingDiff != "" {
-				allDifferences = append(
-					allDifferences,
-					"Self-closing tag serialization differences found:\n"+selfClosingDiff,
-				)
-			}
-
-			// Report ALL collected differences
-			if len(allDifferences) > 0 {
-				writeDebugFiles(tc.name, expected, actual)
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			differences, digest := referenceDifferences(t, name)
+			known, isKnown := knownDiffs[name]
+			switch {
+			case isKnown && len(differences) == 0:
+				t.Errorf("%s now matches MJML; remove it from knownDiffs", name)
+			case isKnown && digest != known.digest:
+				t.Errorf("%s differs from MJML beyond its knownDiffs entry (digest %s, recorded %s):\n%s",
+					name, digest, known.digest, strings.Join(differences, "\n\n"))
+			case isKnown:
+				t.Logf("\n%s", strings.Join(differences, "\n\n"))
+				t.Skipf("known difference from MJML: %s", known.reason)
+			case len(differences) > 0:
 				t.Errorf("\n=== COMPREHENSIVE DIFFERENCE ANALYSIS ===\n%s\n===========================================",
-					strings.Join(allDifferences, "\n\n"))
+					strings.Join(differences, "\n\n"))
 			}
 		})
 	}
+}
+
+// expectedRenderErrors holds fixtures that MJML renders with validation warnings (its CLI
+// default is "soft") but gomjml rejects. Each check returns nil when the error is the expected one.
+var expectedRenderErrors = map[string]func(error) error{
+	"mj-hero-width": func(err error) error {
+		expectedErr := ErrInvalidAttribute("mj-hero", "width", 3)
+		if err.Error() == expectedErr.Error() {
+			return nil
+		}
+		return expectedErr
+	},
+	"mj-spacer-invalid-attributes": func(err error) error {
+		expectedErr1 := ErrInvalidAttribute("mj-spacer", "vertical-align", 16)
+		expectedErr2 := ErrInvalidAttribute("mj-spacer", "width", 18)
+		errMesg := err.Error()
+		if strings.Contains(errMesg, expectedErr1.Details[0].Message) &&
+			strings.Contains(errMesg, expectedErr2.Details[0].Message) {
+			return nil
+		}
+		return err
+	},
+}
+
+// referenceFixtures lists every fixture name in testdata and fails on a reference file
+// that has no .mjml input, so that neither can be left out of the suite unnoticed.
+func referenceFixtures(t *testing.T) []string {
+	t.Helper()
+	inputs, err := filepath.Glob("testdata/*.mjml")
+	if err != nil || len(inputs) == 0 {
+		t.Fatalf("no fixtures found in testdata: %v", err)
+	}
+	names := make([]string, 0, len(inputs))
+	for _, input := range inputs {
+		names = append(names, strings.TrimSuffix(filepath.Base(input), ".mjml"))
+	}
+
+	for _, pattern := range []string{"testdata/*.html", "testdata/*.error"} {
+		references, _ := filepath.Glob(pattern)
+		for _, reference := range references {
+			name := strings.TrimSuffix(filepath.Base(reference), filepath.Ext(reference))
+			if !slices.Contains(names, name) {
+				t.Errorf("%s has no testdata/%s.mjml input", reference, name)
+			}
+		}
+	}
+	return names
+}
+
+// referenceDifferences renders fixture name with gomjml and describes how the result
+// differs from the MJML reference, with a digest that identifies those differences.
+// It returns nil when they match.
+func referenceDifferences(t *testing.T, name string) ([]string, string) {
+	t.Helper()
+	filename := getTestdataFilename(name)
+	mjmlContent, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("Failed to read test file %s: %v", filename, err)
+	}
+
+	if rejection, err := os.ReadFile(strings.TrimSuffix(filename, ".mjml") + ".error"); err == nil {
+		if _, err := Render(string(mjmlContent)); err == nil {
+			return digested([]string{fmt.Sprintf("MJML rejects this input (%s) but gomjml rendered it",
+				strings.TrimSpace(string(rejection)))})
+		}
+		return nil, ""
+	}
+
+	expectedFile := strings.TrimSuffix(filename, ".mjml") + ".html"
+	expectedContent, err := os.ReadFile(expectedFile)
+	if err != nil {
+		t.Fatalf("Failed to read expected HTML file %s: %v", expectedFile, err)
+	}
+	expected := string(expectedContent)
+
+	// FAIL LOUD AND CLEAR: Check for empty expected HTML file
+	if len(strings.TrimSpace(expected)) == 0 {
+		t.Fatalf("❌ EMPTY EXPECTED HTML FILE: %s\n"+
+			"🚨 The expected HTML file is completely empty! This indicates:\n"+
+			"   - Missing reference implementation output\n"+
+			"   - Failed HTML generation during test setup\n"+
+			"   - Incomplete test case preparation\n"+
+			"📝 Action required: Generate valid expected HTML content for this test case\n"+
+			"💡 Hint: Run scripts/regen-goldens.sh to render it with the pinned MJML",
+			expectedFile)
+	}
+
+	checkErr := expectedRenderErrors[name]
+	actual, err := Render(string(mjmlContent))
+	if err != nil {
+		var mjmlErr Error
+		if checkErr != nil && errors.As(err, &mjmlErr) {
+			if checkErr(mjmlErr) == nil {
+				return nil, ""
+			}
+			return digested([]string{fmt.Sprintf("Error did not match expectation: %v", err)})
+		}
+		return digested([]string{fmt.Sprintf("Failed to render MJML: %v", err)})
+	}
+	if checkErr != nil {
+		return digested([]string{fmt.Sprintf("Expected the following error: %s, but got none", checkErr(errors.New("no error")))})
+	}
+
+	differences, digest := compareWithReference(name, expected, actual)
+	if len(differences) > 0 {
+		writeDebugFiles(name, expected, actual)
+	}
+	return differences, digest
+}
+
+// compareWithReference describes how gomjml's output differs from the MJML reference output, with
+// a digest that identifies those differences. It returns nil when they are equivalent.
+func compareWithReference(name, expected, actual string) ([]string, string) {
+	// Collect ALL difference types instead of early returns for comprehensive analysis
+	var allDifferences []string
+
+	normalizedExpected := normalizeForComparison(expected)
+	normalizedActual := normalizeForComparison(actual)
+
+	// Check for MSO table attribute differences FIRST (before DOM comparison)
+	// because MSO conditionals are not part of DOM and will be ignored by DOM comparison
+	msoTableDiff := checkMSOTableAttributeDifferences(normalizedExpected, normalizedActual)
+	if msoTableDiff != "" {
+		allDifferences = append(allDifferences, "MSO table attribute differences found:\n"+msoTableDiff)
+	}
+
+	// Check for MSO conditional comment differences
+	msoDiff := checkMSOConditionalDifferences(normalizedExpected, normalizedActual)
+	if msoDiff != "" {
+		allDifferences = append(allDifferences, "MSO conditional comment differences found:\n"+msoDiff)
+	}
+
+	// Compare outputs using DOM tree comparison
+	domTreesMatch := compareDOMTrees(normalizedExpected, normalizedActual)
+	if !domTreesMatch {
+		// Check for HTML entity encoding differences
+		entityDiff := checkHTMLEntityDifferences(normalizedExpected, normalizedActual)
+		if entityDiff != "" {
+			allDifferences = append(allDifferences, "HTML entity encoding differences found:\n"+entityDiff)
+		}
+
+		// Check for VML attribute differences
+		vmlDiff := checkVMLAttributeDifferences(normalizedExpected, normalizedActual)
+		if vmlDiff != "" {
+			allDifferences = append(allDifferences, "VML attribute differences found:\n"+vmlDiff)
+		}
+
+		// Check for background CSS property differences
+		bgDiff := checkBackgroundPropertyDifferences(normalizedExpected, normalizedActual)
+		if bgDiff != "" {
+			allDifferences = append(allDifferences, "Background CSS property differences found:\n"+bgDiff)
+		}
+
+		// Enhanced DOM-based diff with debugging
+		domDiff := createDOMDiff(normalizedExpected, normalizedActual)
+		if domDiff != "" {
+			allDifferences = append(allDifferences, "DOM structure differences:\n"+domDiff)
+		}
+
+		// Enhanced debugging: analyze style differences with precise element identification
+		// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
+		styleResult := testutils.CompareStylesPrecise(normalizedExpected, normalizedActual)
+		if styleResult.ParseError != nil {
+			allDifferences = append(
+				allDifferences,
+				fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError),
+			)
+		} else if styleResult.HasDifferences {
+			var styleDiffs []string
+			styleDiffs = append(styleDiffs, fmt.Sprintf("Style differences for %s:", name))
+			for _, element := range styleResult.Elements {
+				switch element.Status {
+				case testutils.ElementExtra:
+					componentInfo := ""
+					if element.Component != "" {
+						componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+					}
+					styleDiffs = append(styleDiffs, fmt.Sprintf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
+						element.Index, element.Tag, element.Classes, element.Actual, componentInfo))
+				case testutils.ElementMissing:
+					styleDiffs = append(styleDiffs, fmt.Sprintf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
+						element.Index, element.Tag, element.Classes, element.Expected))
+				case testutils.ElementDifferent:
+					componentInfo := ""
+					if element.Component != "" {
+						componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+					}
+					styleDiffs = append(styleDiffs, fmt.Sprintf("  Style diff element[%d]: <%s class=\"%s\">%s",
+						element.Index, element.Tag, element.Classes, componentInfo))
+					styleDiffs = append(styleDiffs, fmt.Sprintf("    Expected: style=\"%s\"", element.Expected))
+					styleDiffs = append(styleDiffs, fmt.Sprintf("    Actual:   style=\"%s\"", element.Actual))
+					if !element.StyleDiff.IsEmpty() {
+						styleDiffs = append(styleDiffs, fmt.Sprintf("    %s", element.StyleDiff.String()))
+					}
+				}
+			}
+			if len(styleDiffs) > 0 {
+				allDifferences = append(allDifferences, strings.Join(styleDiffs, "\n"))
+			}
+		}
+	}
+
+	// The attribute comparison sorts declarations, so check the orders that change rendering.
+	if conflicts := checkStyleDeclarationConflicts(normalizedExpected, normalizedActual); conflicts != "" {
+		allDifferences = append(allDifferences, "Inline style declaration differences found:\n"+conflicts)
+	}
+
+	// Check for self-closing tag serialization differences regardless of DOM tree match
+	selfClosingDiff := checkSelfClosingTagDifferences(normalizedExpected, normalizedActual)
+	if selfClosingDiff != "" {
+		allDifferences = append(
+			allDifferences,
+			"Self-closing tag serialization differences found:\n"+selfClosingDiff,
+		)
+	}
+
+	if len(allDifferences) == 0 {
+		return nil, ""
+	}
+	return allDifferences, digestLines(append(canonicalDifference(normalizedExpected, normalizedActual), allDifferences...))
 }
 
 // getTestdataFilename returns the file path for a test MJML file located in the "testdata" directory,
@@ -455,8 +307,8 @@ func writeDebugFiles(testName, expected, actual string) {
 	os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
 
 	// Also persist the normalized versions used during comparison for easier diffing
-	normalizedExpected := normalizeMJMLReference(expected)
-	normalizedActual := normalizeMJMLReference(actual)
+	normalizedExpected := normalizeForComparison(expected)
+	normalizedActual := normalizeForComparison(actual)
 	os.WriteFile("/tmp/normalized_expected_"+testName+".html", []byte(normalizedExpected), 0o644)
 	os.WriteFile("/tmp/normalized_actual_"+testName+".html", []byte(normalizedActual), 0o644)
 }
@@ -536,10 +388,10 @@ func TestCSSNormalization(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "different order CSS rules",
+			name:     "reordered CSS rules",
 			css1:     ".mj-column-per-100 { width:100% } .mj-column-per-50 { width:50% }",
 			css2:     ".mj-column-per-50 { width:50% } .mj-column-per-100 { width:100% }",
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "different whitespace",
@@ -554,10 +406,16 @@ func TestCSSNormalization(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "complex media query reordering",
+			name:     "rules reordered inside a media query",
 			css1:     "@media only screen { .mj-column-per-100 { width:100% } .mj-column-per-50 { width:50% } }",
 			css2:     "@media only screen { .mj-column-per-50 { width:50% } .mj-column-per-100 { width:100% } }",
-			expected: true,
+			expected: false,
+		},
+		{
+			name:     "same characters, different breakpoint",
+			css1:     "@media only screen and (min-width:480px) { .mj-column-per-100 { width:100% } }",
+			css2:     "@media only screen and (min-width:840px) { .mj-column-per-100 { width:100% } }",
+			expected: false,
 		},
 	}
 
@@ -629,6 +487,7 @@ func (d StyleDiff) String() string {
 		for prop, value := range d.Missing {
 			missing = append(missing, fmt.Sprintf("%s=%s", prop, value))
 		}
+		slices.Sort(missing)
 		parts = append(parts, fmt.Sprintf("Missing: %s", strings.Join(missing, ", ")))
 	}
 
@@ -637,6 +496,7 @@ func (d StyleDiff) String() string {
 		for prop, values := range d.Mismatched {
 			mismatched = append(mismatched, fmt.Sprintf("%s=%s→%s", prop, values[0], values[1]))
 		}
+		slices.Sort(mismatched)
 		parts = append(parts, fmt.Sprintf("Wrong values: %s", strings.Join(mismatched, ", ")))
 	}
 
@@ -645,6 +505,7 @@ func (d StyleDiff) String() string {
 		for prop, value := range d.Extra {
 			extra = append(extra, fmt.Sprintf("%s=%s", prop, value))
 		}
+		slices.Sort(extra)
 		parts = append(parts, fmt.Sprintf("Extra: %s", strings.Join(extra, ", ")))
 	}
 
@@ -744,6 +605,12 @@ func compareNodes(expected, actual *goquery.Selection) bool {
 			return
 		}
 
+		// Style text is compared as CSS below.
+		if expectedTag != "style" && !slices.Equal(contentSequence(expectedNode), contentSequence(actualNode)) {
+			equal = false
+			return
+		}
+
 		// Compare text content for elements that might have mixed content
 		expectedText := strings.TrimSpace(expectedNode.Contents().Not("*").Text())
 		actualText := strings.TrimSpace(actualNode.Contents().Not("*").Text())
@@ -755,7 +622,6 @@ func compareNodes(expected, actual *goquery.Selection) bool {
 				equal = false
 				return
 			}
-			// Then apply general CSS normalization for ordering issues
 			if normalizeCSSContent(expectedText) != normalizeCSSContent(actualText) {
 				equal = false
 				return
@@ -767,6 +633,32 @@ func compareNodes(expected, actual *goquery.Selection) bool {
 	})
 
 	return equal
+}
+
+// contentSequence lists a node's children in order: the tag of each element and the
+// whitespace-collapsed text of each run of text, so text that moves past a child element differs.
+// Comments are skipped, like everywhere else in the DOM comparison.
+func contentSequence(node *goquery.Selection) []string {
+	var sequence []string
+	var text strings.Builder
+	flush := func() {
+		if run := strings.Join(strings.Fields(text.String()), " "); run != "" {
+			sequence = append(sequence, "#text "+run)
+		}
+		text.Reset()
+	}
+	node.Contents().Each(func(_ int, child *goquery.Selection) {
+		switch name := goquery.NodeName(child); name {
+		case "#text":
+			text.WriteString(child.Text())
+		case "#comment":
+		default:
+			flush()
+			sequence = append(sequence, "<"+name+">")
+		}
+	})
+	flush()
+	return sequence
 }
 
 // compareAttributes compares attributes between two nodes, normalizing style attributes
@@ -860,6 +752,83 @@ func normalizeStyleAttribute(style string) string {
 	}
 
 	return result
+}
+
+// checkStyleDeclarationConflicts reports inline styles that compute differently although they
+// hold the same declarations: one side declares a property twice (as in a fallback pair), or a
+// shorthand and one of its longhands appear in the opposite order, so the other one wins.
+func checkStyleDeclarationConflicts(expected, actual string) string {
+	expectedDoc, err1 := goquery.NewDocumentFromReader(strings.NewReader(expected))
+	actualDoc, err2 := goquery.NewDocumentFromReader(strings.NewReader(actual))
+	if err1 != nil || err2 != nil {
+		return ""
+	}
+	expectedStyled := expectedDoc.Find("[style]")
+	actualStyled := actualDoc.Find("[style]")
+	if expectedStyled.Length() != actualStyled.Length() {
+		return "" // the DOM and style comparisons already report this
+	}
+
+	var differences []string
+	expectedStyled.Each(func(i int, element *goquery.Selection) {
+		expectedStyle, _ := element.Attr("style")
+		actualStyle, _ := actualStyled.Eq(i).Attr("style")
+		expectedNames, actualNames := declarationNames(expectedStyle), declarationNames(actualStyle)
+		if slices.Equal(expectedNames, actualNames) {
+			return
+		}
+		conflict := ""
+		for _, names := range [][]string{expectedNames, actualNames} {
+			if duplicate := firstDuplicate(names); duplicate != "" && conflict == "" {
+				conflict = duplicate + " is declared more than once"
+			}
+		}
+		for j, first := range expectedNames {
+			for _, second := range expectedNames[j+1:] {
+				if conflict != "" || !(resetsLonghand(first, second) || resetsLonghand(second, first)) {
+					continue
+				}
+				a, b := slices.Index(actualNames, first), slices.Index(actualNames, second)
+				if a != -1 && b != -1 && a > b {
+					conflict = fmt.Sprintf("%s and %s are declared in the opposite order", first, second)
+				}
+			}
+		}
+		if conflict != "" {
+			differences = append(differences, fmt.Sprintf("  <%s> element[%d]: %s\n    Expected: style=%q\n    Actual:   style=%q",
+				goquery.NodeName(element), i, conflict, expectedStyle, actualStyle))
+		}
+	})
+	return strings.Join(differences, "\n")
+}
+
+// declarationNames returns the property names of an inline style in declaration order.
+func declarationNames(style string) []string {
+	var names []string
+	for declaration := range strings.SplitSeq(style, ";") {
+		if property, _, found := strings.Cut(declaration, ":"); found {
+			names = append(names, strings.TrimSpace(property))
+		}
+	}
+	return names
+}
+
+func firstDuplicate(names []string) string {
+	for i, name := range names {
+		if slices.Contains(names[i+1:], name) {
+			return name
+		}
+	}
+	return ""
+}
+
+// resetsLonghand reports whether shorthand sets longhand, as padding sets padding-left.
+func resetsLonghand(shorthand, longhand string) bool {
+	if !strings.HasPrefix(longhand, shorthand+"-") {
+		return false
+	}
+	// border and its sides do not set these, despite the shared prefix.
+	return !strings.HasSuffix(longhand, "-radius") && longhand != "border-collapse" && longhand != "border-spacing"
 }
 
 // createDOMDiff compares two HTML DOM strings and returns a formatted string describing their differences.
@@ -1134,19 +1103,13 @@ func hasFirefoxCSSIssue(expected, actual string) bool {
 	return actualCount < expectedCount
 }
 
-// normalizeCSSContent normalizes CSS content for comparison by removing whitespace and sorting characters
+// normalizeCSSContent removes all whitespace from CSS so that only formatting is ignored
 func normalizeCSSContent(css string) string {
-	// Remove all whitespace and newlines
 	normalized := strings.ReplaceAll(css, " ", "")
 	normalized = strings.ReplaceAll(normalized, "\n", "")
 	normalized = strings.ReplaceAll(normalized, "\t", "")
 	normalized = strings.ReplaceAll(normalized, "\r", "")
-
-	// Convert to slice of runes, sort, and convert back
-	runes := []rune(normalized)
-	slices.Sort(runes)
-
-	return string(runes)
+	return normalized
 }
 
 // checkSelfClosingTagDifferences detects differences in self-closing tag serialization
@@ -1487,21 +1450,17 @@ func findRegexMatches(text, pattern string) []string {
 	return results
 }
 
-// normalizeMJMLReference cleans up legacy MRML fixtures so comparisons focus on
-// semantic differences rather than serialization quirks. It removes empty style
-// tags and merges split MSO conditional blocks that MJML now emits as a single
-// table/td wrapper.
-var (
-	mustacheAfterClosingPattern  = regexp.MustCompile(`(-->|>)\s+(\{\{)`)
-	mustacheBeforeOpeningPattern = regexp.MustCompile(`(\}\})\s+(<!--|<)`)
-)
-
-func normalizeMJMLReference(html string) string {
+// normalizeEquivalentMarkup rewrites markup that gomjml and MJML serialise differently but
+// that renders the same in every client. gomjml splits some MSO wrappers (mj-navbar,
+// right-aligned mj-text) into adjacent conditionals where MJML emits one, leaves out the empty
+// class MJML puts on MSO tables and cells, and can emit an empty <style> block. A difference
+// that could render differently belongs in knownDiffs, not here.
+func normalizeEquivalentMarkup(html string) string {
 	normalized := html
 
 	// Merge split MSO conditionals of the form:
-	// <!--[if mso | IE]><table ...><tr><![endif]-->\n<!-- [if mso | IE]><td ...><![endif]-->
-	// into the modern MJML style: <!--[if mso | IE]><table ...><tr><td ...><![endif]-->
+	// <!--[if mso | IE]><table ...><tr><![endif]--><!--[if mso | IE]><td ...><![endif]-->
+	// into the form MJML emits: <!--[if mso | IE]><table ...><tr><td ...><![endif]-->
 	msoSplitPattern := regexp.MustCompile(
 		`<!--\[if mso \| IE\]><table([^>]*)><tr><!\[endif\]-->\s*<!--\[if mso \| IE\]><td([^>]*)><!\[endif\]-->`,
 	)
@@ -1557,71 +1516,9 @@ func normalizeMJMLReference(html string) string {
 		return strings.Replace(match, "<table", "<table class=\"\"", 1)
 	})
 
-	// Remove empty <style> tags that MRML used to inject but MJML omits.
+	// Remove empty <style> blocks, which gomjml can emit and MJML does not.
 	emptyStylePattern := regexp.MustCompile(`(?is)<style[^>]*>\s*</style>`)
 	normalized = emptyStylePattern.ReplaceAllString(normalized, "")
-
-	// Ensure root wrapper div contains the accessibility attributes MJML outputs
-	rootDivPattern := regexp.MustCompile(`<body([^>]*)><div([^>]*)>`)
-	normalized = rootDivPattern.ReplaceAllStringFunc(normalized, func(match string) string {
-		submatches := rootDivPattern.FindStringSubmatch(match)
-		if len(submatches) != 3 {
-			return match
-		}
-
-		bodyAttrs := submatches[1]
-		divAttrs := submatches[2]
-
-		attrRe := regexp.MustCompile(`([a-zA-Z0-9:-]+)="([^"]*)"`)
-		matches := attrRe.FindAllStringSubmatch(divAttrs, -1)
-		attrMap := make(map[string]string, len(matches))
-		keys := make([]string, 0, len(matches))
-		for _, m := range matches {
-			attrMap[m[1]] = m[2]
-			keys = append(keys, m[1])
-		}
-
-		if _, exists := attrMap["aria-roledescription"]; !exists {
-			attrMap["aria-roledescription"] = "email"
-			keys = append(keys, "aria-roledescription")
-		}
-		if _, exists := attrMap["role"]; !exists {
-			attrMap["role"] = "article"
-			keys = append(keys, "role")
-		}
-
-		sort.Strings(keys)
-
-		var b strings.Builder
-		for _, key := range keys {
-			b.WriteString(" ")
-			b.WriteString(key)
-			b.WriteString(`="`)
-			b.WriteString(attrMap[key])
-			b.WriteString(`"`)
-		}
-
-		return fmt.Sprintf("<body%s><div%s>", bodyAttrs, b.String())
-	})
-
-	// Normalize moustache templating markers so trailing whitespace produced by
-	// legacy MRML fixtures doesn't cause mismatches. MJML trims raw content,
-	// so remove any whitespace directly surrounding templating blocks when
-	// they abut HTML tags or conditional comments.
-	normalized = mustacheAfterClosingPattern.ReplaceAllString(normalized, "$1$2")
-	normalized = mustacheBeforeOpeningPattern.ReplaceAllString(normalized, "$1$2")
-
-	// Normalize viewport meta spacing differences (remove spaces after commas)
-	viewportPattern := regexp.MustCompile(`(<meta[^>]*name="viewport"[^>]*content=")([^"]*)(")`)
-	normalized = viewportPattern.ReplaceAllStringFunc(normalized, func(match string) string {
-		submatches := viewportPattern.FindStringSubmatch(match)
-		if len(submatches) != 4 {
-			return match
-		}
-
-		cleaned := strings.ReplaceAll(submatches[2], ", ", ",")
-		return submatches[1] + cleaned + submatches[3]
-	})
 
 	return normalized
 }
@@ -1689,4 +1586,137 @@ func canonicalizeTagAttributes(block, tag string) string {
 		b.WriteString(">")
 		return b.String()
 	})
+}
+
+// knownDiff records why a fixture's gomjml output differs from the MJML reference, and a digest
+// of the differences the comparison reports for it.
+type knownDiff struct {
+	reason string
+	digest string
+}
+
+// knownDiffs lists fixtures whose gomjml output is known to differ from the MJML reference.
+// TestMJMLAgainstExpected skips them while they differ exactly as recorded; after a deliberate
+// change, copy the digest the failure reports.
+var knownDiffs = map[string]knownDiff{
+	"mj-breakpoint":            {"mj-breakpoint is not implemented; media queries keep the 480px default", "1a53fbeff7d7"},
+	"mj-hero-background-url":   {"the hero cell declares background twice, the url shorthand after its longhands", "9eda5e3dd80b"},
+	"mj-hero-background-width": {"the hero cell declares background twice, the url shorthand after its longhands", "9eda5e3dd80b"},
+	"mj-hero-mode":             {"the hero cell declares background twice, the url shorthand after its longhands", "86dff938508d"},
+	"mj-navbar-ico":            {"the hamburger label puts padding before padding-right; MJML's reverse order lets padding win", "658ea93b4e27"},
+	"mj-raw-go-template":       {"gomjml trims the whitespace MJML keeps around mj-raw content", "7e551b6a17b4"},
+	"mj-raw-head":              {"MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML", "c2b434fd09e0"},
+	"mj-text-height":           {"mj-text height is ignored: no MSO height table, no div height", "67462e089b53"},
+	"mj-wrapper-background":    {"mj-wrapper background-url is not rendered: no VML rect, no background shorthand", "ef1208914af8"},
+	"mjml":                     {"MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML", "c2b434fd09e0"},
+}
+
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func digested(differences []string) ([]string, string) {
+	return differences, digestLines(differences)
+}
+
+// digestLines hashes lines of text, ignoring colour codes, blank lines and line order.
+func digestLines(texts []string) string {
+	var lines []string
+	for line := range strings.SplitSeq(ansiEscape.ReplaceAllString(strings.Join(texts, "\n"), ""), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	slices.Sort(lines)
+	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+	return hex.EncodeToString(sum[:6])
+}
+
+// canonicalDifference lists the canonical lines only one document has, so that a knownDiffs
+// digest pins what differs rather than the coarser wording of the reported differences.
+func canonicalDifference(expected, actual string) []string {
+	counts := make(map[string]int)
+	for _, line := range canonicalLines(expected) {
+		counts[line]++
+	}
+	for _, line := range canonicalLines(actual) {
+		counts[line]--
+	}
+	var lines []string
+	for line, count := range counts {
+		for ; count > 0; count-- {
+			lines = append(lines, "- "+line)
+		}
+		for ; count < 0; count++ {
+			lines = append(lines, "+ "+line)
+		}
+	}
+	return lines
+}
+
+// canonicalLines describes a document the way the comparison sees it: one line per element
+// with its tag path, its attributes as compared and its ordered content, plus each MSO block.
+func canonicalLines(document string) []string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(document))
+	if err != nil {
+		return []string{"unparsable: " + err.Error()}
+	}
+	var lines []string
+	doc.Find("*").Each(func(_ int, element *goquery.Selection) {
+		var path []string
+		for node := element; node.Length() > 0 && goquery.NodeName(node) != "#document"; node = node.Parent() {
+			path = append(path, goquery.NodeName(node))
+		}
+		slices.Reverse(path)
+
+		var attributes []string
+		for _, attr := range element.Get(0).Attr {
+			value := attr.Val
+			switch {
+			case strings.HasPrefix(attr.Key, "data-mj-debug"):
+				continue
+			case attr.Key == "style":
+				value = normalizeStyleAttribute(value)
+			case attr.Key == "class":
+				value = normalizeClassAttribute(value)
+			}
+			attributes = append(attributes, fmt.Sprintf("%s=%q", attr.Key, value))
+		}
+		slices.Sort(attributes)
+
+		// The same content views compareNodes compares: child order, then the element's own text.
+		content := strings.Join(contentSequence(element), " | ") + " text=" +
+			strconv.Quote(strings.TrimSpace(element.Contents().Not("*").Text()))
+		if goquery.NodeName(element) == "style" {
+			content = normalizeCSSContent(element.Text())
+		}
+		lines = append(lines, strings.Join(path, ">")+" ["+strings.Join(attributes, " ")+"] "+content)
+	})
+	for _, block := range extractMSOSequences(document) {
+		lines = append(lines, "mso "+block)
+	}
+	return lines
+}
+
+// normalizeForComparison prepares either side of a reference comparison.
+func normalizeForComparison(html string) string {
+	return normalizeEquivalentMarkup(maskGeneratedIDs(html))
+}
+
+// generatedIDPattern finds the ids mj-navbar (checkbox id, label for) and mj-carousel
+// (class, id and radio-group name prefixes) generate with 16 random hex digits.
+var generatedIDPattern = regexp.MustCompile(`(?:\bid="|\bfor="|mj-carousel-(?:radio-)?)([0-9a-f]{16})\b`)
+
+// maskGeneratedIDs replaces each generated id with a placeholder numbered by first appearance.
+// MJML draws these ids from Math.random, so only where they appear and which references share
+// one are comparable, never their value.
+func maskGeneratedIDs(html string) string {
+	var ids []string
+	for _, match := range generatedIDPattern.FindAllStringSubmatch(html, -1) {
+		if !slices.Contains(ids, match[1]) {
+			ids = append(ids, match[1])
+		}
+	}
+	for i, id := range ids {
+		html = strings.ReplaceAll(html, id, fmt.Sprintf("generated-id-%d", i+1))
+	}
+	return html
 }

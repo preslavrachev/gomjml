@@ -1,11 +1,11 @@
 # gomjml - Native Go MJML Compiler
 
-A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation targets **full compliance with the official MJML specification (v4.15.3)**, producing output that matches the MJML JavaScript reference implementation. See [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations.
+A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation targets **full compliance with the official MJML specification (v4.16.1)**, producing output that matches the MJML JavaScript reference implementation. See [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations.
 
 ![status](https://img.shields.io/badge/status-in_active_development-blueviolet)
 ![Tests](https://github.com/preslavrachev/gomjml/actions/workflows/test.yml/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/preslavrachev/gomjml)
-![MJML](https://img.shields.io/badge/MJML-4.15.3-orange)
+![MJML](https://img.shields.io/badge/MJML-4.16.1-orange)
 
 > **Full Disclosure**: This project has been created in cooperation with [Claude Code](https://www.anthropic.com/claude-code). I wouldn't have been able to achieve such a feat without Claude's help in turning my bizarre requirements into Go code. Still, it wasn't all smooth sailing. While Claude was able to generate a plausible MVP relatively quickly, bringing it something even remotely usable took a lot more human guidance, going back and forth, throwing away a bunch of code and starting over. There's lots I have learned in the process, and I will soon write a series of blog posts addressing my experience.
 >
@@ -75,7 +75,7 @@ The CLI provides a structured command system with individual commands:
 #### CLI Commands
 
 - **`compile [input]`** - Compile MJML to HTML (main command)
-- **`test`** - Run test suite against MRML reference implementation
+- **`test`** - Run test suite against the MJML reference output
 - **`help`** - Show help information
 
 #### Compile Command Options
@@ -285,7 +285,7 @@ func (c *MJNewComponent) GetTagName() string {
 - **Total MJML Components: 26** - Complete coverage of all major MJML specification components
 
 ### Integration Test Status
-Based on the integration test suite in `mjml/integration_test.go`, the implemented components are thoroughly tested against the MRML (Rust) reference implementation to ensure compatibility and correctness.
+Based on the integration test suite in `mjml/integration_test.go`, the implemented components are tested against the output of the official MJML compiler (see [Reference output](#reference-output)) to ensure compatibility and correctness.
 
 ### Performance Benchmarks
 
@@ -390,6 +390,71 @@ The comprehensive test suite validates output against the MJML specification:
 # Direct Go testing
 cd mjml && go test -v
 ```
+
+### Reference output
+
+The expected HTML in `mjml/testdata` is the output of the official MJML CLI, pinned in `mjml/testdata/reference/package.json`. The goldens are generated with MJML 4.16.1; mj-wrapper `gap` follows 4.17, so `mj-wrapper-gap` is rendered with 4.17.2. A `<name>.error` file instead records an input that MJML rejects.
+
+`TestMJMLAgainstExpected` renders every `mjml/testdata/*.mjml` with gomjml and compares it with `<name>.html`. It compares:
+
+- elements and their text, in document order, and each element's attributes (class names in any order);
+- inline styles, where declaration order is ignored except when a property is declared twice or a shorthand and its longhand swap places;
+- `<style>` blocks, ignoring whitespace only;
+- MSO conditional comments, including VML;
+- how void elements such as `<br>` are closed.
+
+Fixtures that are known to differ from MJML are listed in `knownDiffs` in `mjml/integration_test.go`. Each entry has a reason and a digest of the differences. They show up as skipped. The test fails once one of them matches, and also when its differences change, so an entry never hides a new regression.
+
+To regenerate the goldens, which needs Node.js (the version in `mjml/testdata/reference/.nvmrc`) and npm:
+
+```bash
+scripts/regen-goldens.sh
+```
+
+Run it after adding or changing a fixture, and when moving to a new MJML release:
+
+1. Pin the new release: `npm install --prefix mjml/testdata/reference --save-exact mjml@<version>`
+2. Run `scripts/regen-goldens.sh`, then review the diff.
+3. Update `knownDiffs` to match, and drop any per-fixture override in `render.mjs` that the new release covers.
+
+The generator renders each fixture as `mjml <name>.mjml -o <name>.html --config.beautify false --config.minify true` would, at the CLI's default "soft" validation level: `compile.mjs` runs the CLI's pipeline in one Node process. It seeds `Math.random` so that the ids generated by mj-navbar and mj-carousel stay reproducible. The comparison masks those ids, because MJML randomises them.
+
+The *MJML reference* workflow reruns the generator and fails when the committed goldens differ from its output. The Go test job does not need Node.
+
+### Differential testing
+
+`TestDifferential` (`mjml/differential_test.go`) runs the same comparison over a larger corpus, from five sources:
+
+| source | cases | where from | reference output |
+|---|---:|---|---|
+| `testdata` | 209 | the fixtures above | committed goldens |
+| `mrml` | 11 | MRML's compare fixtures (MIT) not already in `testdata`, in `mjml/testdata/differential/mrml` | committed goldens |
+| `email-templates` | 25 | [mjmlio/email-templates](https://github.com/mjmlio/email-templates) at a pinned commit; it states no licence, so it is fetched, not committed | digests |
+| `generated` | 1,652 | every component × attribute × representative value from `allowed-css-attributes.json`, the same through `mj-attributes` and `mj-class`, layout nesting, and content cases | digests |
+| `fuzz` | 400 | a seeded grammar fuzzer, seeds 1–400 | digests |
+
+`testdata/differential/<source>.json` records, for every case, a hash of its input, digests of MJML's and gomjml's output and the defect clusters the case shows. `known-clusters.json` names each cluster, its reason and the difference signatures it covers. A signature is `<component> <kind> <target>`, such as `mj-navbar style-missing td{padding-top}`, with the values left out, so that one defect has one signature wherever it shows up.
+
+Without Node, `go test ./mjml` checks the committed goldens with the full comparison and the other sources by digest: it fails when a case shows a difference no cluster covers, stops showing a recorded one, or when gomjml's output for a digest-only case is no longer the one that was compared with MJML. To compare everything with MJML again, which needs Node.js, npm and git:
+
+```bash
+scripts/differential.sh            # fail on any change from the records
+scripts/differential.sh --update   # rewrite the records and the mrml goldens
+```
+
+It fetches the email templates, writes every case to `mjml/testdata/differential/.cache/manifest.jsonl`, renders them in one Node process with `mjml/testdata/reference/batch.mjs`, compares them and writes a report to `.cache/report/report.md` and `report.json`. The report lists the clusters by the number of cases they affect, each with its reason, example cases, the semantic differences of the clearest example and a unified diff of the two outputs, pretty-printed the same way. It also counts the cases whose output is byte-identical to MJML's once ids are masked; that count is informational and never gates. The *MJML reference* workflow runs the script and uploads the report.
+
+To see one case in full, after a run of the script for the digest-only sources:
+
+```bash
+go test ./mjml -run '^TestDifferential$' -args -diff.case=generated/attr/mj-button/padding=10px
+```
+
+**Adding cases.** Put a fixture in `mjml/testdata` (see above), or an MJML file with its origin and licence noted in `mjml/testdata/differential/mrml`, or extend the generators in `mjml/differential_corpus_test.go`: `stringValues` and `representativeValues` for attribute values, `componentSkeleton` for a new component, `nestingCases` and `contentCases` for documents. Then run `scripts/differential.sh --update`.
+
+**Triaging clusters.** When `--update` meets signatures no cluster covers, it adds clusters named `new-<digest>` without a reason, grouping signatures of the same family or that show up in the same cases, and the test fails until each has a reason. For each one, look at its examples in the report or with `-diff.case`, then in `known-clusters.json` rename it, write its reason, and move signatures between clusters so that each cluster is one cause. Run `--update` again to record the cases' clusters. A cluster no case shows any more is dropped, so fixing a defect shows up as a smaller file.
+
+**Crashes.** `TestDifferentialCrashes` renders edge documents (thousands of sections, deep nesting, overflowing and negative lengths), 1,000 more fuzzer documents and damaged copies of them with gomjml alone, and fails on a panic or on a render that takes longer than `-diff.timeout`. For longer runs, `go test ./mjml -run '^$' -fuzz FuzzRender` drives the fuzzer from Go's fuzzing engine.
 
 ## 📊 Performance & Compatibility
 

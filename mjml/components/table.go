@@ -61,6 +61,7 @@ func (c *MJTableComponent) Render(w io.StringWriter) error {
 	if paddingRight := c.GetAttribute(constants.MJMLPaddingRight); paddingRight != nil {
 		tdTag.AddStyle(constants.CSSPaddingRight, *paddingRight)
 	}
+	c.AddDebugAttribute(tdTag, "table")
 
 	if err := tdTag.RenderOpen(w); err != nil {
 		return err

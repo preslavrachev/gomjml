@@ -86,7 +86,15 @@ func (c *MJCarouselComponent) Render(w io.StringWriter) error {
 	if _, err := w.WriteString(inlineStyle); err != nil {
 		return err
 	}
-	if _, err := w.WriteString("font-size:0px;word-break:break-word;\">"); err != nil {
+	if _, err := w.WriteString("font-size:0px;word-break:break-word;\""); err != nil {
+		return err
+	}
+	if c.RenderOpts != nil && c.RenderOpts.DebugTags {
+		if _, err := w.WriteString(` data-mj-debug-carousel="true"`); err != nil {
+			return err
+		}
+	}
+	if _, err := w.WriteString(">"); err != nil {
 		return err
 	}
 
