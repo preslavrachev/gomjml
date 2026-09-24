@@ -175,6 +175,16 @@ func referenceDifferences(t *testing.T, name string) ([]string, string) {
 		return digested([]string{fmt.Sprintf("Expected the following error: %s, but got none", checkErr(errors.New("no error")))})
 	}
 
+	differences, digest := compareWithReference(name, expected, actual)
+	if len(differences) > 0 {
+		writeDebugFiles(name, expected, actual)
+	}
+	return differences, digest
+}
+
+// compareWithReference describes how gomjml's output differs from the MJML reference output, with
+// a digest that identifies those differences. It returns nil when they are equivalent.
+func compareWithReference(name, expected, actual string) ([]string, string) {
 	// Collect ALL difference types instead of early returns for comprehensive analysis
 	var allDifferences []string
 
@@ -281,7 +291,6 @@ func referenceDifferences(t *testing.T, name string) ([]string, string) {
 	if len(allDifferences) == 0 {
 		return nil, ""
 	}
-	writeDebugFiles(name, expected, actual)
 	return allDifferences, digestLines(append(canonicalDifference(normalizedExpected, normalizedActual), allDifferences...))
 }
 
