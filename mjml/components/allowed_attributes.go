@@ -103,6 +103,9 @@ func validateComponentAttributes(node *parser.MJMLNode, opts *options.RenderOpts
 		if _, exists := allowedSet[name]; exists {
 			continue
 		}
+		if opts.AllowAttribute != nil && opts.AllowAttribute(tagName, name) {
+			continue
+		}
 		opts.InvalidAttributeReporter(tagName, name, line)
 	}
 }

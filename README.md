@@ -164,6 +164,16 @@ func main() {
 }
 ```
 
+### Accepting Extra Attributes
+
+`Render` reports an attribute a tag does not support as an `mjml.Error`, returned alongside the HTML. To keep your own metadata in the MJML source, accept those attributes with a predicate. It is asked only about attributes validation would reject; an accepted attribute is neither reported nor rendered.
+
+```go
+html, err := mjml.Render(mjmlContent, mjml.WithAllowedAttributes(func(tagName, attrName string) bool {
+	return strings.HasPrefix(attrName, "custom-")
+}))
+```
+
 ### Adding New Components
 
 While it is not recommended to do so, because it will break the compatibility with the MJML specification, you can fork the repository and add new components by following these steps:
