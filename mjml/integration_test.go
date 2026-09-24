@@ -1316,21 +1316,17 @@ func findRegexMatches(text, pattern string) []string {
 	return results
 }
 
-// normalizeMJMLReference cleans up legacy MRML fixtures so comparisons focus on
-// semantic differences rather than serialization quirks. It removes empty style
-// tags and merges split MSO conditional blocks that MJML now emits as a single
-// table/td wrapper.
-var (
-	mustacheAfterClosingPattern  = regexp.MustCompile(`(-->|>)\s+(\{\{)`)
-	mustacheBeforeOpeningPattern = regexp.MustCompile(`(\}\})\s+(<!--|<)`)
-)
-
-func normalizeMJMLReference(html string) string {
+// normalizeEquivalentMarkup rewrites markup that gomjml and MJML serialise differently but
+// that renders the same in every client. gomjml splits some MSO wrappers (mj-navbar,
+// right-aligned mj-text) into adjacent conditionals where MJML emits one, leaves out the empty
+// class MJML puts on MSO tables and cells, and can emit an empty <style> block. A difference
+// that could render differently belongs in knownDiffs, not here.
+func normalizeEquivalentMarkup(html string) string {
 	normalized := html
 
 	// Merge split MSO conditionals of the form:
-	// <!--[if mso | IE]><table ...><tr><![endif]-->\n<!-- [if mso | IE]><td ...><![endif]-->
-	// into the modern MJML style: <!--[if mso | IE]><table ...><tr><td ...><![endif]-->
+	// <!--[if mso | IE]><table ...><tr><![endif]--><!--[if mso | IE]><td ...><![endif]-->
+	// into the form MJML emits: <!--[if mso | IE]><table ...><tr><td ...><![endif]-->
 	msoSplitPattern := regexp.MustCompile(
 		`<!--\[if mso \| IE\]><table([^>]*)><tr><!\[endif\]-->\s*<!--\[if mso \| IE\]><td([^>]*)><!\[endif\]-->`,
 	)
@@ -1386,71 +1382,9 @@ func normalizeMJMLReference(html string) string {
 		return strings.Replace(match, "<table", "<table class=\"\"", 1)
 	})
 
-	// Remove empty <style> tags that MRML used to inject but MJML omits.
+	// Remove empty <style> blocks, which gomjml can emit and MJML does not.
 	emptyStylePattern := regexp.MustCompile(`(?is)<style[^>]*>\s*</style>`)
 	normalized = emptyStylePattern.ReplaceAllString(normalized, "")
-
-	// Ensure root wrapper div contains the accessibility attributes MJML outputs
-	rootDivPattern := regexp.MustCompile(`<body([^>]*)><div([^>]*)>`)
-	normalized = rootDivPattern.ReplaceAllStringFunc(normalized, func(match string) string {
-		submatches := rootDivPattern.FindStringSubmatch(match)
-		if len(submatches) != 3 {
-			return match
-		}
-
-		bodyAttrs := submatches[1]
-		divAttrs := submatches[2]
-
-		attrRe := regexp.MustCompile(`([a-zA-Z0-9:-]+)="([^"]*)"`)
-		matches := attrRe.FindAllStringSubmatch(divAttrs, -1)
-		attrMap := make(map[string]string, len(matches))
-		keys := make([]string, 0, len(matches))
-		for _, m := range matches {
-			attrMap[m[1]] = m[2]
-			keys = append(keys, m[1])
-		}
-
-		if _, exists := attrMap["aria-roledescription"]; !exists {
-			attrMap["aria-roledescription"] = "email"
-			keys = append(keys, "aria-roledescription")
-		}
-		if _, exists := attrMap["role"]; !exists {
-			attrMap["role"] = "article"
-			keys = append(keys, "role")
-		}
-
-		sort.Strings(keys)
-
-		var b strings.Builder
-		for _, key := range keys {
-			b.WriteString(" ")
-			b.WriteString(key)
-			b.WriteString(`="`)
-			b.WriteString(attrMap[key])
-			b.WriteString(`"`)
-		}
-
-		return fmt.Sprintf("<body%s><div%s>", bodyAttrs, b.String())
-	})
-
-	// Normalize moustache templating markers so trailing whitespace produced by
-	// legacy MRML fixtures doesn't cause mismatches. MJML trims raw content,
-	// so remove any whitespace directly surrounding templating blocks when
-	// they abut HTML tags or conditional comments.
-	normalized = mustacheAfterClosingPattern.ReplaceAllString(normalized, "$1$2")
-	normalized = mustacheBeforeOpeningPattern.ReplaceAllString(normalized, "$1$2")
-
-	// Normalize viewport meta spacing differences (remove spaces after commas)
-	viewportPattern := regexp.MustCompile(`(<meta[^>]*name="viewport"[^>]*content=")([^"]*)(")`)
-	normalized = viewportPattern.ReplaceAllStringFunc(normalized, func(match string) string {
-		submatches := viewportPattern.FindStringSubmatch(match)
-		if len(submatches) != 4 {
-			return match
-		}
-
-		cleaned := strings.ReplaceAll(submatches[2], ", ", ",")
-		return submatches[1] + cleaned + submatches[3]
-	})
 
 	return normalized
 }
@@ -1524,6 +1458,7 @@ func canonicalizeTagAttributes(block, tag string) string {
 // with the reason. TestMJMLAgainstExpected skips them while they differ and fails once they match.
 var knownDiffs = map[string]string{
 	"mj-breakpoint":         "mj-breakpoint is not implemented; media queries keep the 480px default",
+	"mj-raw-go-template":    "gomjml trims the whitespace MJML keeps around mj-raw content",
 	"mj-raw-head":           "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
 	"mj-text-height":        "mj-text height is ignored: no MSO height table, no div height",
 	"mj-wrapper-background": "mj-wrapper background-url is not rendered: no VML rect, no background shorthand",
@@ -1532,7 +1467,7 @@ var knownDiffs = map[string]string{
 
 // normalizeForComparison prepares either side of a reference comparison.
 func normalizeForComparison(html string) string {
-	return normalizeMJMLReference(maskGeneratedIDs(html))
+	return normalizeEquivalentMarkup(maskGeneratedIDs(html))
 }
 
 // generatedIDPattern finds the ids mj-navbar (checkbox id, label for) and mj-carousel
