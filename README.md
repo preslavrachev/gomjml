@@ -1,11 +1,11 @@
 # gomjml - Native Go MJML Compiler
 
-A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation targets **full compliance with the official MJML specification (v4.15.3)**, producing output that matches the MJML JavaScript reference implementation. See [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations.
+A native Go implementation of the MJML email framework, providing fast compilation of [MJML](https://mjml.io/) markup to responsive HTML. This implementation targets **full compliance with the official MJML specification (v4.16.1)**, producing output that matches the MJML JavaScript reference implementation. See [performance benchmarks](docs/benchmarks.md) for detailed comparison with other MJML implementations.
 
 ![status](https://img.shields.io/badge/status-in_active_development-blueviolet)
 ![Tests](https://github.com/preslavrachev/gomjml/actions/workflows/test.yml/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/preslavrachev/gomjml)
-![MJML](https://img.shields.io/badge/MJML-4.15.3-orange)
+![MJML](https://img.shields.io/badge/MJML-4.16.1-orange)
 
 > **Full Disclosure**: This project has been created in cooperation with [Claude Code](https://www.anthropic.com/claude-code). I wouldn't have been able to achieve such a feat without Claude's help in turning my bizarre requirements into Go code. Still, it wasn't all smooth sailing. While Claude was able to generate a plausible MVP relatively quickly, bringing it something even remotely usable took a lot more human guidance, going back and forth, throwing away a bunch of code and starting over. There's lots I have learned in the process, and I will soon write a series of blog posts addressing my experience.
 >
