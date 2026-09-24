@@ -12,14 +12,13 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/preslavrachev/gomjml/mjml/components"
 	"github.com/preslavrachev/gomjml/mjml/testutils"
 )
 
 /*
-TestMJMLAgainstExpected runs a suite of integration tests to verify that the MJML rendering
-implementation produces HTML output matching the expected results for a variety of MJML input files,
-created using the MRML CLI.
+TestMJMLAgainstExpected renders each listed testdata/*.mjml fixture and compares the result with the
+reference output of the MJML CLI, pinned in testdata/reference/package.json.
+Regenerate the references with scripts/regen-goldens.sh.
 
 // AIDEV-NOTE: If you are unsure about a test output, try the htmlcompare utility for a semantic diff.
 // Example:
@@ -27,419 +26,417 @@ created using the MRML CLI.
 // Or from project root:
 //   ./bin/htmlcompare basic --testdata-dir mjml/testdata
 
-For each test case, it reads the corresponding MJML file from the "testdata" directory, using the test case name
-(e.g., "basic") to construct the filename "testdata/basic.mjml". It then renders the MJML to HTML using the Render function,
-and compares the output to a pre-generated expected HTML file named "testdata/basic.html".
+For fixture "foo", the input is testdata/foo.mjml and the reference is testdata/foo.html, or
+testdata/foo.error when MJML rejects the input.
 
-The mapping is:
-  - For test case "foo", the MJML input is at "testdata/foo.mjml"
-  - The expected HTML output is at "testdata/foo.html"
+A fixture listed in knownDiffs must still differ from the reference: it is reported as skipped
+with its reason, and fails once it matches so that the entry gets removed.
 
 On mismatch, the test provides a detailed DOM diff, logs style differences, and writes both
 actual and expected outputs to temporary files for debugging purposes.
 */
 func TestMJMLAgainstExpected(t *testing.T) {
-	// Enable deterministic ID generation for stable test comparisons
-	components.EnableTestMode()
-
-	type testCase struct {
-		name       string
-		errHandler func(error) error
+	names := []string{
+		"mj-body",
+		"mj-body-background-color",
+		"mj-body-class",
+		"mj-body-width",
+		"basic",
+		"comment",
+		"with-head",
+		"complex-layout",
+		"wrapper-basic",
+		"wrapper-background",
+		"wrapper-fullwidth",
+		"wrapper-border",
+		"group-footer-test",
+		"section-bg-vml-color",
+		"section-fullwidth-background-image",
+		"section-fullwidth-bg-transparent",
+		"section-padding-top-zero",
+		"austin-layout-from-mjml-io",
+		"austin-header-section",
+		"austin-hero-images",
+		"austin-wrapper-basic",
+		"austin-text-with-links",
+		"austin-buttons",
+		"austin-two-column-images",
+		"austin-divider",
+		"mj-divider",
+		"mj-divider-alignment",
+		"mj-divider-border",
+		"mj-divider-class",
+		"mj-divider-container-background-color",
+		"mj-divider-in-mj-text",
+		"mj-divider-padding",
+		"mj-divider-width",
+		"mj-divider-container-background-transparent",
+		"austin-two-column-text",
+		"austin-full-width-wrapper",
+		"austin-social-media",
+		"austin-footer-text",
+		"austin-group-component",
+		"austin-global-attributes",
+		"austin-map-image",
+		"mrml-divider-basic",
+		"mrml-text-basic",
+		"mrml-button-basic",
+		"body-wrapper-section",
+		"mj-attributes",
+		"mj-group",
+		"mj-group-background-color",
+		"mj-group-class",
+		"mj-group-mso-wrapper-raw",
+		"mj-group-direction",
+		"mj-group-vertical-align",
+		"mj-group-width",
+		"mj-button",
+		"mj-button-align",
+		"mj-button-background",
+		"mj-button-border",
+		"mj-button-border-radius",
+		"mj-button-class",
+		"mj-button-color",
+		"mj-button-container-background-color",
+		"mj-button-example",
+		"mj-button-font-family",
+		"mj-button-font-size",
+		"mj-button-font-style",
+		"mj-button-font-weight",
+		"mj-button-height",
+		"mj-button-href",
+		"mj-button-inner-padding",
+		"mj-button-line-height",
+		"mj-button-padding",
+		"mj-button-text-decoration",
+		"mj-button-text-transform",
+		"mj-button-vertical-align",
+		"mj-button-width",
+		"mj-button-global-attributes",
+		"mj-image",
+		"mj-image-align",
+		"mj-image-border",
+		"mj-image-border-radius",
+		"mj-image-container-background-color",
+		"mj-image-fluid-on-mobile",
+		"mj-image-height",
+		"mj-image-href",
+		"mj-image-padding",
+		"mj-image-rel",
+		"mj-image-title",
+		"mj-image-class",
+		"mj-image-src-with-url-params",
+		"mj-section",
+		"mj-section-background-vml",
+		"mj-section-background-color",
+		"mj-section-background-url",
+		"mj-section-background-url-full",
+		"mj-section-body-width",
+		"mj-section-border",
+		"mj-section-border-radius",
+		"mj-section-direction",
+		"mj-section-full-width",
+		"mj-section-padding",
+		"mj-section-text-align",
+		"mj-section-bg-cover-no-repeat",
+		"mj-section-global-attributes",
+		"mj-section-width",
+		"mj-section-with-columns",
+		"mj-section-class",
+		"mj-column",
+		"mj-column-background-color",
+		"mj-column-border",
+		"mj-column-border-issue-466",
+		"mj-column-border-radius",
+		"mj-column-inner-background-color",
+		"mj-column-vertical-align",
+		"mj-column-padding",
+		"mj-column-class",
+		"mj-column-global-attributes",
+		"mj-wrapper",
+		"mj-wrapper-border",
+		"mj-wrapper-border-radius",
+		"mj-wrapper-gap",
+		"mj-wrapper-multiple-sections",
+		"mj-wrapper-other",
+		"mj-wrapper-padding",
+		"mj-text",
+		"mj-text-align",
+		"mj-text-color",
+		"mj-text-container-background-color",
+		"mj-text-decoration",
+		"mj-text-example",
+		"mj-text-font-family",
+		"mj-text-font-size",
+		"mj-text-font-style",
+		"mj-text-font-weight",
+		"mj-text-class",
+		"mj-raw",
+		"mj-raw-conditional-comment",
+		"mj-raw-head",
+		"mj-raw-go-template",
+		"mj-social",
+		"mj-social-anchors",
+		"mj-social-align",
+		"mj-social-border-radius",
+		"mj-social-class",
+		"mj-social-color",
+		"mj-social-complex-styling",
+		"mj-social-container-background-color",
+		"mj-social-element-ending",
+		"mj-social-font-family",
+		"mj-social-font",
+		"mj-social-icon",
+		"mj-social-link",
+		"mj-social-mode",
+		"mj-social-notifuse",
+		"mj-social-padding",
+		"mj-social-structure-basic",
+		"mj-social-text",
+		"mj-social-text-wrapper",
+		"mj-social-no-ubuntu-fonts-overridden",
+		"mj-social-ubuntu-fonts-with-text-content",
+		"mj-social-ubuntu-fonts-icons-only-fallback",
+		"mj-accordion",
+		"mj-accordion-font-padding",
+		"mj-accordion-icon",
+		"mj-accordion-other",
+		"mj-navbar",
+		"mj-navbar-ico",
+		"mj-navbar-align-class",
+		"mj-hero",
+		"mj-hero-background-color",
+		"mj-hero-background-height",
+		"mj-hero-background-position",
+		"mj-hero-background-url",
+		"mj-hero-background-width",
+		"mj-hero-class",
+		"mj-hero-height",
+		"mj-hero-width",
+		"mj-hero-mode",
+		"mj-hero-vertical-align",
+		"mj-spacer",
+		"mj-spacer-invalid-attributes",
+		"mj-table",
+		"mj-table-global-attributes",
+		"mj-table-other",
+		"mj-table-table",
+		"mj-table-text",
+		"mj-carousel",
+		"mj-carousel-align-border-radius-class",
+		"mj-carousel-icon",
+		"mj-carousel-tb",
+		"mj-carousel-thumbnails",
+		"notifuse-open-br-tags",
+		"notifuse-wrapper-bgcolor",
+		"notifuse-full",
+	}
+	for name := range knownDiffs {
+		if !slices.Contains(names, name) {
+			t.Errorf("knownDiffs entry %s names no fixture in testdata", name)
+		}
+	}
+	for name := range expectedRenderErrors {
+		if !slices.Contains(names, name) {
+			t.Errorf("expectedRenderErrors entry %s names no fixture in testdata", name)
+		}
 	}
 
-	testCases := []testCase{
-		// "mjml", -- MJML Badly formatted, must return an error instead
-		{name: "mj-body"},
-		{name: "mj-body-background-color"},
-		{name: "mj-body-class"},
-		{name: "mj-body-width"},
-		{name: "basic"},
-		{name: "comment"},
-		{name: "with-head"},
-		{name: "complex-layout"},
-		{name: "wrapper-basic"},
-		{name: "wrapper-background"},
-		{name: "wrapper-fullwidth"},
-		{name: "wrapper-border"},
-		{name: "group-footer-test"},
-		{name: "section-bg-vml-color"},
-		{name: "section-fullwidth-background-image"},
-		{name: "section-fullwidth-bg-transparent"},
-		{name: "section-padding-top-zero"},
-		{name: "austin-layout-from-mjml-io"},
-		// // Austin layout component tests
-		{name: "austin-header-section"},
-		{name: "austin-hero-images"},
-		{name: "austin-wrapper-basic"},
-		{name: "austin-text-with-links"},
-		{name: "austin-buttons"},
-		{name: "austin-two-column-images"},
-		{name: "austin-divider"},
-		{name: "mj-divider"},
-		{name: "mj-divider-alignment"},
-		{name: "mj-divider-border"},
-		{name: "mj-divider-class"},
-		{name: "mj-divider-container-background-color"},
-		{name: "mj-divider-in-mj-text"},
-		{name: "mj-divider-padding"},
-		{name: "mj-divider-width"},
-		{name: "mj-divider-container-background-transparent"},
-		{name: "austin-two-column-text"},
-		{name: "austin-full-width-wrapper"},
-		{name: "austin-social-media"},
-		{name: "austin-footer-text"},
-		{name: "austin-group-component"},
-		{name: "austin-global-attributes"},
-		{name: "austin-map-image"},
-		// // MRML reference tests
-		{name: "mrml-divider-basic"},
-		{name: "mrml-text-basic"},
-		{name: "mrml-button-basic"},
-		{name: "body-wrapper-section"},
-		{name: "mj-attributes"},
-		// // MJ-Group tests from MRML
-		{name: "mj-group"},
-		{name: "mj-group-background-color"},
-		{name: "mj-group-class"},
-		{name: "mj-group-mso-wrapper-raw"},
-		{name: "mj-group-direction"},
-		{name: "mj-group-vertical-align"},
-		{name: "mj-group-width"},
-		// Simple MJML components from MRML test suite
-		{name: "mj-button"},
-		{name: "mj-button-align"},
-		{name: "mj-button-background"},
-		{name: "mj-button-border"},
-		{name: "mj-button-border-radius"},
-		{name: "mj-button-class"},
-		{name: "mj-button-color"},
-		{name: "mj-button-container-background-color"},
-		{name: "mj-button-example"},
-		{name: "mj-button-font-family"},
-		{name: "mj-button-font-size"},
-		{name: "mj-button-font-style"},
-		{name: "mj-button-font-weight"},
-		{name: "mj-button-height"},
-		{name: "mj-button-href"},
-		{name: "mj-button-inner-padding"},
-		{name: "mj-button-line-height"},
-		{name: "mj-button-padding"},
-		{name: "mj-button-text-decoration"},
-		{name: "mj-button-text-transform"},
-		{name: "mj-button-vertical-align"},
-		{name: "mj-button-width"},
-		{name: "mj-button-global-attributes"},
-		{name: "mj-image"},
-		{name: "mj-image-align"},
-		{name: "mj-image-border"},
-		{name: "mj-image-border-radius"},
-		{name: "mj-image-container-background-color"},
-		{name: "mj-image-fluid-on-mobile"},
-		{name: "mj-image-height"},
-		{name: "mj-image-href"},
-		{name: "mj-image-padding"},
-		{name: "mj-image-rel"},
-		{name: "mj-image-title"},
-		{name: "mj-image-class"},
-		{name: "mj-image-src-with-url-params"},
-		{name: "mj-section"},
-		{name: "mj-section-background-vml"},
-		{name: "mj-section-background-color"},
-		{name: "mj-section-background-url"},
-		{name: "mj-section-background-url-full"},
-		{name: "mj-section-body-width"},
-		{name: "mj-section-border"},
-		{name: "mj-section-border-radius"},
-		{name: "mj-section-direction"},
-		{name: "mj-section-full-width"},
-		{name: "mj-section-padding"},
-		{name: "mj-section-text-align"},
-		{name: "mj-section-bg-cover-no-repeat"},
-		{name: "mj-section-global-attributes"},
-		{name: "mj-section-width"},
-		{name: "mj-section-with-columns"},
-		{name: "mj-section-class"},
-		{name: "mj-column"},
-		{name: "mj-column-background-color"},
-		{name: "mj-column-border"},
-		{name: "mj-column-border-issue-466"},
-		{name: "mj-column-border-radius"},
-		{name: "mj-column-inner-background-color"},
-		{name: "mj-column-vertical-align"},
-		{name: "mj-column-padding"},
-		{name: "mj-column-class"},
-		{name: "mj-column-global-attributes"},
-		{name: "mj-wrapper"},
-		{name: "mj-wrapper-border"},
-		{name: "mj-wrapper-border-radius"},
-		{name: "mj-wrapper-gap"},
-		{name: "mj-wrapper-multiple-sections"},
-		{name: "mj-wrapper-other"},
-		{name: "mj-wrapper-padding"},
-		// // MJ-Text tests
-		{name: "mj-text"},
-		{name: "mj-text-align"},
-		{name: "mj-text-color"},
-		{name: "mj-text-container-background-color"},
-		{name: "mj-text-decoration"},
-		{name: "mj-text-example"},
-		{name: "mj-text-font-family"},
-		{name: "mj-text-font-size"},
-		{name: "mj-text-font-style"},
-		{name: "mj-text-font-weight"},
-		{name: "mj-text-class"},
-		// // MJ-RAW tests
-		{name: "mj-raw"},
-		{name: "mj-raw-conditional-comment"},
-		{name: "mj-raw-head"}, // MJML says file badly formatted
-		{name: "mj-raw-go-template"},
-		// // MJ-SOCIAL tests
-		{name: "mj-social"},
-		{name: "mj-social-anchors"},
-		{name: "mj-social-align"},
-		{name: "mj-social-border-radius"},
-		{name: "mj-social-class"},
-		{name: "mj-social-color"},
-		{name: "mj-social-complex-styling"},
-		{name: "mj-social-container-background-color"},
-		{name: "mj-social-element-ending"},
-		{name: "mj-social-font-family"},
-		{name: "mj-social-font"},
-		{name: "mj-social-icon"},
-		{name: "mj-social-link"},
-		{name: "mj-social-mode"},
-		{name: "mj-social-notifuse"},
-		{name: "mj-social-padding"},
-		{name: "mj-social-structure-basic"},
-		{name: "mj-social-text"},
-		{name: "mj-social-text-wrapper"},
-		{name: "mj-social-no-ubuntu-fonts-overridden"},
-		{name: "mj-social-ubuntu-fonts-with-text-content"},
-		{name: "mj-social-ubuntu-fonts-icons-only-fallback"},
-		// // MJ-ACCORDION tests
-		{name: "mj-accordion"},
-		{name: "mj-accordion-font-padding"},
-		{name: "mj-accordion-icon"},
-		{name: "mj-accordion-other"},
-		// // MJ-NAVBAR tests
-		{name: "mj-navbar"},
-		{name: "mj-navbar-ico"},
-		{name: "mj-navbar-align-class"},
-		// {name: "mj-navbar-multiple"}, // This will require rework of the ID generation strategy --- IGNORE --- for now
-		// // MJ-HERO tests
-		{name: "mj-hero"},
-		{name: "mj-hero-background-color"},
-		{name: "mj-hero-background-height"},
-		{name: "mj-hero-background-position"},
-		{name: "mj-hero-background-url"},
-		{name: "mj-hero-background-width"},
-		{name: "mj-hero-class"},
-		{name: "mj-hero-height"},
-		{name: "mj-hero-width", errHandler: func(err error) error {
-			expectedErr := ErrInvalidAttribute("mj-hero", "width", 3)
-			if err.Error() == expectedErr.Error() {
-				return nil
-			}
-			return expectedErr
-		}},
-		{name: "mj-hero-mode"},
-		{name: "mj-hero-vertical-align"},
-		// // MJ-SPACER test
-		{name: "mj-spacer"},
-		{name: "mj-spacer-invalid-attributes", errHandler: func(err error) error {
-			expectedErr1 := ErrInvalidAttribute("mj-spacer", "vertical-align", 16)
-			expectedErr2 := ErrInvalidAttribute("mj-spacer", "width", 18)
-			errMesg := err.Error()
-			if strings.Contains(errMesg, expectedErr1.Details[0].Message) &&
-				strings.Contains(errMesg, expectedErr2.Details[0].Message) {
-				return nil
-			}
-			return err
-		}},
-		// // MJ-TABLE tests
-		{name: "mj-table"},
-		{name: "mj-table-global-attributes"},
-		{name: "mj-table-other"},
-		{name: "mj-table-table"},
-		{name: "mj-table-text"},
-		// // MJ-CAROUSEL tests
-		{name: "mj-carousel"},
-		{name: "mj-carousel-align-border-radius-class"},
-		{name: "mj-carousel-icon"},
-		{name: "mj-carousel-tb"},
-		{name: "mj-carousel-thumbnails"},
-		// // Custom test cases
-		{name: "notifuse-open-br-tags"},
-		{name: "notifuse-wrapper-bgcolor"},
-		{name: "notifuse-full"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Generate filename from test name
-			filename := getTestdataFilename(tc.name)
-
-			// Read test MJML file
-			mjmlContent, err := os.ReadFile(filename)
-			if err != nil {
-				t.Fatalf("Failed to read test file %s: %v", filename, err)
-			}
-
-			// Get expected output from cached HTML file
-			expectedFile := strings.Replace(filename, ".mjml", ".html", 1)
-			expectedContent, err := os.ReadFile(expectedFile)
-			if err != nil {
-				t.Fatalf("Failed to read expected HTML file %s: %v", expectedFile, err)
-			}
-			expected := string(expectedContent)
-
-			// FAIL LOUD AND CLEAR: Check for empty expected HTML file
-			if len(strings.TrimSpace(expected)) == 0 {
-				t.Fatalf("❌ EMPTY EXPECTED HTML FILE: %s\n"+
-					"🚨 The expected HTML file is completely empty! This indicates:\n"+
-					"   - Missing reference implementation output\n"+
-					"   - Failed HTML generation during test setup\n"+
-					"   - Incomplete test case preparation\n"+
-					"📝 Action required: Generate valid expected HTML content for this test case\n"+
-					"💡 Hint: Use the reference MJML implementation to generate expected output",
-					expectedFile)
-			}
-
-			// Get actual output from Go implementation (direct library usage)
-			actual, err := Render(string(mjmlContent))
-			if err != nil {
-				handled := false
-				if tc.errHandler != nil {
-					var mjmlErr Error
-					if errors.As(err, &mjmlErr) {
-						if tc.errHandler(mjmlErr) == nil {
-							handled = true
-						} else {
-							t.Fatalf("Error did not match expectation: %v", err)
-						}
-					}
-				}
-				if handled {
-					return
-				}
-				// Unexpected error or no error handler - fail the test
-				t.Fatalf("Failed to render MJML: %v", err)
-			}
-
-			// If we expected an error but got none, fail
-			if tc.errHandler != nil {
-				t.Fatalf("Expected the following error: %s, but got none", tc.errHandler(errors.New("no error")))
-			}
-
-			// Collect ALL difference types instead of early returns for comprehensive analysis
-			var allDifferences []string
-
-			// Normalize legacy MJML reference quirks (eg. MRML style conditionals) so that
-			// comparisons operate on semantically equivalent markup. This keeps the testdata
-			// fixtures stable while letting the Go renderer follow the upstream MJML output.
-			normalizedExpected := normalizeMJMLReference(expected)
-			normalizedActual := normalizeMJMLReference(actual)
-
-			// Check for MSO table attribute differences FIRST (before DOM comparison)
-			// because MSO conditionals are not part of DOM and will be ignored by DOM comparison
-			msoTableDiff := checkMSOTableAttributeDifferences(normalizedExpected, normalizedActual)
-			if msoTableDiff != "" {
-				allDifferences = append(allDifferences, "MSO table attribute differences found:\n"+msoTableDiff)
-			}
-
-			// Check for MSO conditional comment differences
-			msoDiff := checkMSOConditionalDifferences(normalizedExpected, normalizedActual)
-			if msoDiff != "" {
-				allDifferences = append(allDifferences, "MSO conditional comment differences found:\n"+msoDiff)
-			}
-
-			// Compare outputs using DOM tree comparison
-			domTreesMatch := compareDOMTrees(normalizedExpected, normalizedActual)
-			if !domTreesMatch {
-				// Check for HTML entity encoding differences
-				entityDiff := checkHTMLEntityDifferences(normalizedExpected, normalizedActual)
-				if entityDiff != "" {
-					allDifferences = append(allDifferences, "HTML entity encoding differences found:\n"+entityDiff)
-				}
-
-				// Check for VML attribute differences
-				vmlDiff := checkVMLAttributeDifferences(normalizedExpected, normalizedActual)
-				if vmlDiff != "" {
-					allDifferences = append(allDifferences, "VML attribute differences found:\n"+vmlDiff)
-				}
-
-				// Check for background CSS property differences
-				bgDiff := checkBackgroundPropertyDifferences(normalizedExpected, normalizedActual)
-				if bgDiff != "" {
-					allDifferences = append(allDifferences, "Background CSS property differences found:\n"+bgDiff)
-				}
-
-				// Enhanced DOM-based diff with debugging
-				domDiff := createDOMDiff(normalizedExpected, normalizedActual)
-				if domDiff != "" {
-					allDifferences = append(allDifferences, "DOM structure differences:\n"+domDiff)
-				}
-
-				// Enhanced debugging: analyze style differences with precise element identification
-				// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
-				styleResult := testutils.CompareStylesPrecise(normalizedExpected, normalizedActual)
-				if styleResult.ParseError != nil {
-					allDifferences = append(
-						allDifferences,
-						fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError),
-					)
-				} else if styleResult.HasDifferences {
-					var styleDiffs []string
-					styleDiffs = append(styleDiffs, fmt.Sprintf("Style differences for %s:", tc.name))
-					for _, element := range styleResult.Elements {
-						switch element.Status {
-						case testutils.ElementExtra:
-							componentInfo := ""
-							if element.Component != "" {
-								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
-							}
-							styleDiffs = append(styleDiffs, fmt.Sprintf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
-								element.Index, element.Tag, element.Classes, element.Actual, componentInfo))
-						case testutils.ElementMissing:
-							styleDiffs = append(styleDiffs, fmt.Sprintf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
-								element.Index, element.Tag, element.Classes, element.Expected))
-						case testutils.ElementDifferent:
-							componentInfo := ""
-							if element.Component != "" {
-								componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
-							}
-							styleDiffs = append(styleDiffs, fmt.Sprintf("  Style diff element[%d]: <%s class=\"%s\">%s",
-								element.Index, element.Tag, element.Classes, componentInfo))
-							styleDiffs = append(styleDiffs, fmt.Sprintf("    Expected: style=\"%s\"", element.Expected))
-							styleDiffs = append(styleDiffs, fmt.Sprintf("    Actual:   style=\"%s\"", element.Actual))
-							if !element.StyleDiff.IsEmpty() {
-								styleDiffs = append(styleDiffs, fmt.Sprintf("    %s", element.StyleDiff.String()))
-							}
-						}
-					}
-					if len(styleDiffs) > 0 {
-						allDifferences = append(allDifferences, strings.Join(styleDiffs, "\n"))
-					}
-				}
-			}
-
-			// Check for self-closing tag serialization differences regardless of DOM tree match
-			selfClosingDiff := checkSelfClosingTagDifferences(normalizedExpected, normalizedActual)
-			if selfClosingDiff != "" {
-				allDifferences = append(
-					allDifferences,
-					"Self-closing tag serialization differences found:\n"+selfClosingDiff,
-				)
-			}
-
-			// Report ALL collected differences
-			if len(allDifferences) > 0 {
-				writeDebugFiles(tc.name, expected, actual)
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			differences := referenceDifferences(t, name)
+			reason, known := knownDiffs[name]
+			switch {
+			case known && len(differences) == 0:
+				t.Errorf("%s now matches MJML; remove it from knownDiffs", name)
+			case known:
+				t.Logf("\n%s", strings.Join(differences, "\n\n"))
+				t.Skipf("known difference from MJML: %s", reason)
+			case len(differences) > 0:
 				t.Errorf("\n=== COMPREHENSIVE DIFFERENCE ANALYSIS ===\n%s\n===========================================",
-					strings.Join(allDifferences, "\n\n"))
+					strings.Join(differences, "\n\n"))
 			}
 		})
 	}
+}
+
+// expectedRenderErrors holds fixtures that MJML renders with validation warnings (its CLI
+// default is "soft") but gomjml rejects. Each check returns nil when the error is the expected one.
+var expectedRenderErrors = map[string]func(error) error{
+	"mj-hero-width": func(err error) error {
+		expectedErr := ErrInvalidAttribute("mj-hero", "width", 3)
+		if err.Error() == expectedErr.Error() {
+			return nil
+		}
+		return expectedErr
+	},
+	"mj-spacer-invalid-attributes": func(err error) error {
+		expectedErr1 := ErrInvalidAttribute("mj-spacer", "vertical-align", 16)
+		expectedErr2 := ErrInvalidAttribute("mj-spacer", "width", 18)
+		errMesg := err.Error()
+		if strings.Contains(errMesg, expectedErr1.Details[0].Message) &&
+			strings.Contains(errMesg, expectedErr2.Details[0].Message) {
+			return nil
+		}
+		return err
+	},
+}
+
+// referenceDifferences renders fixture name with gomjml and describes how the result
+// differs from the MJML reference. It returns nil when they match.
+func referenceDifferences(t *testing.T, name string) []string {
+	t.Helper()
+	filename := getTestdataFilename(name)
+	mjmlContent, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("Failed to read test file %s: %v", filename, err)
+	}
+
+	if rejection, err := os.ReadFile(strings.TrimSuffix(filename, ".mjml") + ".error"); err == nil {
+		if _, err := Render(string(mjmlContent)); err == nil {
+			return []string{fmt.Sprintf("MJML rejects this input (%s) but gomjml rendered it",
+				strings.TrimSpace(string(rejection)))}
+		}
+		return nil
+	}
+
+	expectedFile := strings.TrimSuffix(filename, ".mjml") + ".html"
+	expectedContent, err := os.ReadFile(expectedFile)
+	if err != nil {
+		t.Fatalf("Failed to read expected HTML file %s: %v", expectedFile, err)
+	}
+	expected := string(expectedContent)
+
+	// FAIL LOUD AND CLEAR: Check for empty expected HTML file
+	if len(strings.TrimSpace(expected)) == 0 {
+		t.Fatalf("❌ EMPTY EXPECTED HTML FILE: %s\n"+
+			"🚨 The expected HTML file is completely empty! This indicates:\n"+
+			"   - Missing reference implementation output\n"+
+			"   - Failed HTML generation during test setup\n"+
+			"   - Incomplete test case preparation\n"+
+			"📝 Action required: Generate valid expected HTML content for this test case\n"+
+			"💡 Hint: Run scripts/regen-goldens.sh to render it with the pinned MJML",
+			expectedFile)
+	}
+
+	checkErr := expectedRenderErrors[name]
+	actual, err := Render(string(mjmlContent))
+	if err != nil {
+		var mjmlErr Error
+		if checkErr != nil && errors.As(err, &mjmlErr) {
+			if checkErr(mjmlErr) == nil {
+				return nil
+			}
+			return []string{fmt.Sprintf("Error did not match expectation: %v", err)}
+		}
+		return []string{fmt.Sprintf("Failed to render MJML: %v", err)}
+	}
+	if checkErr != nil {
+		return []string{fmt.Sprintf("Expected the following error: %s, but got none", checkErr(errors.New("no error")))}
+	}
+
+	// Collect ALL difference types instead of early returns for comprehensive analysis
+	var allDifferences []string
+
+	normalizedExpected := normalizeForComparison(expected)
+	normalizedActual := normalizeForComparison(actual)
+
+	// Check for MSO table attribute differences FIRST (before DOM comparison)
+	// because MSO conditionals are not part of DOM and will be ignored by DOM comparison
+	msoTableDiff := checkMSOTableAttributeDifferences(normalizedExpected, normalizedActual)
+	if msoTableDiff != "" {
+		allDifferences = append(allDifferences, "MSO table attribute differences found:\n"+msoTableDiff)
+	}
+
+	// Check for MSO conditional comment differences
+	msoDiff := checkMSOConditionalDifferences(normalizedExpected, normalizedActual)
+	if msoDiff != "" {
+		allDifferences = append(allDifferences, "MSO conditional comment differences found:\n"+msoDiff)
+	}
+
+	// Compare outputs using DOM tree comparison
+	domTreesMatch := compareDOMTrees(normalizedExpected, normalizedActual)
+	if !domTreesMatch {
+		// Check for HTML entity encoding differences
+		entityDiff := checkHTMLEntityDifferences(normalizedExpected, normalizedActual)
+		if entityDiff != "" {
+			allDifferences = append(allDifferences, "HTML entity encoding differences found:\n"+entityDiff)
+		}
+
+		// Check for VML attribute differences
+		vmlDiff := checkVMLAttributeDifferences(normalizedExpected, normalizedActual)
+		if vmlDiff != "" {
+			allDifferences = append(allDifferences, "VML attribute differences found:\n"+vmlDiff)
+		}
+
+		// Check for background CSS property differences
+		bgDiff := checkBackgroundPropertyDifferences(normalizedExpected, normalizedActual)
+		if bgDiff != "" {
+			allDifferences = append(allDifferences, "Background CSS property differences found:\n"+bgDiff)
+		}
+
+		// Enhanced DOM-based diff with debugging
+		domDiff := createDOMDiff(normalizedExpected, normalizedActual)
+		if domDiff != "" {
+			allDifferences = append(allDifferences, "DOM structure differences:\n"+domDiff)
+		}
+
+		// Enhanced debugging: analyze style differences with precise element identification
+		// AIDEV-NOTE: Only log style differences when they actually exist to reduce noise
+		styleResult := testutils.CompareStylesPrecise(normalizedExpected, normalizedActual)
+		if styleResult.ParseError != nil {
+			allDifferences = append(
+				allDifferences,
+				fmt.Sprintf("DOM parsing failed: %v", styleResult.ParseError),
+			)
+		} else if styleResult.HasDifferences {
+			var styleDiffs []string
+			styleDiffs = append(styleDiffs, fmt.Sprintf("Style differences for %s:", name))
+			for _, element := range styleResult.Elements {
+				switch element.Status {
+				case testutils.ElementExtra:
+					componentInfo := ""
+					if element.Component != "" {
+						componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+					}
+					styleDiffs = append(styleDiffs, fmt.Sprintf("  Extra element[%d]: <%s class=\"%s\" style=\"%s\">%s",
+						element.Index, element.Tag, element.Classes, element.Actual, componentInfo))
+				case testutils.ElementMissing:
+					styleDiffs = append(styleDiffs, fmt.Sprintf("  Missing element[%d]: <%s class=\"%s\" style=\"%s\">",
+						element.Index, element.Tag, element.Classes, element.Expected))
+				case testutils.ElementDifferent:
+					componentInfo := ""
+					if element.Component != "" {
+						componentInfo = fmt.Sprintf(" [created by %s]", element.Component)
+					}
+					styleDiffs = append(styleDiffs, fmt.Sprintf("  Style diff element[%d]: <%s class=\"%s\">%s",
+						element.Index, element.Tag, element.Classes, componentInfo))
+					styleDiffs = append(styleDiffs, fmt.Sprintf("    Expected: style=\"%s\"", element.Expected))
+					styleDiffs = append(styleDiffs, fmt.Sprintf("    Actual:   style=\"%s\"", element.Actual))
+					if !element.StyleDiff.IsEmpty() {
+						styleDiffs = append(styleDiffs, fmt.Sprintf("    %s", element.StyleDiff.String()))
+					}
+				}
+			}
+			if len(styleDiffs) > 0 {
+				allDifferences = append(allDifferences, strings.Join(styleDiffs, "\n"))
+			}
+		}
+	}
+
+	// Check for self-closing tag serialization differences regardless of DOM tree match
+	selfClosingDiff := checkSelfClosingTagDifferences(normalizedExpected, normalizedActual)
+	if selfClosingDiff != "" {
+		allDifferences = append(
+			allDifferences,
+			"Self-closing tag serialization differences found:\n"+selfClosingDiff,
+		)
+	}
+
+	if len(allDifferences) > 0 {
+		writeDebugFiles(name, expected, actual)
+	}
+	return allDifferences
 }
 
 // getTestdataFilename returns the file path for a test MJML file located in the "testdata" directory,
@@ -455,8 +452,8 @@ func writeDebugFiles(testName, expected, actual string) {
 	os.WriteFile("/tmp/actual_"+testName+".html", []byte(actual), 0o644)
 
 	// Also persist the normalized versions used during comparison for easier diffing
-	normalizedExpected := normalizeMJMLReference(expected)
-	normalizedActual := normalizeMJMLReference(actual)
+	normalizedExpected := normalizeForComparison(expected)
+	normalizedActual := normalizeForComparison(actual)
 	os.WriteFile("/tmp/normalized_expected_"+testName+".html", []byte(normalizedExpected), 0o644)
 	os.WriteFile("/tmp/normalized_actual_"+testName+".html", []byte(normalizedActual), 0o644)
 }
@@ -1689,4 +1686,33 @@ func canonicalizeTagAttributes(block, tag string) string {
 		b.WriteString(">")
 		return b.String()
 	})
+}
+
+// knownDiffs lists fixtures whose gomjml output is known to differ from the MJML reference,
+// with the reason. TestMJMLAgainstExpected skips them while they differ and fails once they match.
+var knownDiffs = map[string]string{}
+
+// normalizeForComparison prepares either side of a reference comparison.
+func normalizeForComparison(html string) string {
+	return normalizeMJMLReference(maskGeneratedIDs(html))
+}
+
+// generatedIDPattern finds the ids mj-navbar (checkbox id, label for) and mj-carousel
+// (class, id and radio-group name prefixes) generate with 16 random hex digits.
+var generatedIDPattern = regexp.MustCompile(`(?:\bid="|\bfor="|mj-carousel-(?:radio-)?)([0-9a-f]{16})\b`)
+
+// maskGeneratedIDs replaces each generated id with a placeholder numbered by first appearance.
+// MJML draws these ids from Math.random, so only where they appear and which references share
+// one are comparable, never their value.
+func maskGeneratedIDs(html string) string {
+	var ids []string
+	for _, match := range generatedIDPattern.FindAllStringSubmatch(html, -1) {
+		if !slices.Contains(ids, match[1]) {
+			ids = append(ids, match[1])
+		}
+	}
+	for i, id := range ids {
+		html = strings.ReplaceAll(html, id, fmt.Sprintf("generated-id-%d", i+1))
+	}
+	return html
 }
