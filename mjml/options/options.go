@@ -5,7 +5,15 @@ import (
 	"sync"
 
 	"github.com/preslavrachev/gomjml/mjml/globals"
+	"github.com/preslavrachev/gomjml/parser"
 )
+
+// ASTCache parses MJML through a cache of ASTs. It is implemented by
+// *mjml.ASTCache, and declared here only because package mjml imports this
+// one. Implementations must be safe for concurrent use.
+type ASTCache interface {
+	Parse(mjmlContent string) (*parser.MJMLNode, error)
+}
 
 // FontTracker tracks font families used by components during rendering
 type FontTracker struct {
@@ -52,6 +60,7 @@ type RenderOpts struct {
 	GroupColumnCount         int                      // Number of columns in the current group context (0 when not inside a group)
 	FontTracker              *FontTracker             // Tracks fonts used during rendering
 	UseCache                 bool                     // Whether to enable AST caching
+	ASTCache                 ASTCache                 // Cache used when UseCache is set; nil means the package-wide cache
 	Lang                     string                   // Language attribute from root MJML element
 	Title                    string                   // Document title extracted from <mj-title>
 	InlineClassStyles        map[string][]InlineStyle // CSS declarations to inline for css-class selectors

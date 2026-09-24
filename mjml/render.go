@@ -1,13 +1,10 @@
 package mjml
 
 import (
-	"context"
 	"fmt"
-	"hash/maphash"
 	"io"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
@@ -58,270 +55,6 @@ func calculateOptimalBufferSize(mjmlContent string) int {
 	}
 }
 
-// cachedAST wraps an MJML AST with a fixed expiration time.
-// Entries are immutable once stored in the cache to avoid concurrent mutation.
-type cachedAST struct {
-	node    *MJMLNode
-	expires time.Time
-}
-
-// Global cache state and synchronization primitives.
-//
-// DESIGN PHILOSOPHY:
-// The caching system uses global state to share parsed templates across all render
-// operations within a process. This provides maximum cache efficiency but requires
-// careful synchronization for thread safety.
-//
-// MEMORY MANAGEMENT STRATEGY:
-// - Fixed TTL expiration (no LRU) keeps implementation simple and predictable
-// - Background cleanup prevents unbounded memory growth
-// - No size limits - monitor memory usage in production environments
-// - Cache grows between cleanup cycles, then shrinks during cleanup
-//
-// CONCURRENCY ARCHITECTURE:
-// - sync.Map for the cache itself (optimized for high read/low write workloads)
-// - Singleflight pattern prevents duplicate parsing under high concurrency
-// - Multiple mutexes to minimize lock contention and prevent deadlocks
-//
-// WHY global state: Template parsing is expensive and templates are often reused.
-// Process-wide caching maximizes efficiency when multiple parts of an application
-// render the same templates (e.g., web servers, batch processors).
-//
-// When to Use Caching:
-//   - High-volume applications rendering the same templates repeatedly
-//   - Web servers with template reuse patterns
-//   - Batch processing with repeated template rendering
-//   - Applications where parsing time > rendering time
-//
-// When NOT to Use Caching:
-//   - Single-use template rendering
-//   - Memory-constrained environments
-//   - Applications with constantly changing templates
-//   - Short-lived processes where cache warmup overhead > benefits
-var (
-	// Cache storage and configuration
-	astCache                sync.Map          // map[uint64]*cachedAST - main cache storage
-	astCacheTTL             = 5 * time.Minute // default expiration time
-	astCacheTTLOnce         sync.Once         // ensures TTL is set only once
-	astCacheCleanupInterval = astCacheTTL / 2 // how often to run cleanup
-	astCacheCleanupOnce     sync.Once         // ensures cleanup interval set only once
-
-	// Cache lifecycle management
-	cacheCleanupMutex sync.Mutex         // protects cleanup goroutine lifecycle
-	cleanupCancel     context.CancelFunc // cancels background cleanup
-	cacheConfigMutex  sync.RWMutex       // protects TTL/interval reads during startup
-
-	// Template hashing for cache keys
-	hashSeed             maphash.Seed // random seed for DoS protection
-	templateHashSeedOnce sync.Once    // ensures seed is set only once
-
-	// Singleflight deduplication
-	sfMutex sync.Mutex                 // protects singleflight map operations
-	sfCalls = make(map[uint64]*sfCall) // tracks in-progress parse operations
-)
-
-// SetASTCacheTTLOnce sets the time-to-live for cached AST entries.
-// Only the first call has an effect; subsequent calls are ignored.
-// The cleanup interval defaults to half of this value unless explicitly set.
-func SetASTCacheTTLOnce(d time.Duration) {
-	astCacheTTLOnce.Do(func() {
-		cacheConfigMutex.Lock()
-		astCacheTTL = d
-		astCacheCleanupOnce.Do(func() {
-			astCacheCleanupInterval = d / 2
-		})
-		cacheConfigMutex.Unlock()
-	})
-}
-
-// SetASTCacheCleanupIntervalOnce sets how often expired AST cache entries
-// are removed. Only the first call has an effect. By default this is half of
-// the AST cache TTL.
-func SetASTCacheCleanupIntervalOnce(d time.Duration) {
-	astCacheCleanupOnce.Do(func() {
-		cacheConfigMutex.Lock()
-		astCacheCleanupInterval = d
-		cacheConfigMutex.Unlock()
-	})
-}
-
-type sfCall struct {
-	wg  sync.WaitGroup
-	res *MJMLNode
-	err error
-}
-
-// singleflightDo executes fn while ensuring only one execution per hash at a time.
-// Calls with the same hash wait for the first invocation to complete and receive its result.
-//
-// WHY this pattern: Template parsing is expensive (XML parsing + AST creation).
-// Without singleflight, if 100 concurrent goroutines request the same template,
-// all 100 would perform identical parsing work, wasting CPU and memory.
-//
-// HOW it works: The first caller to request a hash becomes the "worker" and executes fn.
-// Subsequent callers with the same hash become "waiters" that block on a WaitGroup
-// until the worker completes. All waiters then receive the worker's result (success or error).
-//
-// This prevents the "thundering herd" problem and ensures expensive operations
-// are performed only once per unique input, regardless of concurrency level.
-//
-// Thread safety: Protected by sfMu mutex for map operations. Each sfCall uses
-// a WaitGroup to coordinate between the worker and waiters.
-func singleflightDo(hash uint64, fn func() (*MJMLNode, error)) (*MJMLNode, error) {
-	sfMutex.Lock()
-	if c, ok := sfCalls[hash]; ok {
-		sfMutex.Unlock()
-		c.wg.Wait()
-		return c.res, c.err
-	}
-	c := &sfCall{}
-	c.wg.Add(1)
-	sfCalls[hash] = c
-	sfMutex.Unlock()
-
-	defer func() {
-		c.wg.Done()
-		sfMutex.Lock()
-		delete(sfCalls, hash)
-		sfMutex.Unlock()
-	}()
-
-	c.res, c.err = fn()
-	return c.res, c.err
-}
-
-// hashTemplate returns a 64-bit hash of the MJML template using a package-wide seed.
-// It avoids storing and comparing large strings when indexing cached entries.
-//
-// Security note: The package-wide seed prevents malicious inputs from causing
-// hash collisions that could degrade cache performance to O(n) lookup times.
-//
-// Thread safety: Reading hashSeed is safe after templateHashSeedOnce.Do() completes.
-// The seed is set once and never modified.
-func hashTemplate(s string) uint64 {
-	templateHashSeedOnce.Do(func() {
-		hashSeed = maphash.MakeSeed()
-	})
-	var h maphash.Hash
-	h.SetSeed(hashSeed)
-	h.WriteString(s)
-	return h.Sum64()
-}
-
-// parseAST handles MJML parsing with optional caching.
-func parseAST(mjmlContent string, useCache bool) (*MJMLNode, error) {
-	if !useCache {
-		if debug.Enabled() {
-			debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
-		}
-		node, err := ParseMJML(mjmlContent)
-		if err != nil {
-			if debug.Enabled() {
-				debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
-			}
-			return nil, err
-		}
-		if debug.Enabled() {
-			debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-		}
-		return node, nil
-	}
-
-	startASTCacheCleanup()
-	hash := hashTemplate(mjmlContent)
-	if cached, found := astCache.Load(hash); found {
-		entry := cached.(*cachedAST)
-		if time.Now().Before(entry.expires) {
-			if debug.Enabled() {
-				debug.DebugLog("mjml", "parse-cache-hit", "Using cached MJML AST")
-			}
-			return entry.node, nil
-		}
-		astCache.Delete(hash)
-	}
-
-	node, err := singleflightDo(hash, func() (*MJMLNode, error) {
-		if debug.Enabled() {
-			debug.DebugLog("mjml", "parse-start", "Starting MJML parsing")
-		}
-		node, err := ParseMJML(mjmlContent)
-		if err != nil {
-			if debug.Enabled() {
-				debug.DebugLogError("mjml", "parse-error", "Failed to parse MJML", err)
-			}
-			return nil, err
-		}
-		if debug.Enabled() {
-			debug.DebugLog("mjml", "parse-complete", "MJML parsing completed successfully")
-		}
-
-		// Read TTL with proper synchronization for cache storage
-		cacheConfigMutex.RLock()
-		ttl := astCacheTTL
-		cacheConfigMutex.RUnlock()
-
-		astCache.Store(hash, &cachedAST{node: node, expires: time.Now().Add(ttl)})
-		return node, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return node, nil
-}
-
-// startASTCacheCleanup launches a background goroutine to periodically remove expired cache entries.
-//
-// HOW it works: Starts a single goroutine with a ticker that scans the entire
-// cache at regular intervals (default: half of cache TTL). Uses context cancellation
-// for graceful shutdown via StopASTCacheCleanup().
-//
-// Thread safety: Uses cacheCleanupMutex to ensure only one cleanup goroutine runs.
-// The goroutine reads configuration with cacheConfigMutex to avoid races with
-// configuration changes during startup.
-func startASTCacheCleanup() {
-	cacheCleanupMutex.Lock()
-	defer cacheCleanupMutex.Unlock()
-	if cleanupCancel != nil {
-		return
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cleanupCancel = cancel
-	go func() {
-		// Read cleanup interval with proper synchronization
-		cacheConfigMutex.RLock()
-		interval := astCacheCleanupInterval
-		cacheConfigMutex.RUnlock()
-
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				now := time.Now()
-				astCache.Range(func(key, value any) bool {
-					entry := value.(*cachedAST)
-					if now.After(entry.expires) {
-						astCache.Delete(key)
-					}
-					return true
-				})
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-}
-
-// StopASTCacheCleanup stops the background cache cleanup goroutine.
-func StopASTCacheCleanup() {
-	cacheCleanupMutex.Lock()
-	defer cacheCleanupMutex.Unlock()
-	if cleanupCancel != nil {
-		cleanupCancel()
-		cleanupCancel = nil
-	}
-}
-
 // WithDebugTags enables or disables debug tag inclusion in the rendered output
 func WithDebugTags(enabled bool) RenderOption {
 	return func(opts *RenderOpts) {
@@ -333,6 +66,21 @@ func WithDebugTags(enabled bool) RenderOption {
 func WithCache() RenderOption {
 	return func(opts *RenderOpts) {
 		opts.UseCache = true
+	}
+}
+
+// WithASTCache enables AST caching in c instead of the package-wide cache
+// that WithCache uses. It takes precedence over WithCache in either order.
+// A nil c is equivalent to WithCache.
+func WithASTCache(c *ASTCache) RenderOption {
+	return func(opts *RenderOpts) {
+		opts.UseCache = true
+		if c == nil {
+			// Storing a nil *ASTCache would make the interface field non-nil.
+			opts.ASTCache = nil
+			return
+		}
+		opts.ASTCache = c
 	}
 }
 
@@ -376,7 +124,7 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	}
 
 	// Parse MJML using the parser package (with optional cache)
-	ast, err := parseAST(mjmlContent, renderOpts.UseCache)
+	ast, err := parseAST(mjmlContent, renderOpts)
 	if err != nil {
 		return nil, err
 	}

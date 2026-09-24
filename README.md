@@ -431,6 +431,32 @@ mjml.SetASTCacheCleanupIntervalOnce(5 * time.Minute)
 defer mjml.StopASTCacheCleanup()
 ```
 
+**Scoped Caches:**
+
+`WithCache()` shares one package-wide cache. To give a server, a tenant or a test its own cache, with its own settings and lifetime, create one and pass it with `WithASTCache`:
+
+```go
+cache := mjml.NewASTCache(
+	mjml.WithASTCacheTTL(10*time.Minute),
+	mjml.WithASTCacheCleanupInterval(time.Minute), // optional, defaults to TTL/2
+)
+defer cache.Close() // stops its cleanup goroutine and drops its entries
+
+html, err := mjml.Render(template, mjml.WithASTCache(cache))
+```
+
+Scoped caches share nothing with each other or with the package-wide cache, so tests stay hermetic:
+
+```go
+func TestWelcomeEmail(t *testing.T) {
+	cache := mjml.NewASTCache()
+	t.Cleanup(cache.Close)
+
+	html, err := mjml.Render(welcomeTemplate, mjml.WithASTCache(cache))
+	// ...
+}
+```
+
 **When NOT to Use Caching:**
 - Single-use template rendering
 - Memory-constrained environments  
