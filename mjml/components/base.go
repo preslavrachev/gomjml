@@ -54,15 +54,16 @@ type Component interface {
 
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
-	Node           *parser.MJMLNode
-	Children       []Component
-	Attrs          map[string]string
-	classNames     []string            // Split mj-class attribute values
-	classAttrs     map[string]string   // Merged attributes from mj-class definitions
-	ContainerWidth int                 // Container width in pixels (0 means use default)
-	Siblings       int                 // Total siblings count
-	RawSiblings    int                 // Raw siblings count (for width calculations)
-	RenderOpts     *options.RenderOpts // Rendering options
+	Node              *parser.MJMLNode
+	Children          []Component
+	Attrs             map[string]string
+	classNames        []string            // Split mj-class attribute values
+	classAttrs        map[string]string   // Merged attributes from mj-class definitions
+	ContainerWidth    int                 // Container width in pixels (0 means use default)
+	containerWidthSet bool                // MJML keeps a 0px width as a width, so 0 cannot mean unset
+	Siblings          int                 // Total siblings count
+	RawSiblings       int                 // Raw siblings count (for width calculations)
+	RenderOpts        *options.RenderOpts // Rendering options
 }
 
 // NewBaseComponent creates a new base component
@@ -297,6 +298,7 @@ func (bc *BaseComponent) GetDefaultAttribute(name string) string {
 // AIDEV-NOTE: width-flow-interface; container width flows from parent to child components
 func (bc *BaseComponent) SetContainerWidth(widthPx int) {
 	bc.ContainerWidth = widthPx
+	bc.containerWidthSet = true
 }
 
 // GetContainerWidth returns the container width in pixels (0 means use default body width)
@@ -334,7 +336,7 @@ func (bc *BaseComponent) GetNonRawSiblings() int {
 // AIDEV-NOTE: width-flow-calculation; used to calculate actual pixel width for rendering and child width calculation
 func (bc *BaseComponent) GetEffectiveWidth() int {
 	// A negative width is MJML's too: paddings wider than the container.
-	if bc.ContainerWidth != 0 {
+	if bc.containerWidthSet {
 		return bc.ContainerWidth
 	}
 	return GetDefaultBodyWidthPixels()

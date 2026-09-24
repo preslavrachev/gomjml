@@ -20,8 +20,8 @@ func imgWidth(t *testing.T, html, src, want string) string {
 // The widths are MJML 4.16.1's for the same documents.
 func TestBoxWidths(t *testing.T) {
 	tests := []struct {
-		name, body string
-		want       []string
+		name, bodyAttrs, body string
+		want                  []string
 	}{
 		{
 			name: "longhand padding wins over the shorthand",
@@ -53,10 +53,22 @@ func TestBoxWidths(t *testing.T) {
 			body: `<mj-section padding="0 10px"><mj-column><mj-image src="e.png" width="700px" padding="0" /></mj-column></mj-section>`,
 			want: []string{`width:580px;`, `img e.png 580`},
 		},
+		{
+			name:      "a zero body width is a width",
+			bodyAttrs: ` width="0px"`,
+			body:      `<mj-section><mj-column><mj-image src="z.png" padding="0" /></mj-column></mj-section>`,
+			want:      []string{`vertical-align:top;width:0px;`, `img z.png 0`},
+		},
+		{
+			name:      "a zero body width reaches a hero",
+			bodyAttrs: ` width="0px"`,
+			body:      `<mj-hero><mj-image src="h.png" padding="0 10px" /></mj-hero>`,
+			want:      []string{`img h.png -20`},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			input := `<mjml><mj-head><mj-attributes><mj-class name="p7" padding="7px" /></mj-attributes></mj-head><mj-body>` + tt.body + `</mj-body></mjml>`
+			input := `<mjml><mj-head><mj-attributes><mj-class name="p7" padding="7px" /></mj-attributes></mj-head><mj-body` + tt.bodyAttrs + `>` + tt.body + `</mj-body></mjml>`
 			html, err := Render(input)
 			if err != nil {
 				t.Fatal(err)
