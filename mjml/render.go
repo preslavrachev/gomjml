@@ -380,6 +380,10 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 	if err != nil {
 		return nil, err
 	}
+	// The parser accepts fragments; an email needs the <mjml> document.
+	if tag := ast.GetTagName(); tag != "mjml" {
+		return nil, fmt.Errorf("expected <mjml> root, found <%s>", tag)
+	}
 
 	// Initialize global attributes
 	globalAttrs := globals.NewGlobalAttributes()
