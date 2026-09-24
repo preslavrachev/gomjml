@@ -8,7 +8,6 @@ import (
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
-	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -49,74 +48,11 @@ func (c *MJWrapperComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
 }
 
-// getBorderWidth calculates total horizontal border width taking into account
-// shorthand border, border-left, and border-right overrides.
-func (c *MJWrapperComponent) getBorderWidth() int {
-	left, right := c.getBorderLRWidths()
-	return left + right
-}
-
-// getBorderLRWidths returns individual left and right border widths in pixels.
-func (c *MJWrapperComponent) getBorderLRWidths() (int, int) {
-	var left, right int
-	if border := c.getAttribute("border"); border != "" {
-		w := styles.ParseBorderWidth(border)
-		left, right = w, w
-	}
-	if bl := c.getAttribute("border-left"); bl != "" {
-		if w := styles.ParseBorderWidth(bl); w > 0 {
-			left = w
-		}
-	}
-	if br := c.getAttribute("border-right"); br != "" {
-		if w := styles.ParseBorderWidth(br); w > 0 {
-			right = w
-		}
-	}
-	return left, right
-}
-
-// getEffectiveWidth calculates width minus border width
+// getEffectiveWidth is the width the wrapper gives its sections: MJML's box,
+// what its horizontal paddings and borders leave of its container.
 func (c *MJWrapperComponent) getEffectiveWidth() int {
-	baseWidth := GetDefaultBodyWidthPixels()
-	borderLeft, borderRight := c.getBorderLRWidths()
-	effectiveWidth := baseWidth - borderLeft - borderRight
-
-	// AIDEV-NOTE: wrapper-width-flow; wrapper padding reduces child containerWidth
-	// Subtract horizontal padding (handle both shorthand and individual properties)
-	// This ensures child sections receive reduced containerWidth accounting for wrapper padding
-	padding := c.getAttribute("padding")
-	if padding != "" {
-		if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
-			effectiveWidth -= int(sp.Left + sp.Right)
-		}
-	}
-
-	// Individual properties override shorthand
-	if pl := c.getAttribute(constants.MJMLPaddingLeft); pl != "" {
-		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
-			// If we already subtracted from shorthand, add it back first
-			if padding != "" {
-				if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
-					effectiveWidth += int(sp.Left)
-				}
-			}
-			effectiveWidth -= int(px.Value)
-		}
-	}
-	if pr := c.getAttribute(constants.MJMLPaddingRight); pr != "" {
-		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
-			// If we already subtracted from shorthand, add it back first
-			if padding != "" {
-				if sp, err := styles.ParseSpacing(padding); err == nil && sp != nil {
-					effectiveWidth += int(sp.Right)
-				}
-			}
-			effectiveWidth -= int(px.Value)
-		}
-	}
-
-	return effectiveWidth
+	paddings, borders, _ := c.BoxWidths(c)
+	return c.GetEffectiveWidth() - paddings - borders
 }
 
 // getChildAlign returns the align attribute for a section child if specified.
@@ -238,18 +174,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	wrapperBgColor := c.getAttribute("background-color")
 	wrapperGap := c.getAttribute("gap")
 
-	// Calculate effective content width by subtracting horizontal padding and border widths
-	effectiveWidth := GetDefaultBodyWidthPixels() - c.getBorderWidth()
-	if pl := c.getAttribute(constants.MJMLPaddingLeft); pl != "" {
-		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
-			effectiveWidth -= int(px.Value)
-		}
-	}
-	if pr := c.getAttribute(constants.MJMLPaddingRight); pr != "" {
-		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
-			effectiveWidth -= int(px.Value)
-		}
-	}
+	effectiveWidth := c.getEffectiveWidth()
 
 	continueMSOComment := false
 	if c.RenderOpts != nil && c.RenderOpts.PendingMSOSectionClose {
