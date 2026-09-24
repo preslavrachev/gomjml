@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
@@ -16,7 +17,7 @@ import (
 )
 
 /*
-TestMJMLAgainstExpected renders each listed testdata/*.mjml fixture and compares the result with the
+TestMJMLAgainstExpected renders every testdata/*.mjml fixture and compares the result with the
 reference output of the MJML CLI, pinned in testdata/reference/package.json.
 Regenerate the references with scripts/regen-goldens.sh.
 
@@ -36,201 +37,7 @@ On mismatch, the test provides a detailed DOM diff, logs style differences, and 
 actual and expected outputs to temporary files for debugging purposes.
 */
 func TestMJMLAgainstExpected(t *testing.T) {
-	names := []string{
-		"mj-body",
-		"mj-body-background-color",
-		"mj-body-class",
-		"mj-body-width",
-		"basic",
-		"comment",
-		"with-head",
-		"complex-layout",
-		"wrapper-basic",
-		"wrapper-background",
-		"wrapper-fullwidth",
-		"wrapper-border",
-		"group-footer-test",
-		"section-bg-vml-color",
-		"section-fullwidth-background-image",
-		"section-fullwidth-bg-transparent",
-		"section-padding-top-zero",
-		"austin-layout-from-mjml-io",
-		"austin-header-section",
-		"austin-hero-images",
-		"austin-wrapper-basic",
-		"austin-text-with-links",
-		"austin-buttons",
-		"austin-two-column-images",
-		"austin-divider",
-		"mj-divider",
-		"mj-divider-alignment",
-		"mj-divider-border",
-		"mj-divider-class",
-		"mj-divider-container-background-color",
-		"mj-divider-in-mj-text",
-		"mj-divider-padding",
-		"mj-divider-width",
-		"mj-divider-container-background-transparent",
-		"austin-two-column-text",
-		"austin-full-width-wrapper",
-		"austin-social-media",
-		"austin-footer-text",
-		"austin-group-component",
-		"austin-global-attributes",
-		"austin-map-image",
-		"mrml-divider-basic",
-		"mrml-text-basic",
-		"mrml-button-basic",
-		"body-wrapper-section",
-		"mj-attributes",
-		"mj-group",
-		"mj-group-background-color",
-		"mj-group-class",
-		"mj-group-mso-wrapper-raw",
-		"mj-group-direction",
-		"mj-group-vertical-align",
-		"mj-group-width",
-		"mj-button",
-		"mj-button-align",
-		"mj-button-background",
-		"mj-button-border",
-		"mj-button-border-radius",
-		"mj-button-class",
-		"mj-button-color",
-		"mj-button-container-background-color",
-		"mj-button-example",
-		"mj-button-font-family",
-		"mj-button-font-size",
-		"mj-button-font-style",
-		"mj-button-font-weight",
-		"mj-button-height",
-		"mj-button-href",
-		"mj-button-inner-padding",
-		"mj-button-line-height",
-		"mj-button-padding",
-		"mj-button-text-decoration",
-		"mj-button-text-transform",
-		"mj-button-vertical-align",
-		"mj-button-width",
-		"mj-button-global-attributes",
-		"mj-image",
-		"mj-image-align",
-		"mj-image-border",
-		"mj-image-border-radius",
-		"mj-image-container-background-color",
-		"mj-image-fluid-on-mobile",
-		"mj-image-height",
-		"mj-image-href",
-		"mj-image-padding",
-		"mj-image-rel",
-		"mj-image-title",
-		"mj-image-class",
-		"mj-image-src-with-url-params",
-		"mj-section",
-		"mj-section-background-vml",
-		"mj-section-background-color",
-		"mj-section-background-url",
-		"mj-section-background-url-full",
-		"mj-section-body-width",
-		"mj-section-border",
-		"mj-section-border-radius",
-		"mj-section-direction",
-		"mj-section-full-width",
-		"mj-section-padding",
-		"mj-section-text-align",
-		"mj-section-bg-cover-no-repeat",
-		"mj-section-global-attributes",
-		"mj-section-width",
-		"mj-section-with-columns",
-		"mj-section-class",
-		"mj-column",
-		"mj-column-background-color",
-		"mj-column-border",
-		"mj-column-border-issue-466",
-		"mj-column-border-radius",
-		"mj-column-inner-background-color",
-		"mj-column-vertical-align",
-		"mj-column-padding",
-		"mj-column-class",
-		"mj-column-global-attributes",
-		"mj-wrapper",
-		"mj-wrapper-border",
-		"mj-wrapper-border-radius",
-		"mj-wrapper-gap",
-		"mj-wrapper-multiple-sections",
-		"mj-wrapper-other",
-		"mj-wrapper-padding",
-		"mj-text",
-		"mj-text-align",
-		"mj-text-color",
-		"mj-text-container-background-color",
-		"mj-text-decoration",
-		"mj-text-example",
-		"mj-text-font-family",
-		"mj-text-font-size",
-		"mj-text-font-style",
-		"mj-text-font-weight",
-		"mj-text-class",
-		"mj-raw",
-		"mj-raw-conditional-comment",
-		"mj-raw-head",
-		"mj-raw-go-template",
-		"mj-social",
-		"mj-social-anchors",
-		"mj-social-align",
-		"mj-social-border-radius",
-		"mj-social-class",
-		"mj-social-color",
-		"mj-social-complex-styling",
-		"mj-social-container-background-color",
-		"mj-social-element-ending",
-		"mj-social-font-family",
-		"mj-social-font",
-		"mj-social-icon",
-		"mj-social-link",
-		"mj-social-mode",
-		"mj-social-notifuse",
-		"mj-social-padding",
-		"mj-social-structure-basic",
-		"mj-social-text",
-		"mj-social-text-wrapper",
-		"mj-social-no-ubuntu-fonts-overridden",
-		"mj-social-ubuntu-fonts-with-text-content",
-		"mj-social-ubuntu-fonts-icons-only-fallback",
-		"mj-accordion",
-		"mj-accordion-font-padding",
-		"mj-accordion-icon",
-		"mj-accordion-other",
-		"mj-navbar",
-		"mj-navbar-ico",
-		"mj-navbar-align-class",
-		"mj-hero",
-		"mj-hero-background-color",
-		"mj-hero-background-height",
-		"mj-hero-background-position",
-		"mj-hero-background-url",
-		"mj-hero-background-width",
-		"mj-hero-class",
-		"mj-hero-height",
-		"mj-hero-width",
-		"mj-hero-mode",
-		"mj-hero-vertical-align",
-		"mj-spacer",
-		"mj-spacer-invalid-attributes",
-		"mj-table",
-		"mj-table-global-attributes",
-		"mj-table-other",
-		"mj-table-table",
-		"mj-table-text",
-		"mj-carousel",
-		"mj-carousel-align-border-radius-class",
-		"mj-carousel-icon",
-		"mj-carousel-tb",
-		"mj-carousel-thumbnails",
-		"notifuse-open-br-tags",
-		"notifuse-wrapper-bgcolor",
-		"notifuse-full",
-	}
+	names := referenceFixtures(t)
 	for name := range knownDiffs {
 		if !slices.Contains(names, name) {
 			t.Errorf("knownDiffs entry %s names no fixture in testdata", name)
@@ -280,6 +87,31 @@ var expectedRenderErrors = map[string]func(error) error{
 		}
 		return err
 	},
+}
+
+// referenceFixtures lists every fixture name in testdata and fails on a reference file
+// that has no .mjml input, so that neither can be left out of the suite unnoticed.
+func referenceFixtures(t *testing.T) []string {
+	t.Helper()
+	inputs, err := filepath.Glob("testdata/*.mjml")
+	if err != nil || len(inputs) == 0 {
+		t.Fatalf("no fixtures found in testdata: %v", err)
+	}
+	names := make([]string, 0, len(inputs))
+	for _, input := range inputs {
+		names = append(names, strings.TrimSuffix(filepath.Base(input), ".mjml"))
+	}
+
+	for _, pattern := range []string{"testdata/*.html", "testdata/*.error"} {
+		references, _ := filepath.Glob(pattern)
+		for _, reference := range references {
+			name := strings.TrimSuffix(filepath.Base(reference), filepath.Ext(reference))
+			if !slices.Contains(names, name) {
+				t.Errorf("%s has no testdata/%s.mjml input", reference, name)
+			}
+		}
+	}
+	return names
 }
 
 // referenceDifferences renders fixture name with gomjml and describes how the result
@@ -1691,7 +1523,11 @@ func canonicalizeTagAttributes(block, tag string) string {
 // knownDiffs lists fixtures whose gomjml output is known to differ from the MJML reference,
 // with the reason. TestMJMLAgainstExpected skips them while they differ and fails once they match.
 var knownDiffs = map[string]string{
-	"mj-raw-head": "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
+	"mj-breakpoint":         "mj-breakpoint is not implemented; media queries keep the 480px default",
+	"mj-raw-head":           "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
+	"mj-text-height":        "mj-text height is ignored: no MSO height table, no div height",
+	"mj-wrapper-background": "mj-wrapper background-url is not rendered: no VML rect, no background shorthand",
+	"mjml":                  "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
 }
 
 // normalizeForComparison prepares either side of a reference comparison.
