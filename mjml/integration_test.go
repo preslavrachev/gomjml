@@ -1690,7 +1690,9 @@ func canonicalizeTagAttributes(block, tag string) string {
 
 // knownDiffs lists fixtures whose gomjml output is known to differ from the MJML reference,
 // with the reason. TestMJMLAgainstExpected skips them while they differ and fails once they match.
-var knownDiffs = map[string]string{}
+var knownDiffs = map[string]string{
+	"mj-raw-head": "MJML rejects a document without mj-body; gomjml returns \"MJML badly formatted\" as HTML",
+}
 
 // normalizeForComparison prepares either side of a reference comparison.
 func normalizeForComparison(html string) string {
