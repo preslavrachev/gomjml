@@ -1,0 +1,42 @@
+name: MJML reference
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'mjml/testdata/**'
+      - 'scripts/regen-goldens.sh'
+      - '.github/workflows/reference.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'mjml/testdata/**'
+      - 'scripts/regen-goldens.sh'
+      - '.github/workflows/reference.yml'
+  workflow_dispatch:
+
+jobs:
+  goldens:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: mjml/testdata/reference/.nvmrc
+        cache: npm
+        cache-dependency-path: mjml/testdata/reference/package-lock.json
+
+    - name: Regenerate goldens with the pinned MJML
+      run: scripts/regen-goldens.sh
+
+    - name: Check the committed goldens match
+      run: |
+        # Intent-to-add makes new files, such as an unexpected .error, show in the diff.
+        git add --intent-to-add mjml/testdata
+        git diff --exit-code --stat -- mjml/testdata || {
+          echo "::error::mjml/testdata differs from the pinned MJML output. Run scripts/regen-goldens.sh and commit the result."
+          exit 1
+        }
