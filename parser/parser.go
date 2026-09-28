@@ -151,8 +151,8 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 	// Pre-process HTML entities that XML parser doesn't handle
 	processedContent = preprocessHTMLEntities(processedContent)
 
-	// Wrap mj-text inner content in CDATA to preserve raw HTML
-	processedContent = wrapMJTextContent(processedContent)
+	// Keep ending-tag content as written, as MJML does
+	processedContent = wrapEndingTagContent(processedContent)
 
 	contentBytes := []byte(processedContent)
 	lookup := newLineLookup(contentBytes)
@@ -446,10 +446,8 @@ func isMSOConditionalComment(comment string) bool {
 }
 
 const (
-	openNeedle  = "<mj-text"
-	closeNeedle = "</mj-text>"
-	cdataStart  = "<![CDATA["
-	cdataEnd    = "]]>"
+	cdataStart = "<![CDATA["
+	cdataEnd   = "]]>"
 	// cdataEndSafe is used to escape CDATA end sequences within CDATA sections.
 	// When "]]>" appears in content that will be wrapped in CDATA, it's replaced
 	// with "]]]]><![CDATA[>" which effectively closes the current CDATA section,
@@ -459,151 +457,217 @@ const (
 	cdataEndSafe = "]]]]><![CDATA[>"
 )
 
-// wrapMJTextContent wraps the inner content of every <mj-text>...</mj-text>
-// in a CDATA section and normalizes void tags inside. It is case-insensitive
-// on tag names, handles attributes with quotes, and supports self-closing tags.
-func wrapMJTextContent(content string) string {
-	if content == "" {
-		return ""
-	}
+// endingTags are the components MJML declares with endingTag = true: it keeps
+// their content as written instead of parsing it as MJML.
+var endingTags = map[string]struct{}{
+	"mj-accordion-text":  {},
+	"mj-accordion-title": {},
+	"mj-breakpoint":      {},
+	"mj-button":          {},
+	"mj-carousel-image":  {},
+	"mj-navbar-link":     {},
+	"mj-preview":         {},
+	"mj-raw":             {},
+	"mj-social-element":  {},
+	"mj-style":           {},
+	"mj-table":           {},
+	"mj-text":            {},
+	"mj-title":           {},
+}
 
-	b := []byte(content)
+// wrapEndingTagContent wraps the content of every ending tag in a CDATA
+// section, so that the XML decoder returns it as written, and normalizes void
+// tags inside mj-text. Tag names are matched case-insensitively.
+func wrapEndingTagContent(content string) string {
 	var out strings.Builder
-	out.Grow(len(content) + 64)
-
 	pos := 0
-	for {
-		idx := indexCI(b, []byte(openNeedle), pos)
-		if idx < 0 {
-			out.Write(b[pos:])
+	for i := 0; i < len(content); {
+		lt := strings.IndexByte(content[i:], '<')
+		if lt < 0 {
 			break
 		}
-
-		out.Write(b[pos:idx])
-
-		endStart, selfClosing := findTagEnd(b, idx)
-		if endStart < 0 {
-			out.Write(b[idx:])
-			break
-		}
-
-		out.Write(b[idx:endStart])
-
-		if selfClosing {
-			pos = endStart
+		i += lt
+		if next := skipMarkupDeclaration(content, i); next > i {
+			i = next
 			continue
 		}
-
-		closeIdx := indexCI(b, []byte(closeNeedle), endStart)
-		if closeIdx < 0 {
-			out.Write(b[endStart:])
+		name, closing := scanTagName(content, i)
+		if name == "" {
+			i++
+			continue
+		}
+		end, selfClosing := findTagEnd(content, i)
+		if end < 0 {
 			break
 		}
-
-		inner := b[endStart:closeIdx]
-
-		alreadyCDATA := bytes.HasPrefix(bytes.TrimLeft(inner, " \t\r\n"), []byte(cdataStart))
-
-		inner = normalizeSelfClosingVoidTags(inner)
-
-		if alreadyCDATA {
-			out.Write(inner)
-		} else {
-			if bytes.Contains(inner, []byte(cdataEnd)) {
-				inner = bytes.ReplaceAll(inner, []byte(cdataEnd), []byte(cdataEndSafe))
-			}
-			out.WriteString(cdataStart)
-			out.Write(inner)
-			out.WriteString(cdataEnd)
+		i = end
+		if _, ok := endingTags[name]; !ok || closing || selfClosing {
+			continue
 		}
-
-		out.WriteString(closeNeedle)
-
-		pos = closeIdx + len(closeNeedle)
+		closeStart, closeEnd := findEndingTagClose(content, end)
+		if closeStart < 0 {
+			break // the XML decoder reports the unclosed tag
+		}
+		if pos == 0 {
+			out.Grow(len(content) + 64)
+		}
+		out.WriteString(content[pos:end])
+		writeEndingTagContent(&out, name, content[end:closeStart])
+		// htmlparser2 lower-cases the name and skips to '>', so "</MJ-TEXT\n>"
+		// closes <mj-text>; the XML decoder needs it written exactly.
+		closeName, _ := scanTagName(content, closeStart)
+		out.WriteString("</" + closeName + ">")
+		pos, i = closeEnd, closeEnd
 	}
-
+	if pos == 0 {
+		return content
+	}
+	out.WriteString(content[pos:])
 	return out.String()
 }
 
-// findTagEnd returns the index *after* the '>' of the start tag at 'start'
-// and whether it was self-closing (<.../>). Respects single/double quotes.
-func findTagEnd(b []byte, start int) (end int, selfClosing bool) {
-	i := start
-	inQuote := byte(0)
-	for i < len(b) {
-		c := b[i]
-		if inQuote != 0 {
-			if c == inQuote {
-				inQuote = 0
-			}
+// writeEndingTagContent writes inner as CDATA. A CDATA section the author put
+// first is left as it is, so the decoder unwraps it, except in mj-raw, which
+// passes everything through.
+func writeEndingTagContent(out *strings.Builder, name, inner string) {
+	if name == "mj-text" {
+		inner = normalizeSelfClosingVoidTags(inner)
+	}
+	if name != "mj-raw" && strings.HasPrefix(strings.TrimLeft(inner, " \t\r\n"), cdataStart) {
+		out.WriteString(inner)
+		return
+	}
+	out.WriteString(cdataStart)
+	out.WriteString(strings.ReplaceAll(inner, cdataEnd, cdataEndSafe))
+	out.WriteString(cdataEnd)
+}
+
+// findEndingTagClose returns the bounds of the end tag that closes an ending
+// tag whose content starts at from. Like MJML, it counts every ending tag
+// nested in the content, whatever its name.
+func findEndingTagClose(s string, from int) (start, end int) {
+	depth := 1
+	for i := from; i < len(s); {
+		lt := strings.IndexByte(s[i:], '<')
+		if lt < 0 {
+			break
+		}
+		i += lt
+		if next := skipMarkupDeclaration(s, i); next > i {
+			i = next
+			continue
+		}
+		name, closing := scanTagName(s, i)
+		if name == "" {
 			i++
 			continue
 		}
-		switch c {
+		tagEnd, selfClosing := findTagEnd(s, i)
+		if tagEnd < 0 {
+			break
+		}
+		if _, ok := endingTags[name]; ok {
+			if closing {
+				if depth--; depth == 0 {
+					return i, tagEnd
+				}
+			} else if !selfClosing {
+				depth++
+			}
+		}
+		i = tagEnd
+	}
+	return -1, -1
+}
+
+// skipMarkupDeclaration returns the index just past the comment, CDATA
+// section, declaration or processing instruction at s[i], or i if there is
+// none there.
+func skipMarkupDeclaration(s string, i int) int {
+	rest := s[i:]
+	var open, close string
+	switch {
+	case strings.HasPrefix(rest, "<!--"):
+		open, close = "<!--", "-->"
+	case strings.HasPrefix(rest, cdataStart):
+		open, close = cdataStart, cdataEnd
+	case strings.HasPrefix(rest, "<!"):
+		open, close = "<!", ">"
+	case strings.HasPrefix(rest, "<?"):
+		open, close = "<?", "?>"
+	default:
+		return i
+	}
+	if j := strings.Index(rest[len(open):], close); j >= 0 {
+		return i + len(open) + j + len(close)
+	}
+	return len(s)
+}
+
+// scanTagName returns the lower-cased name of the start or end tag at s[i],
+// or "" if s[i] does not begin a tag.
+func scanTagName(s string, i int) (name string, closing bool) {
+	j := i + 1
+	if j < len(s) && s[j] == '/' {
+		closing = true
+		j++
+	}
+	if j >= len(s) || !isASCIILetter(s[j]) {
+		return "", false
+	}
+	k := j + 1
+	for k < len(s) && (isASCIILetter(s[k]) || ('0' <= s[k] && s[k] <= '9') || strings.IndexByte("-_:.", s[k]) >= 0) {
+		k++
+	}
+	name = s[j:k]
+	for n := 0; n < len(name); n++ {
+		if 'A' <= name[n] && name[n] <= 'Z' {
+			return strings.ToLower(name), closing
+		}
+	}
+	return name, closing
+}
+
+func isASCIILetter(c byte) bool {
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+}
+
+// findTagEnd returns the index just past the '>' that ends the tag at s[start]
+// and whether the tag closes itself. As in HTML, a quote only opens an
+// attribute value right after '=', so unquoted values may contain quotes.
+func findTagEnd(s string, start int) (end int, selfClosing bool) {
+	afterEquals := false
+	for i := start + 1; i < len(s); i++ {
+		switch c := s[i]; c {
 		case '"', '\'':
-			inQuote = c
-			i++
+			if afterEquals {
+				j := strings.IndexByte(s[i+1:], c)
+				if j < 0 {
+					return -1, false
+				}
+				i += j + 1
+			}
+			afterEquals = false
+		case '=':
+			afterEquals = true
+		case ' ', '\t', '\r', '\n':
 		case '>':
-			selfClosing = i > start && previousNonSpace(b, i-1) == '/'
-			return i + 1, selfClosing
+			return i + 1, previousNonSpace(s, i-1) == '/'
 		default:
-			i++
+			afterEquals = false
 		}
 	}
 	return -1, false
 }
 
 // previousNonSpace returns the previous non-space byte at or before idx; 0 if none.
-func previousNonSpace(b []byte, idx int) byte {
+func previousNonSpace(s string, idx int) byte {
 	for i := idx; i >= 0; i-- {
-		if b[i] != ' ' && b[i] != '\t' && b[i] != '\n' && b[i] != '\r' {
-			return b[i]
+		if s[i] != ' ' && s[i] != '\t' && s[i] != '\n' && s[i] != '\r' {
+			return s[i]
 		}
 	}
 	return 0
-}
-
-// indexCI finds needle in haystack starting at 'from', ASCII case-insensitive.
-// Avoids allocating by not lowercasing the whole string.
-func indexCI(haystack, needle []byte, from int) int {
-	if from < 0 {
-		from = 0
-	}
-	n := len(needle)
-	if n == 0 {
-		return from
-	}
-	h := haystack
-	max := len(h) - n
-	for i := from; i <= max; i++ {
-		if equalFoldASCII(h[i:i+n], needle) {
-			return i
-		}
-	}
-	return -1
-}
-
-func equalFoldASCII(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		ai := a[i]
-		bi := b[i]
-		if ai == bi {
-			continue
-		}
-		if 'A' <= ai && ai <= 'Z' {
-			ai += 'a' - 'A'
-		}
-		if 'A' <= bi && bi <= 'Z' {
-			bi += 'a' - 'A'
-		}
-		if ai != bi {
-			return false
-		}
-	}
-	return true
 }
 
 // normalizeSelfClosingVoidTags ensures that void HTML elements use a space before the
@@ -611,13 +675,12 @@ func equalFoldASCII(a, b []byte) bool {
 // self-closing tags.
 var voidSelfClosingRe = regexp.MustCompile(buildVoidElementsRegexPattern())
 
-func normalizeSelfClosingVoidTags(b []byte) []byte {
-	return voidSelfClosingRe.ReplaceAllFunc(b, func(m []byte) []byte {
-		base := bytes.TrimRight(m[:len(m)-2], " ")
-		res := make([]byte, len(base)+3)
-		copy(res, base)
-		copy(res[len(base):], []byte(" />"))
-		return res
+func normalizeSelfClosingVoidTags(s string) string {
+	if !strings.Contains(s, "/>") {
+		return s
+	}
+	return voidSelfClosingRe.ReplaceAllStringFunc(s, func(m string) string {
+		return strings.TrimRight(m[:len(m)-2], " ") + " />"
 	})
 }
 
@@ -647,17 +710,6 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup,
 
 	if lookup != nil && len(node.Attrs) > 0 {
 		node.LineNumber = lookup.Line(startOffset)
-	}
-
-	// Special handling for mj-raw: capture original inner content including comments
-	if node.XMLName.Local == "mj-raw" {
-		raw, err := parseRawContent(decoder, content, startOffset)
-		if err != nil {
-			return nil, err
-		}
-		node.Text = raw
-		node.MixedContent = []MixedContentPart{{Text: raw}}
-		return node, nil
 	}
 
 	var textBuilder strings.Builder
@@ -709,43 +761,6 @@ func parseNode(decoder *xml.Decoder, start xml.StartElement, lookup *lineLookup,
 			segmentBuilder.WriteString("-->")
 		}
 	}
-}
-
-// parseRawContent reads tokens until the matching end tag and returns the raw HTML content
-func parseRawContent(decoder *xml.Decoder, content []byte, startOffset int64) (string, error) {
-	origStrict := decoder.Strict
-	decoder.Strict = false
-	defer func() { decoder.Strict = origStrict }()
-
-	start := int(startOffset)
-	depth := 1
-	var end int
-	for depth > 0 {
-		tokenStart := decoder.InputOffset()
-		tok, err := decoder.Token()
-		if err != nil {
-			return "", err
-		}
-		switch tok.(type) {
-		case xml.StartElement:
-			depth++
-		case xml.EndElement:
-			depth--
-			if depth == 0 {
-				end = int(tokenStart)
-				break
-			}
-		}
-	}
-
-	if start < 0 {
-		start = 0
-	}
-	if end < start || end > len(content) {
-		end = len(content)
-	}
-
-	return string(content[start:end]), nil
 }
 
 // GetAttribute retrieves an attribute value by name

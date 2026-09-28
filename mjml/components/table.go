@@ -2,7 +2,6 @@ package components
 
 import (
 	"io"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
@@ -138,95 +137,8 @@ func (c *MJTableComponent) GetDefaultAttribute(name string) string {
 	}
 }
 
-// writeInnerTableContent writes the inner HTML content (TR, TH, TD elements) to the writer
+// writeInnerTableContent writes the content (TR, TH, TD elements) inside the table
 func (c *MJTableComponent) writeInnerTableContent(w io.StringWriter) error {
-	// If we have children (HTML elements), we need to reconstruct the original HTML
-	if len(c.Node.Children) > 0 {
-		// Add children as HTML elements (skip text content to avoid extra whitespace)
-		for _, child := range c.Node.Children {
-			if err := c.reconstructHTMLElement(child, w); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	// If no children, write the text content with whitespace trimmed
-	if c.Node.Text != "" {
-		_, err := w.WriteString(strings.TrimSpace(c.Node.Text))
-		return err
-	}
-
-	return nil
-}
-
-// reconstructHTMLElement reconstructs an HTML element from a parsed node
-func (c *MJTableComponent) reconstructHTMLElement(node *parser.MJMLNode, w io.StringWriter) error {
-	tagName := node.XMLName.Local
-
-	// Check if this is a void element (self-closing)
-	isVoidElement := isVoidHTMLElement(tagName)
-
-	// Opening tag
-	if _, err := w.WriteString("<"); err != nil {
-		return err
-	}
-	if _, err := w.WriteString(tagName); err != nil {
-		return err
-	}
-
-	// Attributes
-	for _, attr := range node.Attrs {
-		if _, err := w.WriteString(" "); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(attr.Name.Local); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`="`); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(attr.Value); err != nil {
-			return err
-		}
-		if _, err := w.WriteString(`"`); err != nil {
-			return err
-		}
-	}
-
-	if isVoidElement {
-		// Self-closing tag
-		_, err := w.WriteString(" />")
-		return err
-	}
-
-	if _, err := w.WriteString(">"); err != nil {
-		return err
-	}
-
-	// Content (text + children) - trim whitespace to match MRML behavior
-	if node.Text != "" {
-		trimmedText := strings.TrimSpace(node.Text)
-		if trimmedText != "" {
-			if _, err := w.WriteString(trimmedText); err != nil {
-				return err
-			}
-		}
-	}
-
-	for _, child := range node.Children {
-		if err := c.reconstructHTMLElement(child, w); err != nil {
-			return err
-		}
-	}
-
-	// Closing tag
-	if _, err := w.WriteString("</"); err != nil {
-		return err
-	}
-	if _, err := w.WriteString(tagName); err != nil {
-		return err
-	}
-	_, err := w.WriteString(">")
+	_, err := w.WriteString(endingTagHTML(c.Node))
 	return err
 }

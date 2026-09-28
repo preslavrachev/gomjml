@@ -672,7 +672,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 			if err := textSpan.RenderOpen(w); err != nil {
 				return err
 			}
-			if _, err := w.WriteString(textContent); err != nil {
+			if _, err := w.WriteString(endingTagHTML(c.Node)); err != nil {
 				return err
 			}
 			if err := textSpan.RenderClose(w); err != nil {
@@ -848,8 +848,7 @@ func (c *MJSocialElementComponent) Render(w io.StringWriter) error {
 	}
 
 	// Render text content if present - INSIDE the same <tr>
-	// Use GetMixedContent to preserve HTML tags like <b>, <i>, etc. within text
-	textContent := c.Node.GetMixedContent()
+	textContent := endingTagHTML(c.Node)
 	if debug.Enabled() {
 		debug.DebugLogWithData(
 			"social-element",

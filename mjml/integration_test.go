@@ -273,6 +273,9 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "notifuse-open-br-tags"},
 		{name: "notifuse-wrapper-bgcolor"},
 		{name: "notifuse-full"},
+		// // Ending tags pass their content through as written
+		{name: "ending-tag-html"},
+		{name: "ending-tag-html-navbar"},
 	}
 
 	for _, tc := range testCases {

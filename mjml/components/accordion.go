@@ -2,7 +2,6 @@ package components
 
 import (
 	"io"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/fonts"
@@ -163,58 +162,8 @@ func NewMJAccordionTextComponent(node *parser.MJMLNode, opts *options.RenderOpts
 }
 
 func (c *MJAccordionTextComponent) Render(w io.StringWriter) error {
-	// Render the raw content inside the accordion text
-	content := strings.TrimSpace(c.Node.Text)
-	if content != "" {
-		if _, err := w.WriteString(content); err != nil {
-			return err
-		}
-	}
-
-	// Also render any child HTML elements
-	for _, child := range c.Node.Children {
-		if err := c.renderHTMLChild(w, child); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *MJAccordionTextComponent) renderHTMLChild(w io.StringWriter, node *parser.MJMLNode) error {
-	// Simple HTML rendering for child elements like <span>
-	tagName := node.XMLName.Local
-	if tagName != "" {
-		if _, err := w.WriteString("<" + tagName + ">"); err != nil {
-			return err
-		}
-
-		// Render text content
-		if content := strings.TrimSpace(node.Text); content != "" {
-			if _, err := w.WriteString(content); err != nil {
-				return err
-			}
-		}
-
-		// Render children recursively
-		for _, child := range node.Children {
-			if err := c.renderHTMLChild(w, child); err != nil {
-				return err
-			}
-		}
-
-		if _, err := w.WriteString("</" + tagName + ">"); err != nil {
-			return err
-		}
-	} else {
-		// Text node
-		if content := strings.TrimSpace(node.Text); content != "" {
-			if _, err := w.WriteString(content); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	_, err := w.WriteString(endingTagHTML(c.Node))
+	return err
 }
 
 func (c *MJAccordionTextComponent) GetTagName() string {
@@ -256,14 +205,8 @@ func NewMJAccordionTitleComponent(node *parser.MJMLNode, opts *options.RenderOpt
 }
 
 func (c *MJAccordionTitleComponent) Render(w io.StringWriter) error {
-	// Render the raw content inside the accordion title
-	content := strings.TrimSpace(c.Node.Text)
-	if content != "" {
-		if _, err := w.WriteString(content); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := w.WriteString(endingTagHTML(c.Node))
+	return err
 }
 
 func (c *MJAccordionTitleComponent) GetTagName() string {
