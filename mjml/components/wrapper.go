@@ -221,8 +221,8 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	}
 
 	msoTable.AddAttribute("role", "presentation")
-	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
-	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
+	msoTable.AddAttribute("style", "width:"+c.GetEffectiveWidthString()+";")
+	msoTable.AddAttribute("width", strconv.Itoa(c.GetEffectiveWidth()))
 
 	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
 	if wrapperBgColor != "" {
@@ -248,7 +248,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	// Inner constrained div (standard MRML pattern)
 	innerDiv := html.NewHTMLTag("div").
 		AddStyle("margin", "0px auto").
-		AddStyle("max-width", GetDefaultBodyWidth())
+		AddStyle("max-width", c.GetEffectiveWidthString())
 
 	if err := innerDiv.RenderOpen(w); err != nil {
 		return err
@@ -400,7 +400,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 	for i, child := range c.Children {
 		if child.IsRawElement() {
 			// Inject raw content inside the MSO transition block so Outlook maintains table structure
-			if err := html.RenderMSOSectionTransitionWithContent(w, GetDefaultBodyWidthPixels(), effectiveWidth, "", "", false, forceWrapperTableRaw, "", func(sw io.StringWriter) error {
+			if err := html.RenderMSOSectionTransitionWithContent(w, c.GetEffectiveWidth(), effectiveWidth, "", "", false, forceWrapperTableRaw, "", func(sw io.StringWriter) error {
 				return child.Render(sw)
 			}); err != nil {
 				return err
@@ -430,7 +430,7 @@ func (c *MJWrapperComponent) renderFullWidthToWriter(w io.StringWriter) error {
 					closeWrapper = false
 				}
 			}
-			if err := html.RenderMSOSectionTransition(w, GetDefaultBodyWidthPixels(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections, getWrapperSectionGap(wrapperGap, currentSectionIndex)); err != nil {
+			if err := html.RenderMSOSectionTransition(w, c.GetEffectiveWidth(), effectiveWidth, getChildAlign(child), nextBgColor, closeWrapper, forceWrapperTableSections, getWrapperSectionGap(wrapperGap, currentSectionIndex)); err != nil {
 				return err
 			}
 		}
@@ -552,8 +552,8 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	}
 
 	msoTable.AddAttribute("role", "presentation")
-	msoTable.AddAttribute("style", "width:"+GetDefaultBodyWidth()+";")
-	msoTable.AddAttribute("width", strconv.Itoa(GetDefaultBodyWidthPixels()))
+	msoTable.AddAttribute("style", "width:"+c.GetEffectiveWidthString()+";")
+	msoTable.AddAttribute("width", strconv.Itoa(c.GetEffectiveWidth()))
 
 	// Add bgcolor to MSO table if background-color is set (after width to match expected order)
 	if wrapperBgColor != "" {
@@ -592,7 +592,7 @@ func (c *MJWrapperComponent) renderSimpleToWriter(w io.StringWriter) error {
 	wrapperDiv.AddStyle("margin", "0px auto")
 
 	// Order styles to match MJML output: margin -> max-width -> border-radius -> overflow
-	wrapperDiv.AddStyle("max-width", GetDefaultBodyWidth())
+	wrapperDiv.AddStyle("max-width", c.GetEffectiveWidthString())
 
 	if borderRadius != "" {
 		wrapperDiv.AddStyle("border-radius", borderRadius)

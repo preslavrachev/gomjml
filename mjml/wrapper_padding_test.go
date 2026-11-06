@@ -29,3 +29,20 @@ func TestWrapperPaddingNarrowsSections(t *testing.T) {
 		}
 	}
 }
+
+// MJML 4.16.1 writes no default 600px anywhere when mj-body sets a width.
+func TestWrapperFollowsBodyWidth(t *testing.T) {
+	for _, attrs := range []string{"", `full-width="full-width"`, `padding="10px" border="2px solid red"`} {
+		html, err := Render(`<mjml><mj-body width="720px"><mj-wrapper ` + attrs + `><mj-section><mj-column><mj-text>x</mj-text></mj-column></mj-section><mj-section><mj-column><mj-text>y</mj-text></mj-column></mj-section></mj-wrapper></mj-body></mjml>`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := html[strings.Index(html, "<body"):]
+		if strings.Contains(body, "600") {
+			t.Errorf("<mj-wrapper %s>: the body still holds the default 600px width", attrs)
+		}
+		if !strings.Contains(body, `width="720"`) {
+			t.Errorf("<mj-wrapper %s>: the Outlook table lacks width=\"720\"", attrs)
+		}
+	}
+}
