@@ -168,22 +168,22 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 // preprocessHTMLEntities replaces common HTML entities with Unicode characters
 // and properly escapes ampersands in attribute values. Raw ampersands are first
 // escaped to &amp; for XML safety, then most entities are replaced with Unicode.
-// The &amp; entities are left for the XML parser to handle, preventing re-introduction
-// of invalid raw ampersands that would break XML parsing.
+// The XML predefined entities (&amp; &lt; &gt; &quot; &apos;) are left for the
+// XML parser to handle, preventing re-introduction of raw markup characters that
+// would break XML parsing or turn escaped text into real HTML tags.
 func preprocessHTMLEntities(content string) string {
 	// First, escape raw ampersands in attribute values that aren't part of valid entities
 	result := escapeAttributeAmpersands(content)
 
 	// Replace the most common HTML entities with Unicode characters
-	// NOTE: &amp; entities are intentionally preserved - the XML parser will convert
-	// them to raw ampersands safely after parsing, maintaining XML validity.
+	// NOTE: the XML predefined entities (&amp; &lt; &gt; &quot; &apos;) are
+	// intentionally preserved - the XML parser decodes them itself, and only
+	// where appropriate (not inside CDATA-wrapped mj-text content). Replacing
+	// them here would turn escaped text such as "&lt;b&gt;" into real markup and
+	// let a decoded quote terminate an attribute value early.
 	result = strings.ReplaceAll(result, "&copy;", "©")
 	result = strings.ReplaceAll(result, "&reg;", "®")
 	result = strings.ReplaceAll(result, "&trade;", "™")
-	result = strings.ReplaceAll(result, "&lt;", "<")
-	result = strings.ReplaceAll(result, "&gt;", ">")
-	result = strings.ReplaceAll(result, "&quot;", `"`)
-	result = strings.ReplaceAll(result, "&apos;", "'")
 	result = strings.ReplaceAll(result, "&nbsp;", "\u00A0") // Unicode non-breaking space
 	result = strings.ReplaceAll(result, "&#xA0;", "\u00A0") // Numeric character reference for non-breaking space
 	result = strings.ReplaceAll(result, "&#160;", "\u00A0") // Decimal numeric reference for non-breaking space

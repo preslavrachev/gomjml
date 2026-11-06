@@ -662,6 +662,75 @@ func TestPreprocessHTMLEntitiesIntegration(t *testing.T) {
 	}
 }
 
+// TestParseMJML_PreservesEscapedXMLEntities verifies that the XML predefined
+// entities (&lt; &gt; &quot; &apos;) written by the user stay escaped in
+// mj-text content and are correctly decoded in attribute values.
+//
+// Bug: Previously, preprocessHTMLEntities replaced them with raw characters
+// before the content was wrapped in CDATA, so "&lt;1&gt;" in mj-text became a
+// real "<1>" tag in the output, and "&quot;" in an attribute value terminated
+// it early.
+func TestParseMJML_PreservesEscapedXMLEntities(t *testing.T) {
+	t.Run("mj-text content", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			content  string
+			expected string
+		}{
+			{
+				name:     "escaped pseudo tag",
+				content:  `Q&amp;A &lt;1&gt;`,
+				expected: `Q&amp;A &lt;1&gt;`,
+			},
+			{
+				name:     "escaped script tag",
+				content:  `&lt;script&gt;alert(1)&lt;/script&gt;`,
+				expected: `&lt;script&gt;alert(1)&lt;/script&gt;`,
+			},
+			{
+				name:     "escaped quotes next to real markup",
+				content:  `<b>&quot;bold&quot;</b> &apos;x&apos;`,
+				expected: `<b>&quot;bold&quot;</b> &apos;x&apos;`,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				node, err := ParseMJML(`<mjml><mj-body><mj-text>` + tt.content + `</mj-text></mj-body></mjml>`)
+				if err != nil {
+					t.Fatalf("ParseMJML() error = %v", err)
+				}
+
+				textNode := node.FindFirstChild("mj-body").FindFirstChild("mj-text")
+				if textNode == nil {
+					t.Fatal("Could not find mj-text node")
+				}
+
+				if got := textNode.GetTextContent(); got != tt.expected {
+					t.Errorf("GetTextContent() = %q, want %q", got, tt.expected)
+				}
+			})
+		}
+	})
+
+	t.Run("attribute value", func(t *testing.T) {
+		node, err := ParseMJML(`<mjml><mj-body><mj-image src="x.png" alt="&quot;a&quot; &apos;b&apos; &lt;c&gt;" /></mj-body></mjml>`)
+		if err != nil {
+			t.Fatalf("ParseMJML() error = %v", err)
+		}
+
+		imageNode := node.FindFirstChild("mj-body").FindFirstChild("mj-image")
+		if imageNode == nil {
+			t.Fatal("Could not find mj-image node")
+		}
+
+		want := `"a" 'b' <c>`
+		if got := imageNode.GetAttribute("alt"); got != want {
+			t.Errorf("GetAttribute(alt) = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestStripNonMSOComments(t *testing.T) {
 	tests := []struct {
 		name     string
