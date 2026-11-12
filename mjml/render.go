@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash/maphash"
 	"io"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -890,15 +889,16 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 // extractHeadMetadata collects document-level metadata from mj-head children such as title
 // and custom font declarations. The extracted title is stored on the render options so that
 // body-level rendering can access it for accessibility attributes (aria-label).
-func (c *MJMLComponent) extractHeadMetadata() (string, []string) {
-	title := ""
-	customFonts := make([]string, 0)
-
+//
+// fontDeclarations lists every mj-font with a name and an href, in document order;
+// fonts.ImportURLs resolves names declared more than once and names shared with
+// GoogleFontsMapping.
+func (c *MJMLComponent) extractHeadMetadata() (title string, fontDeclarations []fonts.Declaration) {
 	if c.Head == nil {
 		if c.RenderOpts != nil {
 			c.RenderOpts.Title = ""
 		}
-		return title, customFonts
+		return title, fontDeclarations
 	}
 
 	for _, child := range c.Head.Children {
@@ -916,7 +916,7 @@ func (c *MJMLComponent) extractHeadMetadata() (string, []string) {
 			fontName := getAttr("name")
 			fontHref := getAttr("href")
 			if fontName != "" && fontHref != "" {
-				customFonts = append(customFonts, fontHref)
+				fontDeclarations = append(fontDeclarations, fonts.Declaration{Name: fontName, Href: fontHref})
 			}
 		}
 	}
@@ -925,7 +925,7 @@ func (c *MJMLComponent) extractHeadMetadata() (string, []string) {
 		c.RenderOpts.Title = title
 	}
 
-	return title, customFonts
+	return title, fontDeclarations
 }
 
 // generateCustomStyles generates the final mj-style content tag (MRML lines 240-244)
@@ -1225,7 +1225,7 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 
 	// Extract head metadata (title, custom fonts) before rendering body so accessibility
 	// attributes can access the document title during body rendering.
-	title, customFonts := c.extractHeadMetadata()
+	title, fontDeclarations := c.extractHeadMetadata()
 
 	// Collect font families and the empty-style-tag requirement from the body tree
 	// before rendering, so the body can be streamed directly to w exactly once
@@ -1303,11 +1303,6 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	}
 
 	// Font imports - auto-detect fonts from content and add custom fonts from mj-font
-	var allFontsToImport []string
-
-	// Add explicit custom fonts from mj-font components
-	allFontsToImport = append(allFontsToImport, customFonts...)
-
 	// Get fonts discovered by the pre-render metadata pass
 	trackedFonts := bodyMetadata.FontFamilies()
 	detectedFonts := fonts.ConvertFontFamiliesToURLs(trackedFonts)
@@ -1324,14 +1319,6 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 		)
 	}
 
-	for _, detectedFont := range detectedFonts {
-		// Only add if not already in custom fonts from mj-font
-		alreadyExists := slices.Contains(customFonts, detectedFont)
-		if !alreadyExists {
-			allFontsToImport = append(allFontsToImport, detectedFont)
-		}
-	}
-
 	// Also check for default fonts based on component presence (like MRML does)
 	// Note: MRML only imports fonts when specific conditions are met, not just any text presence
 	hasSocial := c.hasSocialComponents()
@@ -1343,39 +1330,11 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 	// Special case: social components with only default fonts should trigger Ubuntu fallback
 	hasOnlyDefaultFonts := len(detectedFonts) == 1 && detectedFonts[0] == fonts.GetGoogleFontURL(fonts.DefaultFontStack)
 	// Pass trackedFonts count to check if ANY fonts (including system fonts) were used
-	if c.shouldImportDefaultFonts(detectedFonts, len(trackedFonts), hasText, hasSocial, hasButtons, hasOnlyDefaultFonts) {
-		if debugEnabled {
-			debug.DebugLogWithData(
-				"font-detection",
-				"check-defaults",
-				"No content fonts detected, checking defaults",
-				map[string]any{
-					"has_social": hasSocial,
-				},
-			)
-		}
-		defaultFonts := fonts.DetectDefaultFonts(hasText, hasSocial, hasButtons)
-		if debugEnabled {
-			debug.DebugLogWithData("font-detection", "default-fonts", "Default fonts to import", map[string]any{
-				"count": len(defaultFonts),
-				"fonts": strings.Join(defaultFonts, ","),
-			})
-		}
-		for _, defaultFont := range defaultFonts {
-			// Only add if not already in existing fonts
-			alreadyExists := slices.Contains(allFontsToImport, defaultFont)
-			if !alreadyExists {
-				allFontsToImport = append(allFontsToImport, defaultFont)
-			}
-		}
-	} else {
-		if debugEnabled {
-			debug.DebugLogWithData("font-detection", "skip-defaults", "Skipping default fonts", map[string]any{
-				"detected_count": len(detectedFonts),
-				"has_social":     hasSocial,
-			})
-		}
-	}
+	importDefault := c.shouldImportDefaultFonts(detectedFonts, len(trackedFonts), hasText, hasSocial, hasButtons, hasOnlyDefaultFonts)
+
+	// Resolve the tracked fonts, the default font and the mj-font declarations into one list,
+	// in MJML's font registry order
+	allFontsToImport := fonts.ImportURLs(trackedFonts, fontDeclarations, importDefault)
 
 	// Generate font import HTML
 	if debugEnabled {

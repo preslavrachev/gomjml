@@ -189,6 +189,10 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-text-font-style"},
 		{name: "mj-text-font-weight"},
 		{name: "mj-text-class"},
+		// // MJ-FONT tests
+		{name: "mj-font"},
+		{name: "mj-font-override-builtin"},
+		{name: "mj-font-redeclared-name"},
 		// // MJ-RAW tests
 		{name: "mj-raw"},
 		{name: "mj-raw-conditional-comment"},

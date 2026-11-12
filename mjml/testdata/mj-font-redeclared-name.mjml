@@ -1,0 +1,15 @@
+<mjml>
+  <mj-head>
+    <mj-font name="Raleway" href="https://fonts.example.com/raleway-old.css" />
+    <mj-font name="Raleway" href="https://fonts.example.com/raleway.css" />
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text font-family="Raleway, Arial">
+          Last mj-font wins
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

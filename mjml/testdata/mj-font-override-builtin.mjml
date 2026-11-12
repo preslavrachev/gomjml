@@ -1,0 +1,14 @@
+<mjml>
+  <mj-head>
+    <mj-font name="Lato" href="https://fonts.example.com/lato.css" />
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text font-family="Lato, Arial">
+          Self-hosted Lato
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

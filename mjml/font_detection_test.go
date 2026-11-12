@@ -1,8 +1,13 @@
 package mjml
 
 import (
+	"regexp"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/preslavrachev/gomjml/mjml/fonts"
 )
 
 // helper
@@ -101,6 +106,204 @@ func TestFontImportTriggerMatrix(t *testing.T) {
 					got, tc.expectUbuntu, tc.reason, headSnippet(html, 500))
 			}
 		})
+	}
+}
+
+// TestMJFontImports verifies the stylesheets imported for mj-font declarations, in order, as
+// MJML 4.18 imports them for the same templates: an mj-font named like a GoogleFontsMapping
+// entry replaces that entry's URL at the entry's position, other mj-font names follow the
+// built-in fonts, and a name declared several times imports its last href.
+func TestMJFontImports(t *testing.T) {
+	const (
+		googleLato   = "https://fonts.googleapis.com/css?family=Lato:300,400,500,700"
+		googleRoboto = "https://fonts.googleapis.com/css?family=Roboto:300,400,500,700"
+		customLato   = "https://fonts.example.com/lato.css"
+		customUbuntu = "https://fonts.example.com/ubuntu.css"
+		raleway      = "https://fonts.example.com/raleway.css"
+		pacifico     = "https://fonts.example.com/pacifico.css"
+	)
+
+	tests := []struct {
+		name string
+		head string
+		body string
+		want []string
+	}{
+		{
+			name: "Built-in font replaced",
+			head: `<mj-font name="Lato" href="` + customLato + `" />`,
+			body: `<mj-text font-family="Lato, Arial">Hi</mj-text>`,
+			want: []string{customLato},
+		},
+		{
+			name: "Replaced font keeps the built-in font's position",
+			head: `<mj-font name="Lato" href="` + customLato + `" />`,
+			body: `<mj-text font-family="Roboto">Hi</mj-text><mj-text font-family="Lato">Hi</mj-text>`,
+			want: []string{customLato, googleRoboto},
+		},
+		{
+			name: "Replaced font comes before other mj-font names",
+			head: `<mj-font name="Pacifico" href="` + pacifico + `" /><mj-font name="Lato" href="` + customLato + `" />`,
+			body: `<mj-text font-family="Pacifico">Hi</mj-text><mj-text font-family="Lato">Hi</mj-text>`,
+			want: []string{customLato, pacifico},
+		},
+		{
+			name: "Other mj-font names come after built-in fonts",
+			head: `<mj-font name="Raleway" href="` + raleway + `" />`,
+			body: `<mj-text font-family="Raleway">Hi</mj-text><mj-text font-family="Lato">Hi</mj-text>`,
+			want: []string{googleLato, raleway},
+		},
+		{
+			name: "Font used through mj-all",
+			head: `<mj-font name="Lato" href="` + customLato + `" /><mj-attributes><mj-all font-family="Lato" /></mj-attributes>`,
+			body: `<mj-text>Hi</mj-text>`,
+			want: []string{customLato},
+		},
+		{
+			name: "Font used only in inline HTML styles",
+			head: `<mj-font name="Lato" href="` + customLato + `" />`,
+			body: `<mj-text font-family="Arial"><span style="font-family:Lato">Hi</span></mj-text>`,
+			want: []string{customLato},
+		},
+		{
+			name: "Default font of text components replaced",
+			head: `<mj-font name="Ubuntu" href="` + customUbuntu + `" />`,
+			body: `<mj-text>Hi</mj-text>`,
+			want: []string{customUbuntu},
+		},
+		{
+			name: "Default font of social and button components replaced",
+			head: `<mj-font name="Ubuntu" href="` + customUbuntu + `" />`,
+			body: `<mj-social><mj-social-element name="twitter">Tw</mj-social-element></mj-social><mj-button>Go</mj-button>`,
+			want: []string{customUbuntu},
+		},
+		{
+			name: "Replaced default font keeps the built-in font's position",
+			head: `<mj-font name="Ubuntu" href="` + customUbuntu + `" />`,
+			body: `<mj-text font-family="Roboto">Hi</mj-text><mj-text font-family="Ubuntu">Hi</mj-text>`,
+			want: []string{googleRoboto, customUbuntu},
+		},
+		{
+			name: "Name differing in case does not replace",
+			head: `<mj-font name="lato" href="` + customLato + `" />`,
+			body: `<mj-text font-family="Lato, Arial">Hi</mj-text>`,
+			want: []string{googleLato, customLato},
+		},
+		{
+			name: "Redeclared name imports its last href",
+			head: `<mj-font name="Raleway" href="https://fonts.example.com/raleway-old.css" /><mj-font name="Raleway" href="` + raleway + `" />`,
+			body: `<mj-text font-family="Raleway">Hi</mj-text>`,
+			want: []string{raleway},
+		},
+		{
+			name: "Redeclared name keeps its first position",
+			head: `<mj-font name="Raleway" href="https://fonts.example.com/raleway-old.css" /><mj-font name="Pacifico" href="` + pacifico + `" /><mj-font name="Raleway" href="` + raleway + `" />`,
+			body: `<mj-text font-family="Raleway">Hi</mj-text><mj-text font-family="Pacifico">Hi</mj-text>`,
+			want: []string{raleway, pacifico},
+		},
+		{
+			name: "Redeclared built-in font",
+			head: `<mj-font name="Lato" href="https://fonts.example.com/lato-old.css" /><mj-font name="Lato" href="` + customLato + `" />`,
+			body: `<mj-text font-family="Lato">Hi</mj-text>`,
+			want: []string{customLato},
+		},
+		{
+			name: "Built-in URL declared last",
+			head: `<mj-font name="Lato" href="` + customLato + `" /><mj-font name="Lato" href="` + googleLato + `" />`,
+			body: `<mj-text font-family="Lato">Hi</mj-text>`,
+			want: []string{googleLato},
+		},
+		{
+			name: "Built-in URL declared first",
+			head: `<mj-font name="Lato" href="` + googleLato + `" /><mj-font name="Lato" href="` + customLato + `" />`,
+			body: `<mj-text font-family="Lato">Hi</mj-text>`,
+			want: []string{customLato},
+		},
+		{
+			name: "Built-in URL declared once",
+			head: `<mj-font name="Lato" href="` + googleLato + `" />`,
+			body: `<mj-text font-family="Lato, Arial">Hi</mj-text>`,
+			want: []string{googleLato},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			html := renderMJML(t,
+				`<mjml><mj-head>`+tc.head+`</mj-head><mj-body><mj-section><mj-column>`+tc.body+`</mj-column></mj-section></mj-body></mjml>`)
+
+			links, imports := fontImports(html)
+			if !slices.Equal(links, tc.want) {
+				t.Errorf("font <link> hrefs = %q, want %q", links, tc.want)
+			}
+			if !slices.Equal(imports, tc.want) {
+				t.Errorf("font @import urls = %q, want %q", imports, tc.want)
+			}
+		})
+	}
+}
+
+var (
+	fontLinkPattern   = regexp.MustCompile(`<link href="([^"]+)" rel="stylesheet" type="text/css">`)
+	fontImportPattern = regexp.MustCompile(`@import url\(([^)]+)\);`)
+)
+
+// fontImports returns, in document order, the hrefs of the font <link> tags and the URLs of
+// the font @import rules of a rendered document.
+func fontImports(html string) (links, imports []string) {
+	for _, m := range fontLinkPattern.FindAllStringSubmatch(html, -1) {
+		links = append(links, m[1])
+	}
+	for _, m := range fontImportPattern.FindAllStringSubmatch(html, -1) {
+		imports = append(imports, m[1])
+	}
+	return links, imports
+}
+
+// TestMJFontReplacementIsPerRender verifies that an mj-font replacing a built-in URL only
+// affects the template declaring it: fonts.GoogleFontsMapping is left untouched, and
+// templates with and without the mj-font rendered concurrently each get their own font.
+// Run with -race to also catch an implementation that writes to the shared mapping.
+func TestMJFontReplacementIsPerRender(t *testing.T) {
+	const (
+		googleLato  = "https://fonts.googleapis.com/css?family=Lato:300,400,500,700"
+		customLato  = "https://fonts.example.com/lato.css"
+		withFont    = `<mjml><mj-head><mj-font name="Lato" href="` + customLato + `" /></mj-head><mj-body><mj-section><mj-column><mj-text font-family="Lato, Arial">Hi</mj-text></mj-column></mj-section></mj-body></mjml>`
+		withoutFont = `<mjml><mj-body><mj-section><mj-column><mj-text font-family="Lato, Arial">Hi</mj-text></mj-column></mj-section></mj-body></mjml>`
+		renders     = 50
+	)
+
+	var wg sync.WaitGroup
+	errs := make(chan string, 2*renders)
+	for range renders {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			html, err := Render(withFont)
+			if err != nil {
+				errs <- err.Error()
+			} else if strings.Contains(html, googleLato) || !strings.Contains(html, customLato) {
+				errs <- "template with mj-font: expected only " + customLato
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			html, err := Render(withoutFont)
+			if err != nil {
+				errs <- err.Error()
+			} else if strings.Contains(html, customLato) || !strings.Contains(html, googleLato) {
+				errs <- "template without mj-font: expected only " + googleLato
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for e := range errs {
+		t.Error(e)
+	}
+
+	if got := fonts.GoogleFontsMapping["Lato"]; got != googleLato {
+		t.Errorf("GoogleFontsMapping[\"Lato\"] = %q, want %q", got, googleLato)
 	}
 }
 
