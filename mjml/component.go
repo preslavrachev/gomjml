@@ -176,6 +176,11 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 						if section, ok := childComponent.(*components.MJSectionComponent); ok {
 							processSectionChildren(section, &wrapperChildOpts)
 						}
+
+						// Process wrapper's group children: mj-group directly under mj-wrapper
+						if group, ok := childComponent.(*components.MJGroupComponent); ok {
+							processGroupChildren(group, &wrapperChildOpts)
+						}
 					}
 				}
 			case *components.MJHeroComponent:
@@ -184,6 +189,12 @@ func createMJMLComponent(node *parser.MJMLNode, opts *options.RenderOpts) (*MJML
 			case *components.MJCarouselComponent:
 				// Process carousel children
 				processComponentChildren(comp, comp.Node, opts)
+			case *components.MJGroupComponent:
+				// mj-group directly under mj-body: invalid per schema, but mjml 4.x still renders it
+				processGroupChildren(comp, opts)
+			case *components.MJColumnComponent:
+				// mj-column directly under mj-body: invalid per schema, but mjml 4.x still renders it
+				processColumnChildren(comp, opts)
 			}
 		}
 	}
@@ -239,6 +250,9 @@ func processComponentChildren(component Component, node *parser.MJMLNode, opts *
 				comp.Children = append(comp.Children, childComponent)
 			}
 		}
+	case *components.MJSectionComponent:
+		// mj-section nested inside mj-column: invalid per schema, but mjml 4.x still renders it
+		processSectionChildren(comp, opts)
 		// Add more component types here as needed
 	}
 }
@@ -253,33 +267,35 @@ func processSectionChildren(section *components.MJSectionComponent, opts *option
 			switch col := colComponent.(type) {
 			case *components.MJColumnComponent:
 				// Process column children
-				for _, contentNode := range col.Node.Children {
-					if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
-						col.Children = append(col.Children, contentComponent)
-
-						// Process nested children (e.g., social elements within social component)
-						processComponentChildren(contentComponent, contentNode, opts)
-					}
-				}
+				processColumnChildren(col, opts)
 			case *components.MJGroupComponent:
-				// Process group children (columns within the group)
-				for _, groupChildNode := range col.Node.Children {
-					if groupChildComponent, err := CreateComponent(groupChildNode, opts); err == nil {
-						col.Children = append(col.Children, groupChildComponent)
+				processGroupChildren(col, opts)
+			}
+		}
+	}
+}
 
-						// Process column children within the group
-						if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
-							for _, contentNode := range groupColumn.Node.Children {
-								if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
-									groupColumn.Children = append(groupColumn.Children, contentComponent)
+// processColumnChildren processes the content children of a column.
+func processColumnChildren(col *components.MJColumnComponent, opts *options.RenderOpts) {
+	for _, contentNode := range col.Node.Children {
+		if contentComponent, err := CreateComponent(contentNode, opts); err == nil {
+			col.Children = append(col.Children, contentComponent)
 
-									// Process nested children (e.g., social elements within social component)
-									processComponentChildren(contentComponent, contentNode, opts)
-								}
-							}
-						}
-					}
-				}
+			// Process nested children (e.g., social elements within social component)
+			processComponentChildren(contentComponent, contentNode, opts)
+		}
+	}
+}
+
+// processGroupChildren processes the columns of an mj-group and their content.
+func processGroupChildren(group *components.MJGroupComponent, opts *options.RenderOpts) {
+	for _, groupChildNode := range group.Node.Children {
+		if groupChildComponent, err := CreateComponent(groupChildNode, opts); err == nil {
+			group.Children = append(group.Children, groupChildComponent)
+
+			// Process column children within the group
+			if groupColumn, ok := groupChildComponent.(*components.MJColumnComponent); ok {
+				processColumnChildren(groupColumn, opts)
 			}
 		}
 	}
