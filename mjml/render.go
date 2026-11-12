@@ -884,6 +884,25 @@ func (c *MJMLComponent) generateResponsiveCSS() string {
 	}
 	css.WriteString(`</style>`)
 
+	// Force desktop layout for old self-hosted Outlook.com without media query support
+	if owa := c.GetAttribute("owa"); owa != nil && *owa == "desktop" {
+		css.WriteString("<style type=\"text/css\">\n")
+		for i, className := range c.columnClassOrder {
+			if i > 0 {
+				css.WriteByte('\n')
+			}
+			size := c.columnClasses[className].String()
+			css.WriteString("[owa] .")
+			css.WriteString(className)
+			css.WriteString(" { width:")
+			css.WriteString(size)
+			css.WriteString(" !important; max-width: ")
+			css.WriteString(size)
+			css.WriteString("; }")
+		}
+		css.WriteString("\n</style>")
+	}
+
 	return css.String()
 }
 

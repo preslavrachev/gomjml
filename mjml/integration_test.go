@@ -54,6 +54,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-body-class"},
 		{name: "mj-body-width"},
 		{name: "basic"},
+		{name: "mjml-owa-desktop"},
 		{name: "comment"},
 		{name: "with-head"},
 		{name: "complex-layout"},
