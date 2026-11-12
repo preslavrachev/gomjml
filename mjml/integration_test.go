@@ -140,6 +140,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-image-padding"},
 		{name: "mj-image-rel"},
 		{name: "mj-image-title"},
+		{name: "mj-image-alt-escaping"},
 		{name: "mj-image-class"},
 		{name: "mj-image-src-with-url-params"},
 		{name: "mj-section"},
