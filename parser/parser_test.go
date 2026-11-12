@@ -815,3 +815,75 @@ func TestParseMJMLWithComments(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeXMLEntitiesOutsideAttributes(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "content without entities is returned unchanged",
+			input:    `<mj-text>plain text</mj-text>`,
+			expected: `<mj-text>plain text</mj-text>`,
+		},
+		{
+			name:     "predefined entities in element text are decoded",
+			input:    `<mj-text>&lt;b&gt;bold&lt;/b&gt; &quot;quoted&quot; it&apos;s</mj-text>`,
+			expected: `<mj-text><b>bold</b> "quoted" it's</mj-text>`,
+		},
+		{
+			name:     "double-quoted attribute value is left for the XML parser",
+			input:    `<mj-image alt="27&quot; monitor &lt;b&gt;" />`,
+			expected: `<mj-image alt="27&quot; monitor &lt;b&gt;" />`,
+		},
+		{
+			name:     "single-quoted attribute value is left for the XML parser",
+			input:    `<mj-image alt='it&apos;s &quot;new&quot;' />`,
+			expected: `<mj-image alt='it&apos;s &quot;new&quot;' />`,
+		},
+		{
+			name:     "angle bracket inside a quoted value does not end the tag",
+			input:    `<mj-image title="1 > 0 &gt; -1" alt='&lt;' />&lt;`,
+			expected: `<mj-image title="1 > 0 &gt; -1" alt='&lt;' /><`,
+		},
+		{
+			name:     "quotes in element text do not open an attribute value",
+			input:    `<mj-text>say "&lt;hi&gt;"</mj-text>`,
+			expected: `<mj-text>say "<hi>"</mj-text>`,
+		},
+		{
+			name:     "ampersand, unknown and unterminated entities are preserved",
+			input:    `<mj-text>&amp;lt; &copy; &lt</mj-text>`,
+			expected: `<mj-text>&amp;lt; &copy; &lt</mj-text>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := decodeXMLEntitiesOutsideAttributes(tt.input); got != tt.expected {
+				t.Errorf("decodeXMLEntitiesOutsideAttributes() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseMJMLDecodesEscapedEntitiesInAttributeValues(t *testing.T) {
+	// The entities must reach encoding/xml intact: decoding them beforehand turned
+	// alt="27&quot; monitor" into alt="27" monitor", which does not parse.
+	node, err := ParseMJML(`<mjml><mj-body><mj-image alt="27&quot; monitor &lt;b&gt;" title='it&apos;s' /></mj-body></mjml>`)
+	if err != nil {
+		t.Fatalf("ParseMJML() error = %v", err)
+	}
+	if len(node.Children) != 1 || len(node.Children[0].Children) != 1 {
+		t.Fatalf("ParseMJML() returned an unexpected tree: %+v", node)
+	}
+
+	image := node.Children[0].Children[0]
+	if got, want := image.GetAttribute("alt"), `27" monitor <b>`; got != want {
+		t.Errorf("alt = %q, want %q", got, want)
+	}
+	if got, want := image.GetAttribute("title"), "it's"; got != want {
+		t.Errorf("title = %q, want %q", got, want)
+	}
+}

@@ -170,20 +170,24 @@ func ParseMJML(mjmlContent string) (*MJMLNode, error) {
 // escaped to &amp; for XML safety, then most entities are replaced with Unicode.
 // The &amp; entities are left for the XML parser to handle, preventing re-introduction
 // of invalid raw ampersands that would break XML parsing.
+//
+// The XML predefined entities (&lt; &gt; &quot; &apos;) are a special case: they
+// are decoded only *outside* quoted attribute values (see
+// decodeXMLEntitiesOutsideAttributes). Inside an attribute value they are left
+// for encoding/xml, which decodes them natively; decoding them document-wide
+// here used to corrupt correctly-escaped attribute values before the parser saw
+// them (e.g. alt="27&quot; monitor" became the unparseable alt="27" monitor").
 func preprocessHTMLEntities(content string) string {
 	// First, escape raw ampersands in attribute values that aren't part of valid entities
 	result := escapeAttributeAmpersands(content)
 
-	// Replace the most common HTML entities with Unicode characters
+	// Replace the HTML-only entities that encoding/xml does not understand. These
+	// must be decoded document-wide, otherwise the XML parser rejects them.
 	// NOTE: &amp; entities are intentionally preserved - the XML parser will convert
 	// them to raw ampersands safely after parsing, maintaining XML validity.
 	result = strings.ReplaceAll(result, "&copy;", "©")
 	result = strings.ReplaceAll(result, "&reg;", "®")
 	result = strings.ReplaceAll(result, "&trade;", "™")
-	result = strings.ReplaceAll(result, "&lt;", "<")
-	result = strings.ReplaceAll(result, "&gt;", ">")
-	result = strings.ReplaceAll(result, "&quot;", `"`)
-	result = strings.ReplaceAll(result, "&apos;", "'")
 	result = strings.ReplaceAll(result, "&nbsp;", "\u00A0") // Unicode non-breaking space
 	result = strings.ReplaceAll(result, "&#xA0;", "\u00A0") // Numeric character reference for non-breaking space
 	result = strings.ReplaceAll(result, "&#160;", "\u00A0") // Decimal numeric reference for non-breaking space
@@ -191,7 +195,93 @@ func preprocessHTMLEntities(content string) string {
 	result = strings.ReplaceAll(result, "&mdash;", "—")
 	result = strings.ReplaceAll(result, "&hellip;", "…")
 
+	// Decode the XML predefined entities only outside quoted attribute values so
+	// that correctly-escaped attribute values survive intact for encoding/xml.
+	result = decodeXMLEntitiesOutsideAttributes(result)
+
 	return result
+}
+
+// decodeXMLEntitiesOutsideAttributes decodes the XML predefined entities
+// &lt; &gt; &quot; and &apos; everywhere except inside quoted attribute values.
+// Inside a quoted attribute value the entities are left intact so that
+// encoding/xml decodes them natively during parsing - decoding them beforehand
+// would turn a valid escaped value such as alt="27&quot; monitor" into the
+// unparseable alt="27" monitor". Element text (including the content of mj-text,
+// which is wrapped in CDATA *after* this pass and so is not decoded by
+// encoding/xml) still relies on this decoding, so the replacements are scoped to
+// non-attribute context rather than removed entirely.
+//
+// The scanner mirrors the tag/quote state machine used by
+// escapeAttributeAmpersands so the two passes agree on what is an attribute value.
+func decodeXMLEntitiesOutsideAttributes(content string) string {
+	if !strings.ContainsRune(content, '&') {
+		return content
+	}
+
+	var out strings.Builder
+	out.Grow(len(content))
+
+	inTag := false
+	var quote byte
+
+	for i := 0; i < len(content); i++ {
+		c := content[i]
+
+		if quote != 0 {
+			// Inside a quoted attribute value: copy verbatim and let the XML
+			// parser decode the entities in attribute context.
+			if c == quote {
+				quote = 0
+			}
+			out.WriteByte(c)
+			continue
+		}
+
+		switch c {
+		case '<':
+			inTag = true
+			out.WriteByte(c)
+		case '>':
+			inTag = false
+			out.WriteByte(c)
+		case '\'', '"':
+			if inTag {
+				quote = c
+			}
+			out.WriteByte(c)
+		case '&':
+			if repl, size, ok := matchXMLPredefinedEntity(content[i:]); ok {
+				out.WriteString(repl)
+				i += size - 1
+			} else {
+				out.WriteByte(c)
+			}
+		default:
+			out.WriteByte(c)
+		}
+	}
+
+	return out.String()
+}
+
+// matchXMLPredefinedEntity reports whether s begins with one of the XML
+// predefined entities &lt; &gt; &quot; &apos; and, if so, returns the decoded
+// replacement together with the byte length of the matched entity. &amp; is
+// deliberately not matched here; it is preserved for encoding/xml.
+func matchXMLPredefinedEntity(s string) (replacement string, size int, ok bool) {
+	switch {
+	case strings.HasPrefix(s, "&lt;"):
+		return "<", len("&lt;"), true
+	case strings.HasPrefix(s, "&gt;"):
+		return ">", len("&gt;"), true
+	case strings.HasPrefix(s, "&quot;"):
+		return `"`, len("&quot;"), true
+	case strings.HasPrefix(s, "&apos;"):
+		return "'", len("&apos;"), true
+	default:
+		return "", 0, false
+	}
 }
 
 // escapeAttributeAmpersands escapes raw ampersands in XML attribute values

@@ -248,7 +248,7 @@ func (t *HTMLTag) renderAttributes(w io.StringWriter) error {
 		if _, err := w.WriteString(`="`); err != nil {
 			return err
 		}
-		if _, err := w.WriteString(attr.Value); err != nil {
+		if _, err := w.WriteString(escapeAttributeValue(attr.Value)); err != nil {
 			return err
 		}
 		if _, err := w.WriteString(`"`); err != nil {
@@ -293,4 +293,39 @@ func (t *HTMLTag) renderAttributes(w io.StringWriter) error {
 		}
 	}
 	return nil
+}
+
+// escapeAttributeValue escapes the characters that would otherwise corrupt a
+// double-quoted HTML attribute value: the double quote (which closes the
+// attribute early) and the angle brackets. These values arrive here already
+// parsed, so a literal " / < / > in the value is a real character that must be
+// encoded, otherwise the rendered markup is invalid (e.g. an alt text of
+// 27" monitor would emit alt="27" monitor" and truncate at 27).
+//
+// Ampersands are intentionally left untouched. Bare ampersands are already
+// escaped upstream while parsing (parser.escapeAttributeAmpersands), and some
+// values reach this point already carrying valid &...; entities - most notably
+// the mj-section background URL, which is pre-escaped with html.EscapeString.
+// Re-escaping the ampersand here would double-encode those values (&amp; would
+// become &amp;amp;), so it is deliberately skipped.
+func escapeAttributeValue(value string) string {
+	if !strings.ContainsAny(value, "\"<>") {
+		return value
+	}
+
+	var b strings.Builder
+	b.Grow(len(value) + 8)
+	for i := 0; i < len(value); i++ {
+		switch value[i] {
+		case '"':
+			b.WriteString("&quot;")
+		case '<':
+			b.WriteString("&lt;")
+		case '>':
+			b.WriteString("&gt;")
+		default:
+			b.WriteByte(value[i])
+		}
+	}
+	return b.String()
 }

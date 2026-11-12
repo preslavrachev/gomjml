@@ -251,10 +251,15 @@ func TestSetASTCacheTTLOnce(t *testing.T) {
 	resetASTCache()
 	defer resetASTCache()
 
+	// A cleanup goroutine started by an earlier test may still be reading this
+	// configuration: resetASTCache cancels it without waiting for it to exit. It
+	// reads under cacheConfigMutex, so the reset must hold the same lock.
+	cacheConfigMutex.Lock()
 	astCacheTTLOnce = sync.Once{}
 	astCacheCleanupOnce = sync.Once{}
 	astCacheTTL = 5 * time.Minute
 	astCacheCleanupInterval = astCacheTTL / 2
+	cacheConfigMutex.Unlock()
 
 	SetASTCacheTTLOnce(100 * time.Millisecond)
 	if astCacheTTL != 100*time.Millisecond {
@@ -274,8 +279,10 @@ func TestSetASTCacheCleanupIntervalOnce(t *testing.T) {
 	resetASTCache()
 	defer resetASTCache()
 
+	cacheConfigMutex.Lock() // see TestSetASTCacheTTLOnce
 	astCacheCleanupOnce = sync.Once{}
 	astCacheCleanupInterval = time.Second
+	cacheConfigMutex.Unlock()
 
 	SetASTCacheCleanupIntervalOnce(100 * time.Millisecond)
 	if astCacheCleanupInterval != 100*time.Millisecond {
