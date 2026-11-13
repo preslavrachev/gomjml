@@ -1,0 +1,17 @@
+{
+  "source": "mrml",
+  "reference": "mjml 4.16.1",
+  "cases": [
+    {"name":"mrml/mj-attributes","input":"438f7918ecab","reference":"2f52a0e0c6c5","gomjml":"2f52a0e0c6c5"},
+    {"name":"mrml/mj-body","input":"83c237fa8dc2","reference":"3cb4639e7254","gomjml":"3cb4639e7254"},
+    {"name":"mrml/mj-column-mobile-width-pixel","input":"c6938eb0729e","reference":"fd7d08d5fcc5","gomjml":"ea6b3e8e63ee","clusters":["column-pixel-width"]},
+    {"name":"mrml/mj-head-unknown-tag","input":"9ab9d25da7be","reference":"3cb4639e7254","gomjml":"3cb4639e7254"},
+    {"name":"mrml/mj-hero-divider","input":"1701e33a665f","reference":"f13ce4cb0f60","gomjml":"f13ce4cb0f60"},
+    {"name":"mrml/mj-raw-conditional-comment","input":"05e2e8933851","reference":"f4f88178327a","gomjml":"f4f88178327a"},
+    {"name":"mrml/mj-raw-vml-namespace","input":"3ebdb18f1167","reference":"13fcefe6e50f","gomjml":"9ed411ec2114","clusters":["mj-raw-whitespace"]},
+    {"name":"mrml/mj-section-full-width-background-url","input":"83ec03165ff8","reference":"b64cdf28b8fe","gomjml":"b64cdf28b8fe"},
+    {"name":"mrml/mj-social-share-url","input":"f4d1879edae5","reference":"71390968fb30","gomjml":"71390968fb30"},
+    {"name":"mrml/mj-spacer","input":"69d133ca602a","reference":"1acbf22c092d","gomjml":"93f581cd73dc","clusters":["spacer-attributes"]},
+    {"name":"mrml/mj-wrapper-full-width-section-background","input":"dabc5bef44fa","reference":"fd71e465193f","gomjml":"109c133eba5d","clusters":["wrapper-padding"]}
+  ]
+}

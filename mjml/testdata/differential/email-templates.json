@@ -1,0 +1,31 @@
+{
+  "source": "email-templates",
+  "reference": "mjml 4.16.1",
+  "cases": [
+    {"name":"email-templates/alert","input":"a858709d1e82","reference":"2c56e5f437c0","gomjml":"8586d24b5a30","clusters":["box-widths","closing-tag-whitespace","column-inner-background","inline-content","section-boxing","section-transparent-background","spacer-attributes","template-knock-on","wrapper-padding"]},
+    {"name":"email-templates/arturia","input":"5353e6bb5a21","reference":"6010d5813d8c","gomjml":"6010d5813d8c"},
+    {"name":"email-templates/austin","input":"e9adb3f5f1ab","reference":"3a2275c32463","gomjml":"3a2275c32463"},
+    {"name":"email-templates/basic","input":"bbd6b46bbf2b","reference":"b2df3f21a951","gomjml":"a18af1db52c3","clusters":["section-boxing","wrapper-padding"]},
+    {"name":"email-templates/black-friday","input":"8943b5fe2745","reference":"88afa2161036","gomjml":"26db0d275e0d","clusters":["box-widths"]},
+    {"name":"email-templates/card","input":"fa0f40bde0a6","reference":"53afa7bb7a6f","gomjml":"98ddfb99bbad","clusters":["font-imports","wrapper-padding"]},
+    {"name":"email-templates/christmas","input":"accb3c78e6f4","reference":"a6c3d9566fd7","gomjml":"64ed9c47b407","clusters":["box-widths"]},
+    {"name":"email-templates/delivery","input":"e99bf4ea349c","reference":"7fad2c6688fe","gomjml":"3a10fdf1f16a","clusters":["box-widths","breakpoint","closing-tag-whitespace","column-inner-background","column-zero-width","full-width-mobile-css","section-boxing","section-padding-longhands","section-transparent-background","template-knock-on","wrapper-padding"]},
+    {"name":"email-templates/happy-new-year","input":"af5e6876e0ce","reference":"5b6433950001","gomjml":"fe9278762ef4","clusters":["box-widths"]},
+    {"name":"email-templates/loyalty-client","input":"315c2d2c9d54","reference":"83259f1d74ae","gomjml":"7de6e64288be","clusters":["mj-style-inline-selectors","section-transparent-background"]},
+    {"name":"email-templates/newsletter","input":"f2ed61f657fa","reference":"0180beb7bbff","gomjml":"1382a3673f2a","clusters":["breakpoint","closing-tag-whitespace","font-imports","inline-content","section-boxing","social-container","social-element-defaults","social-element-padding","social-structure","template-knock-on"]},
+    {"name":"email-templates/onepage","input":"f818f74809e3","reference":"732c5b520646","gomjml":"4904b7792f1c","clusters":["box-widths","breakpoint","closing-tag-whitespace","column-zero-width","full-width-mobile-css","full-width-section-structure","template-knock-on"]},
+    {"name":"email-templates/proof","input":"455ca7226be4","reference":"54b36bf37475","gomjml":"cf845d07fe4d","clusters":["box-widths"]},
+    {"name":"email-templates/racoon","input":"6677d7d27d0a","reference":"fe80a6e5eb92","gomjml":"1259ebcc4d84","clusters":["box-widths","navbar-link-attributes","navbar-padding"]},
+    {"name":"email-templates/reactivation-email","input":"faf7713cd294","reference":"d17301e39d3b","gomjml":"7c0d7e4ef733","clusters":["box-widths","breakpoint","closing-tag-whitespace","column-inner-background","column-zero-width","section-background-image-templates","section-boxing","section-padding-longhands","section-transparent-background","wrapper-padding"]},
+    {"name":"email-templates/real-estate","input":"d8f6b74ad460","reference":"3985d03fa3bf","gomjml":"655a62fec9fb","clusters":["box-widths","closing-tag-whitespace","font-imports","wrapper-padding"]},
+    {"name":"email-templates/recast","input":"d9ca68874dd9","reference":"c6258b9c1e65","gomjml":"6ca77bd109d0","clusters":["box-widths","breakpoint","closing-tag-whitespace","column-inner-background","column-zero-width","font-imports","inline-content","section-boxing","section-padding-longhands","template-knock-on","text-height","wrapper-padding"]},
+    {"name":"email-templates/referral-email","input":"953ff8be9082","reference":"ff4930f99a54","gomjml":"3c6b6c6691be","clusters":["closing-tag-whitespace"]},
+    {"name":"email-templates/sphero-mini","input":"1d4efc513491","reference":"6a44ac76ba7f","gomjml":"f35bc418fb49","clusters":["box-widths","section-boxing","wrapper-padding"]},
+    {"name":"email-templates/street-expo","input":"b7d2abae82cf","reference":"2f350f2618ca","gomjml":"9f54b64b8721","clusters":["closing-tag-whitespace","full-width-mobile-css","section-boxing"]},
+    {"name":"email-templates/tech-geek","input":"8ec1448e30f8","reference":"da1015904b57","gomjml":"ce2d3679c3be","clusters":["box-widths","column-zero-width","comments","divider-width","section-background-image-templates","section-boxing","wrapper-padding"]},
+    {"name":"email-templates/ticketshop","input":"345e5cc276b3","reference":"c3814af2bdec","gomjml":"error","clusters":["xml-mismatched-tags"]},
+    {"name":"email-templates/ugg-royale","input":"f359b87bf08f","reference":"39c480ab2c44","gomjml":"error","clusters":["xml-mismatched-tags"]},
+    {"name":"email-templates/welcome-email","input":"84bc67ffa7db","reference":"ae183a66be04","gomjml":"ae183a66be04"},
+    {"name":"email-templates/worldly","input":"b558fb665211","reference":"0f44f45070ac","gomjml":"error","clusters":["xml-mismatched-tags"]}
+  ]
+}
