@@ -1413,12 +1413,5 @@
       "document gomjml-rejects failed to parse MJML: XML syntax error on line N: element \u003cmj-group\u003e closed by \u003c/mj-section\u003e",
       "document gomjml-rejects failed to parse MJML: XML syntax error on line N: element \u003cmj-section\u003e closed by \u003c/mj-group\u003e"
     ]
-  },
-  {
-    "id": "xml-quot-in-attribute",
-    "reason": "An attribute value holding \u0026quot; fails gomjml's parse (\"attribute name without =\"); MJML decodes it. Likely the entity is decoded before the XML parse.",
-    "signatures": [
-      "document gomjml-rejects failed to parse MJML: XML syntax error on line N: attribute name without = in element"
-    ]
   }
 ]
