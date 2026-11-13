@@ -5,15 +5,8 @@ import (
 	"time"
 )
 
-// helper to clear singleflight state between tests
-func resetSingleflight() {
-	sfMutex.Lock()
-	sfCalls = make(map[uint64]*sfCall)
-	sfMutex.Unlock()
-}
-
 func TestSingleflightDoPanicCleanup(t *testing.T) {
-	resetSingleflight()
+	var g singleflightGroup
 
 	hash := uint64(42)
 	start := make(chan struct{})
@@ -21,7 +14,7 @@ func TestSingleflightDoPanicCleanup(t *testing.T) {
 
 	go func() {
 		defer func() { _ = recover() }()
-		singleflightDo(hash, func() (*MJMLNode, error) {
+		g.do(hash, func() (*MJMLNode, error) {
 			<-start
 			panic("boom")
 		})
@@ -30,8 +23,8 @@ func TestSingleflightDoPanicCleanup(t *testing.T) {
 	time.Sleep(10 * time.Millisecond) // allow first call to register
 
 	go func() {
-		_, _ = singleflightDo(hash, func() (*MJMLNode, error) {
-			t.Fatal("second call should not execute")
+		_, _ = g.do(hash, func() (*MJMLNode, error) {
+			t.Error("second call should not execute")
 			return nil, nil
 		})
 		close(done)
@@ -44,6 +37,6 @@ func TestSingleflightDoPanicCleanup(t *testing.T) {
 	case <-done:
 		// success: second call returned
 	case <-time.After(time.Second):
-		t.Fatal("singleflightDo did not unblock after panic")
+		t.Fatal("singleflight did not unblock after panic")
 	}
 }
