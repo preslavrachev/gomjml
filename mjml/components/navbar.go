@@ -486,9 +486,7 @@ func (c *MJNavbarLinkComponent) RenderWithBaseURL(w io.StringWriter, baseURL str
 		return err
 	}
 
-	// Render link content (text)
-	content := strings.TrimSpace(c.Node.Text)
-	if _, err := w.WriteString(content); err != nil {
+	if _, err := w.WriteString(endingTagHTML(c.Node)); err != nil {
 		return err
 	}
 

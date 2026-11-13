@@ -1,0 +1,32 @@
+<mjml>
+  <mj-head>
+    <mj-title>Renew <b>today</b></mj-title>
+    <mj-preview>Your <b>plan</b> ends soon</mj-preview>
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text><b>Renew</b><br>today <img src=https://example.com/a.png alt=pic></mj-text>
+        <mj-button href="https://example.com"><b>Renew</b><br>today<br/>
+          <span class=note><i>now</i></span></mj-button>
+        <mj-table>
+          <tr>
+            <td align=center>a<br>b</td>
+            <td><img src=https://example.com/a.png width=20></td>
+            <td>a <b> b </b> c</td>
+          </tr>
+        </mj-table>
+        <mj-social>
+          <mj-social-element name="facebook" href="https://example.com"><b>Share</b><br>now</mj-social-element>
+        </mj-social>
+        <mj-accordion>
+          <mj-accordion-element>
+            <mj-accordion-title><b>Why</b><br>renew?</mj-accordion-title>
+            <mj-accordion-text><p class=lead>Keep <i>your</i> data<br>safe.</p></mj-accordion-text>
+          </mj-accordion-element>
+        </mj-accordion>
+        <mj-raw><p class=raw>a<br>b</p><img src=https://example.com/a.png></mj-raw>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
