@@ -171,6 +171,16 @@ func TestNormalizeVoidHTMLTags(t *testing.T) {
 			input:    "Austin, TX <br /> <span>-</span>",
 			expected: "Austin, TX<br><span>-</span>",
 		},
+		{
+			name:     "Spaces around br kept inside pre",
+			input:    "x <br /> <pre>a <br> b <br/>  c <img src=\"x.png\"/></pre> y <br> z",
+			expected: "x<br><pre>a <br> b <br>  c <img src=\"x.png\"></pre> y<br>z",
+		},
+		{
+			name:     "Spaces around br kept inside textarea",
+			input:    "<TEXTAREA>t <br/>  u</TEXTAREA>",
+			expected: "<TEXTAREA>t <br>  u</TEXTAREA>",
+		},
 	}
 
 	for _, tc := range testCases {
