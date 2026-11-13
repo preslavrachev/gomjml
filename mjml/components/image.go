@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
@@ -42,13 +43,7 @@ func (c *MJImageComponent) Render(w io.StringWriter) error {
 	target := c.GetAttributeWithDefault(c, constants.MJMLTarget)
 	title := c.GetAttributeWithDefault(c, constants.MJMLTitle)
 
-	widthAttr := c.GetAttribute("width")
-	width := ""
-	if widthAttr != nil && *widthAttr != "" {
-		width = *widthAttr
-	} else {
-		width = c.calculateDefaultWidth()
-	}
+	width := c.calculateDefaultWidth()
 	containerBackground := c.GetAttributeWithDefault(c, constants.MJMLContainerBackgroundColor)
 	fluidOnMobile := c.GetAttributeWithDefault(c, "fluid-on-mobile")
 	paddingTop := c.GetAttributeWithDefault(c, constants.MJMLPaddingTop)
@@ -260,44 +255,13 @@ func (c *MJImageComponent) GetDefaultAttribute(name string) string {
 	}
 }
 
-// calculateDefaultWidth calculates the default width for the image
-// based on the container width minus horizontal padding
+// calculateDefaultWidth is the image's width, as MJML's getContentWidth
+// computes it: its width attribute, at most what its paddings and borders leave
+// of the container.
 func (c *MJImageComponent) calculateDefaultWidth() string {
-	containerWidth := c.GetEffectiveWidth()
-
-	// Determine horizontal padding using shorthand and individual overrides
-	padding := c.GetAttributeWithDefault(c, constants.MJMLPadding)
-	left, right := 0.0, 0.0
-	if spacing, err := styles.ParseSpacing(padding); err == nil && spacing != nil {
-		left, right = spacing.Left, spacing.Right
-	} else if parts := strings.Fields(padding); len(parts) == 3 {
-		if lr, err := styles.ParsePixel(parts[1]); err == nil && lr != nil {
-			left, right = lr.Value, lr.Value
-		}
+	_, _, box := c.BoxWidths(c)
+	if width, ok := styles.ParseLeadingInt(c.ExplicitAttribute(c, "width")); ok && width < box {
+		return strconv.Itoa(width) + "px"
 	}
-	if pl := c.GetAttributeWithDefault(c, constants.MJMLPaddingLeft); pl != "" {
-		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
-			left = px.Value
-		}
-	}
-	if pr := c.GetAttributeWithDefault(c, constants.MJMLPaddingRight); pr != "" {
-		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
-			right = px.Value
-		}
-	}
-	horizontalPadding := int(left + right)
-
-	// Subtract border widths if present
-	if border := c.GetAttributeWithDefault(c, constants.MJMLBorder); border != "" && border != "none" {
-		bw := styles.ParseBorderWidth(border)
-		horizontalPadding += bw * 2
-	}
-
-	// Calculate available width
-	availableWidth := containerWidth - horizontalPadding
-	if availableWidth <= 0 {
-		availableWidth = containerWidth
-	}
-
-	return getPixelWidthString(availableWidth)
+	return getPixelWidthString(box)
 }
