@@ -55,6 +55,7 @@ type RenderOpts struct {
 	Lang                     string                   // Language attribute from root MJML element
 	Title                    string                   // Document title extracted from <mj-title>
 	InlineClassStyles        map[string][]InlineStyle // CSS declarations to inline for css-class selectors
+	InlineStyleBudget        *InlineStyleBudget       // Limits the inline declarations applied in this render; nil is unlimited
 	SkipInlineStylesInHead   bool                     // Whether to omit inline mj-style rules from the head output
 	PendingMSOSectionClose   bool                     // Indicates an Outlook conditional comment is still open for section chaining
 	RemainingBodySections    int                      // Remaining Outlook-sensitive blocks (mj-section/mj-wrapper) after the current one
@@ -68,4 +69,44 @@ type RenderOpts struct {
 type InlineStyle struct {
 	Property string
 	Value    string
+}
+
+// MaxInlineStyleApplications caps the declarations one render applies from
+// inline mj-style rules, counted once per element each lands on. Real emails
+// apply a few thousand; the cap stops a short template from making one render
+// build hundreds of megabytes. Past it, the output would be far beyond any
+// email, and the render is refused.
+const MaxInlineStyleApplications = 1_000_000
+
+// InlineStyleBudget counts the inline declarations one render applies. A nil
+// budget is unlimited. Once spent, it stays exceeded.
+type InlineStyleBudget struct {
+	remaining int
+	exceeded  bool
+}
+
+// NewInlineStyleBudget returns a budget of MaxInlineStyleApplications.
+func NewInlineStyleBudget() *InlineStyleBudget {
+	return &InlineStyleBudget{remaining: MaxInlineStyleApplications}
+}
+
+// Spend takes n applications from the budget and reports whether they fit.
+func (b *InlineStyleBudget) Spend(n int) bool {
+	if b == nil {
+		return true
+	}
+	if b.exceeded {
+		return false
+	}
+	if n > b.remaining {
+		b.exceeded = true
+		return false
+	}
+	b.remaining -= n
+	return true
+}
+
+// Exceeded reports whether a Spend has failed.
+func (b *InlineStyleBudget) Exceeded() bool {
+	return b != nil && b.exceeded
 }

@@ -579,6 +579,9 @@ func (bc *BaseComponent) ApplyInlineStyles(tag *html.HTMLTag, classAttr string) 
 
 	for className := range strings.FieldsSeq(classAttr) {
 		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
+			if !bc.RenderOpts.InlineStyleBudget.Spend(len(declarations)) {
+				return
+			}
 			for _, decl := range declarations {
 				tag.AddStyle(decl.Property, decl.Value)
 			}
@@ -596,6 +599,9 @@ func (bc *BaseComponent) BuildInlineStyleString(classAttr string) string {
 	var builder strings.Builder
 	for className := range strings.FieldsSeq(classAttr) {
 		if declarations, ok := bc.RenderOpts.InlineClassStyles[className]; ok {
+			if !bc.RenderOpts.InlineStyleBudget.Spend(len(declarations)) {
+				return ""
+			}
 			for _, decl := range declarations {
 				builder.WriteString(decl.Property)
 				builder.WriteString(":")

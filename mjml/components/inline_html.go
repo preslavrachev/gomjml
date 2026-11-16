@@ -21,6 +21,9 @@ func (bc *BaseComponent) ApplyInlineStylesToHTMLContent(html string) string {
 	if html == "" || bc == nil || bc.RenderOpts == nil || len(bc.RenderOpts.InlineClassStyles) == 0 {
 		return html
 	}
+	if bc.RenderOpts.InlineStyleBudget.Exceeded() {
+		return html
+	}
 	return applyInlineStylesToHTML(html, bc.RenderOpts.InlineClassStyles, bc)
 }
 

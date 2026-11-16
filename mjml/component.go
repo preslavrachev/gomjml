@@ -4,7 +4,6 @@ package mjml
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/components"
 	"github.com/preslavrachev/gomjml/mjml/constants"
@@ -18,13 +17,19 @@ type Component = components.Component
 
 // CreateComponent creates a component from an MJML AST node
 func CreateComponent(node *parser.MJMLNode, opts *options.RenderOpts) (Component, error) {
-	// Ensure opts is not nil and has FontTracker initialized
+	// Ensure opts is not nil and has FontTracker and InlineStyleBudget initialized
 	if opts == nil {
 		opts = &options.RenderOpts{
-			FontTracker: options.NewFontTracker(),
+			FontTracker:       options.NewFontTracker(),
+			InlineStyleBudget: options.NewInlineStyleBudget(),
 		}
-	} else if opts.FontTracker == nil {
-		opts.FontTracker = options.NewFontTracker()
+	} else {
+		if opts.FontTracker == nil {
+			opts.FontTracker = options.NewFontTracker()
+		}
+		if opts.InlineStyleBudget == nil {
+			opts.InlineStyleBudget = options.NewInlineStyleBudget()
+		}
 	}
 
 	tagName := node.GetTagName()
@@ -288,13 +293,16 @@ func processSectionChildren(section *components.MJSectionComponent, opts *option
 }
 
 // RenderComponentString renders the given Component to a string.
-// It creates a strings.Builder writer and passes it to the Component's Render method.
+// It passes a capped writer to the Component's Render method, so output past 16 MB is refused.
 // This function returns the rendered output as a string, or an error if rendering fails.
 // Where possible, it is recommended to use the component's Render function directly for better performance and flexibility.
 func RenderComponentString(c Component) (string, error) {
-	var output strings.Builder
+	var output cappedWriter
 	if err := c.Render(&output); err != nil {
 		return "", err
+	}
+	if output.exceeded {
+		return "", ErrOutputTooLarge
 	}
 	return output.String(), nil
 }

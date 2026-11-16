@@ -337,6 +337,35 @@ func WithCache() RenderOption {
 	}
 }
 
+// maxOutputSize caps the HTML one render may produce. Mail clients clip mail
+// well before this size, so a larger output means a template that repeats an
+// attribute value on every element rather than an email.
+const maxOutputSize = 16 << 20
+
+// cappedWriter collects render output and refuses writes past maxOutputSize.
+// It records the refusal in exceeded, so a component that drops the write
+// error cannot return truncated HTML as a success.
+type cappedWriter struct {
+	buf      strings.Builder
+	exceeded bool
+}
+
+func (w *cappedWriter) WriteString(s string) (int, error) {
+	if w.exceeded || w.buf.Len()+len(s) > maxOutputSize {
+		w.exceeded = true
+		return 0, ErrOutputTooLarge
+	}
+	return w.buf.WriteString(s)
+}
+
+func (w *cappedWriter) Grow(n int) {
+	w.buf.Grow(n)
+}
+
+func (w *cappedWriter) String() string {
+	return w.buf.String()
+}
+
 // RenderResult contains both the rendered HTML and the MJML AST
 type RenderResult struct {
 	HTML string
@@ -356,7 +385,8 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 
 	// Apply render options
 	renderOpts := &RenderOpts{
-		FontTracker: options.NewFontTracker(),
+		FontTracker:       options.NewFontTracker(),
+		InlineStyleBudget: options.NewInlineStyleBudget(),
 	}
 	for _, opt := range opts {
 		opt(renderOpts)
@@ -425,11 +455,14 @@ func RenderWithAST(mjmlContent string, opts ...RenderOption) (*RenderResult, err
 			"buffer_size": bufferSize,
 		})
 	}
-	var html strings.Builder
+	var html cappedWriter
 	html.Grow(bufferSize) // Pre-allocate with complexity-aware sizing
 
 	renderStart := time.Now()
 	err = component.Render(&html)
+	if err == nil && html.exceeded {
+		err = ErrOutputTooLarge
+	}
 	if err != nil {
 		if debugEnabled {
 			debug.DebugLogError("mjml", "render-html-error", "Failed to render HTML", err)
@@ -476,7 +509,9 @@ func Render(mjmlContent string, opts ...RenderOption) (string, error) {
 // RenderFromAST renders HTML from a pre-parsed AST
 func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 	// Apply render options
-	renderOpts := &RenderOpts{}
+	renderOpts := &RenderOpts{
+		InlineStyleBudget: options.NewInlineStyleBudget(),
+	}
 	for _, opt := range opts {
 		opt(renderOpts)
 	}
@@ -514,7 +549,8 @@ func RenderFromAST(ast *MJMLNode, opts ...RenderOption) (string, error) {
 func NewFromAST(ast *MJMLNode, opts ...RenderOption) (Component, error) {
 	// Apply render options
 	renderOpts := &RenderOpts{
-		FontTracker: options.NewFontTracker(),
+		FontTracker:       options.NewFontTracker(),
+		InlineStyleBudget: options.NewInlineStyleBudget(),
 	}
 	for _, opt := range opts {
 		opt(renderOpts)
@@ -1565,6 +1601,9 @@ func (c *MJMLComponent) Render(w io.StringWriter) error {
 			}
 			return err
 		}
+	}
+	if c.RenderOpts != nil && c.RenderOpts.InlineStyleBudget.Exceeded() {
+		return ErrInlineStyleBudgetExceeded
 	}
 	if _, err := w.WriteString(`</body></html>`); err != nil {
 		return err

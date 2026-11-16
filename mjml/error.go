@@ -1,9 +1,17 @@
 package mjml
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
+
+// ErrInlineStyleBudgetExceeded reports that inline mj-style rules would apply
+// more declarations to elements than one render is allowed.
+var ErrInlineStyleBudgetExceeded = errors.New("inline mj-style rules apply too many declarations to elements")
+
+// ErrOutputTooLarge reports that a render would produce more HTML than maxOutputSize allows.
+var ErrOutputTooLarge = errors.New("rendered HTML is larger than 16 MB")
 
 // ErrorDetail represents a single error detail with line number, message, and tag name.
 type ErrorDetail struct {
