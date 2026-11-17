@@ -1,0 +1,15 @@
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-table>
+          before-row
+          <tr><td>A</td></tr>
+          after-row
+          <tr><td>text-start <code>code</code> text-end</td></tr>
+          <tr><td><b>bold</b> tail</td></tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

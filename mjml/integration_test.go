@@ -268,6 +268,7 @@ func TestMJMLAgainstExpected(t *testing.T) {
 		{name: "mj-table-other"},
 		{name: "mj-table-table"},
 		{name: "mj-table-text"},
+		{name: "mj-table-mixed-content"},
 		// // MJ-CAROUSEL tests
 		{name: "mj-carousel"},
 		{name: "mj-carousel-align-border-radius-class"},

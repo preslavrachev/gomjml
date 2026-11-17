@@ -138,25 +138,39 @@ func (c *MJTableComponent) GetDefaultAttribute(name string) string {
 	}
 }
 
-// writeInnerTableContent writes the inner HTML content (TR, TH, TD elements) to the writer
+// writeInnerTableContent writes the inner HTML content (TR, TH, TD elements) to the writer.
+// Text between the elements is kept in its original position: it may be
+// content, or the action of a template engine (e.g. {{range .Rows}}) that
+// must stay around the rows it wraps.
 func (c *MJTableComponent) writeInnerTableContent(w io.StringWriter) error {
-	// If we have children (HTML elements), we need to reconstruct the original HTML
-	if len(c.Node.Children) > 0 {
-		// Add children as HTML elements (skip text content to avoid extra whitespace)
-		for _, child := range c.Node.Children {
-			if err := c.reconstructHTMLElement(child, w); err != nil {
-				return err
+	if len(c.Node.MixedContent) > 0 {
+		for _, part := range c.Node.MixedContent {
+			if part.Node != nil {
+				if err := c.reconstructHTMLElement(part.Node, w); err != nil {
+					return err
+				}
+				continue
+			}
+			// Whitespace between rows carries nothing: skip it as before.
+			if text := strings.TrimSpace(part.Text); text != "" {
+				if _, err := w.WriteString(text); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
 	}
 
-	// If no children, write the text content with whitespace trimmed
-	if c.Node.Text != "" {
+	// No mixed content recorded: children only, or text only.
+	for _, child := range c.Node.Children {
+		if err := c.reconstructHTMLElement(child, w); err != nil {
+			return err
+		}
+	}
+	if len(c.Node.Children) == 0 && c.Node.Text != "" {
 		_, err := w.WriteString(strings.TrimSpace(c.Node.Text))
 		return err
 	}
-
 	return nil
 }
 
@@ -204,20 +218,8 @@ func (c *MJTableComponent) reconstructHTMLElement(node *parser.MJMLNode, w io.St
 		return err
 	}
 
-	// Content (text + children) - trim whitespace to match MRML behavior
-	if node.Text != "" {
-		trimmedText := strings.TrimSpace(node.Text)
-		if trimmedText != "" {
-			if _, err := w.WriteString(trimmedText); err != nil {
-				return err
-			}
-		}
-	}
-
-	for _, child := range node.Children {
-		if err := c.reconstructHTMLElement(child, w); err != nil {
-			return err
-		}
+	if err := c.writeElementContent(node, w); err != nil {
+		return err
 	}
 
 	// Closing tag
@@ -229,4 +231,47 @@ func (c *MJTableComponent) reconstructHTMLElement(node *parser.MJMLNode, w io.St
 	}
 	_, err := w.WriteString(">")
 	return err
+}
+
+// writeElementContent writes the text and child elements of a table element in
+// their original order. Whitespace is collapsed, and trimmed at both ends of the
+// content as before, so "a <b>b</b> c" keeps the spaces around <b>.
+func (c *MJTableComponent) writeElementContent(node *parser.MJMLNode, w io.StringWriter) error {
+	if len(node.MixedContent) == 0 {
+		if text := strings.TrimSpace(node.Text); text != "" {
+			if _, err := w.WriteString(text); err != nil {
+				return err
+			}
+		}
+		for _, child := range node.Children {
+			if err := c.reconstructHTMLElement(child, w); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	last := len(node.MixedContent) - 1
+	for i, part := range node.MixedContent {
+		if part.Node != nil {
+			if err := c.reconstructHTMLElement(part.Node, w); err != nil {
+				return err
+			}
+			continue
+		}
+		text := collapseTextWhitespace(part.Text)
+		if i == 0 {
+			text = strings.TrimLeft(text, " ")
+		}
+		if i == last {
+			text = strings.TrimRight(text, " ")
+		}
+		if text == "" {
+			continue
+		}
+		if _, err := w.WriteString(text); err != nil {
+			return err
+		}
+	}
+	return nil
 }
