@@ -261,6 +261,7 @@ func (c *MJSocialComponent) Render(w io.StringWriter) error {
 	}
 
 	td.AddStyle("word-break", "break-word")
+	c.AddDebugAttribute(td, "social")
 
 	if err := td.RenderOpen(w); err != nil {
 		return err

@@ -91,6 +91,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 
 	// Add css-class if present
 	c.SetClassAttribute(divTag)
+	c.AddDebugAttribute(divTag, "hero")
 
 	if err := divTag.RenderOpen(w); err != nil {
 		return err

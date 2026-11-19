@@ -69,6 +69,8 @@ func (c *MJSpacerComponent) Render(w io.StringWriter) error {
 		td.AddAttribute(constants.AttrVerticalAlign, verticalAlign)
 	}
 
+	c.AddDebugAttribute(td, "spacer")
+
 	// Render table cell opening tag
 	if err := td.RenderOpen(w); err != nil {
 		return err

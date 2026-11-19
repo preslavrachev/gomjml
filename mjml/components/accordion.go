@@ -64,6 +64,7 @@ func (c *MJAccordionComponent) Render(w io.StringWriter) error {
 
 	// Add word-break last
 	tdTag.AddStyle("word-break", "break-word")
+	c.AddDebugAttribute(tdTag, "accordion")
 
 	if err := tdTag.RenderOpen(w); err != nil {
 		return err
