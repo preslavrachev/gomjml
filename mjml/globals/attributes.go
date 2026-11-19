@@ -115,3 +115,9 @@ func (ga *GlobalAttributes) GetClassAttributes(className string) map[string]stri
 	}
 	return nil
 }
+
+// GetComponentAttributes returns the mj-attributes defaults for a tag, not
+// including mj-all.
+func (ga *GlobalAttributes) GetComponentAttributes(tagName string) map[string]string {
+	return ga.componentDefaults[tagName]
+}
