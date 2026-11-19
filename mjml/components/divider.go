@@ -125,40 +125,7 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 		return err
 	}
 
-	// MSO conditional comment for Outlook compatibility - calculate width based on container width minus padding
-	// Container width minus divider padding (25px left + 25px right = 50px total from default "10px 25px")
-	// AIDEV-NOTE: width-flow-divider; divider gets containerWidth from column and subtracts its own padding for MSO table width
-	containerWidth := c.GetContainerWidth()
-	if containerWidth <= 0 {
-		containerWidth = 600 // fallback
-	}
-
-	// Parse divider padding to get accurate left + right values
-	leftPadding, rightPadding := c.parseDividerPaddingLeftRight(padding)
-
-	// Override with individual padding attributes if present
-	if pl := c.GetAttributeFast(c, constants.MJMLPaddingLeft); pl != "" {
-		if px, err := styles.ParsePixel(pl); err == nil && px != nil {
-			leftPadding = int(px.Value)
-		}
-	}
-	if pr := c.GetAttributeFast(c, constants.MJMLPaddingRight); pr != "" {
-		if px, err := styles.ParsePixel(pr); err == nil && px != nil {
-			rightPadding = int(px.Value)
-		}
-	}
-
-	availableWidth := containerWidth - leftPadding - rightPadding
-	msoWidth := availableWidth
-
-	// Apply width attribute (supports percentages)
-	if size, err := styles.ParseSize(width); err == nil {
-		if size.IsPercent() {
-			msoWidth = int(float64(availableWidth) * size.Value() / 100.0)
-		} else {
-			msoWidth = int(size.Value())
-		}
-	}
+	msoWidth := c.outlookWidth(width)
 
 	// Build MSO table directly to writer to avoid fmt.Sprintf allocation
 	if _, err := w.WriteString(`<!--[if mso | IE]><table align="`); err != nil {
@@ -194,16 +161,16 @@ func (c *MJDividerComponent) Render(w io.StringWriter) error {
 	if _, err := w.WriteString(`;width:`); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
+	if _, err := w.WriteString(msoWidth); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`px;" role="presentation" width="`); err != nil {
+	if _, err := w.WriteString(`;" role="presentation" width="`); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(strconv.Itoa(msoWidth)); err != nil {
+	if _, err := w.WriteString(msoWidth); err != nil {
 		return err
 	}
-	if _, err := w.WriteString(`px" ><tr><td style="height:0;line-height:0;"> &nbsp; </td></tr></table><![endif]-->`); err != nil {
+	if _, err := w.WriteString(`" ><tr><td style="height:0;line-height:0;"> &nbsp; </td></tr></table><![endif]-->`); err != nil {
 		return err
 	}
 
@@ -221,36 +188,20 @@ func (c *MJDividerComponent) GetTagName() string {
 	return "mj-divider"
 }
 
-// parseDividerPaddingLeftRight parses CSS padding shorthand to get left and right padding values in pixels
-// Optimized to avoid allocations by parsing in place
-func (c *MJDividerComponent) parseDividerPaddingLeftRight(padding string) (left, right int) {
-	if padding == "" {
-		return 0, 0
-	}
-
-	parts := strings.Fields(padding)
-	parse := func(part string) int {
-		px, err := styles.ParsePixel(part)
-		if err != nil || px == nil {
-			return 0
-		}
-		return int(px.Value)
-	}
-
-	switch len(parts) {
-	case 1:
-		v := parse(parts[0])
-		return v, v
-	case 2:
-		v := parse(parts[1])
-		return v, v
-	case 3:
-		v := parse(parts[1])
-		return v, v
-	case 4:
-		return parse(parts[3]), parse(parts[1])
+// outlookWidth is the width of the divider's Outlook table, as MJML's
+// getOutlookWidth computes it: a px width as given, a percentage of what the
+// horizontal paddings leave of the container, or all of it.
+func (c *MJDividerComponent) outlookWidth(width string) string {
+	containerWidth := c.GetEffectiveWidth()
+	paddingSize := c.ShorthandAttrValue(c, "padding", "left") + c.ShorthandAttrValue(c, "padding", "right")
+	parsedWidth, _ := styles.ParseLeadingInt(width)
+	switch styles.WidthUnit(width) {
+	case "%":
+		return styles.FormatJSNumber(float64(containerWidth-paddingSize)*(float64(parsedWidth)/100)) + "px"
+	case "px":
+		return width
 	default:
-		return 0, 0
+		return strconv.Itoa(containerWidth-paddingSize) + "px"
 	}
 }
 
