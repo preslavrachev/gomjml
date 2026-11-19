@@ -71,10 +71,7 @@ func (c *MJButtonComponent) GetTagName() string {
 
 // Render implements optimized Writer-based rendering for MJButtonComponent
 func (c *MJButtonComponent) Render(w io.StringWriter) error {
-	// Get text content - use GetMixedContent() to support HTML inside button
-	// This preserves HTML tags like <strong>, <em>, etc. per MJML spec
-	// (mj-button is an "ending tag" that can contain HTML code)
-	textContent := c.Node.GetMixedContent()
+	textContent := endingTagHTML(c.Node)
 	if textContent == "" {
 		textContent = "Button"
 	}
