@@ -947,41 +947,9 @@ func (c *MJSectionComponent) ConsumedWrapperMSOTable() bool {
 	return c.wrapperMSOClosed
 }
 
-// getInnerContentWidth calculates the inner content width for the section after accounting for
-// horizontal padding overrides. The value is used for width propagation to child columns/groups
-// so MSO fallback tables match MJML's Outlook output.
+// getInnerContentWidth is the width the section gives its columns and groups:
+// MJML's box, what its horizontal paddings and borders leave.
 func (c *MJSectionComponent) getInnerContentWidth() int {
-	effectiveWidth := c.GetEffectiveWidth()
-	paddingValue := c.GetAttributeWithDefault(c, "padding")
-
-	var spacing *styles.Spacing
-	if paddingValue != "" {
-		if parsed, err := styles.ParseSpacing(paddingValue); err == nil && parsed != nil {
-			spacing = parsed
-			effectiveWidth -= int(parsed.Left + parsed.Right)
-		}
-	}
-
-	if paddingLeftAttr := c.GetAttribute(constants.MJMLPaddingLeft); paddingLeftAttr != nil && *paddingLeftAttr != "" {
-		if px, err := styles.ParsePixel(*paddingLeftAttr); err == nil && px != nil {
-			if spacing != nil {
-				effectiveWidth += int(spacing.Left)
-			}
-			effectiveWidth -= int(px.Value)
-		}
-	}
-
-	if paddingRightAttr := c.GetAttribute(constants.MJMLPaddingRight); paddingRightAttr != nil && *paddingRightAttr != "" {
-		if px, err := styles.ParsePixel(*paddingRightAttr); err == nil && px != nil {
-			if spacing != nil {
-				effectiveWidth += int(spacing.Right)
-			}
-			effectiveWidth -= int(px.Value)
-		}
-	}
-
-	if effectiveWidth <= 0 {
-		return c.GetEffectiveWidth()
-	}
-	return effectiveWidth
+	_, _, box := c.BoxWidths(c)
+	return box
 }

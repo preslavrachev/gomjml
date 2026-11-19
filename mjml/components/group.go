@@ -3,11 +3,13 @@ package components
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"github.com/preslavrachev/gomjml/mjml/constants"
 	"github.com/preslavrachev/gomjml/mjml/html"
 	"github.com/preslavrachev/gomjml/mjml/options"
+	"github.com/preslavrachev/gomjml/mjml/styles"
 	"github.com/preslavrachev/gomjml/parser"
 )
 
@@ -58,6 +60,28 @@ func (c *MJGroupComponent) GetDefaultAttribute(name string) string {
 
 func (c *MJGroupComponent) getAttribute(name string) string {
 	return c.GetAttributeWithDefault(c, name)
+}
+
+// childContainerWidth is the width the group gives its columns, as MJML's
+// getChildContext computes it; it can be fractional.
+func (c *MJGroupComponent) childContainerWidth() float64 {
+	parentWidth := float64(c.GetEffectiveWidth())
+	paddingSize := float64(c.ShorthandAttrValue(c, "padding", "left") + c.ShorthandAttrValue(c, "padding", "right"))
+	width := c.ExplicitAttribute(c, "width")
+	if width == "" {
+		siblings := c.GetNonRawSiblings()
+		if siblings <= 0 {
+			siblings = 1
+		}
+		// MJML writes this as a px width, and parses px widths with parseInt.
+		return math.Trunc(parentWidth/float64(siblings)) - paddingSize
+	}
+	if strings.HasSuffix(strings.TrimSpace(width), "%") {
+		percent, _ := styles.ParseLeadingFloat(width)
+		return parentWidth*percent/100 - paddingSize
+	}
+	px, _ := styles.ParseLeadingInt(width)
+	return float64(px) - paddingSize
 }
 
 func (c *MJGroupComponent) GetTagName() string {
@@ -123,6 +147,7 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 	if columnCount > 0 {
 		childWidthPx = groupWidthPx / columnCount
 	}
+	childContainerWidth := c.childContainerWidth()
 
 	// Determine Outlook-specific class name (css-class + "-outlook")
 	outlookClass := ""
@@ -202,11 +227,11 @@ func (c *MJGroupComponent) Render(w io.StringWriter) error {
 			// Set mobile-width signal for MRML compatibility (like group/render.rs:93)
 			columnComp.Attrs["mobile-width"] = "mobile-width"
 
-			// Ensure child columns receive the group's full width for internal calculations
-			columnComp.SetContainerWidth(groupWidthPx)
+			columnComp.groupWidth, columnComp.hasGroupWidth = childContainerWidth, true
+			columnComp.SetContainerWidth(int(childContainerWidth))
 
-			// MSO conditional TD for each column with correct width and vertical alignment
-			msoWidth := getPixelWidthString(childWidthPx)
+			// MJML reads the column's pixel width back with parseInt.
+			msoWidth := getPixelWidthString(int(columnComp.widthAsPixel()))
 			colVAlign := columnComp.GetAttributeWithDefault(columnComp, constants.MJMLVerticalAlign)
 
 			if err := html.RenderMSOGroupTDOpen(w, "", colVAlign, msoWidth, backgroundColor, isFirstColumn); err != nil {
