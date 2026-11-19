@@ -41,11 +41,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 		effectiveHeight = c.calculateEffectiveHeight(height, padding)
 	}
 
-	// Calculate container width - use parent width or default 600px
-	containerWidth := c.GetContainerWidth()
-	if containerWidth == 0 {
-		containerWidth = 600
-	}
+	containerWidth := c.GetEffectiveWidth()
 	containerWidthPx := fmt.Sprintf("%dpx", containerWidth)
 
 	// MSO conditional comment for Outlook support
@@ -231,8 +227,7 @@ func (c *MJHeroComponent) Render(w io.StringWriter) error {
 			continue
 		}
 
-		// Set container width for children
-		child.SetContainerWidth(containerWidth)
+		child.SetContainerWidth(containerWidth - c.ShorthandAttrValue(c, "padding", "left") - c.ShorthandAttrValue(c, "padding", "right"))
 
 		// Set hero context for child rendering
 		childOpts := *c.RenderOpts // Copy the options
