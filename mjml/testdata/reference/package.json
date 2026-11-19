@@ -1,0 +1,16 @@
+{
+  "name": "gomjml-mjml-reference",
+  "private": true,
+  "description": "Pinned MJML compiler that renders mjml/testdata goldens",
+  "license": "MIT",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "mjml": "4.16.1",
+    "mjml-4.17": "npm:mjml@4.17.2"
+  }
+}
